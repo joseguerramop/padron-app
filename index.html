@@ -160,6 +160,10 @@
     font-size: 0.72rem;
     font-weight: 600;
   }
+  .badge-partido {
+    background: #e9f7ee;
+    color: var(--exito);
+  }
   .empty-state { text-align: center; padding: 50px 20px; color: var(--texto-suave); }
   .pagina-nav { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 18px 0; }
   .pagina-nav button {
@@ -232,6 +236,11 @@
         <select id="filtro-mesa">
           <option value="">Todas las mesas</option>
         </select>
+        <select id="filtro-partido">
+          <option value="">Todos (inscritos y no inscritos)</option>
+          <option value="RM">Inscritos en RM</option>
+          <option value="NINGUNO">Sin partido registrado</option>
+        </select>
       </div>
     </div>
     <div class="stats" id="stats">Cargando…</div>
@@ -244,6 +253,7 @@
             <th>Corregimiento</th>
             <th>Mesa</th>
             <th>Centro de votación</th>
+            <th>Partido</th>
           </tr>
         </thead>
         <tbody id="resultados"></tbody>
@@ -324,19 +334,18 @@ async function inicializarApp() {
   });
   document.getElementById("filtro-corregimiento").addEventListener("change", () => { paginaActual = 0; buscar(); });
   document.getElementById("filtro-mesa").addEventListener("change", () => { paginaActual = 0; buscar(); });
+  document.getElementById("filtro-partido").addEventListener("change", () => { paginaActual = 0; buscar(); });
 }
 
 async function cargarFiltros() {
   const { data, error } = await sb
-    .from("electores")
-    .select("corregimiento")
-    .limit(1000);
+    .from("filtro_corregimientos")
+    .select("corregimiento");
   if (error) return;
-  const unicos = [...new Set(data.map(r => r.corregimiento))].sort();
   const sel = document.getElementById("filtro-corregimiento");
-  unicos.forEach(c => {
+  data.forEach(r => {
     const opt = document.createElement("option");
-    opt.value = c; opt.textContent = c;
+    opt.value = r.corregimiento; opt.textContent = r.corregimiento;
     sel.appendChild(opt);
   });
 }
@@ -345,13 +354,14 @@ async function cargarMesasPorCorregimiento(corregimiento) {
   const selMesa = document.getElementById("filtro-mesa");
   selMesa.innerHTML = '<option value="">Todas las mesas</option>';
   if (!corregimiento) return;
-  let query = sb.from("electores").select("mesa").eq("corregimiento", corregimiento).limit(2000);
-  const { data, error } = await query;
+  const { data, error } = await sb
+    .from("filtro_mesas")
+    .select("mesa")
+    .eq("corregimiento", corregimiento);
   if (error) return;
-  const unicas = [...new Set(data.map(r => r.mesa))].sort();
-  unicas.forEach(m => {
+  data.forEach(r => {
     const opt = document.createElement("option");
-    opt.value = m; opt.textContent = "Mesa " + m;
+    opt.value = r.mesa; opt.textContent = "Mesa " + r.mesa;
     selMesa.appendChild(opt);
   });
 }
@@ -368,13 +378,14 @@ async function buscar() {
   const termino = normalizar(document.getElementById("buscar").value);
   const corregimiento = document.getElementById("filtro-corregimiento").value;
   const mesa = document.getElementById("filtro-mesa").value;
+  const partido = document.getElementById("filtro-partido").value;
   const stats = document.getElementById("stats");
   const tbody = document.getElementById("resultados");
   const empty = document.getElementById("empty");
 
   stats.textContent = "Buscando…";
 
-  let query = sb.from("electores").select("cedula, nombre_completo, corregimiento, mesa, centro_votacion", { count: "exact" });
+  let query = sb.from("electores_con_partido").select("cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas", { count: "exact" });
 
   if (termino) {
     const t = termino.replace(/[%_]/g, "");
@@ -382,6 +393,8 @@ async function buscar() {
   }
   if (corregimiento) query = query.eq("corregimiento", corregimiento);
   if (mesa) query = query.eq("mesa", mesa);
+  if (partido === "NINGUNO") query = query.is("partido_siglas", null);
+  else if (partido) query = query.eq("partido_siglas", partido);
 
   const desde = paginaActual * PAGE_SIZE;
   const hasta = desde + PAGE_SIZE - 1;
@@ -406,12 +419,16 @@ async function buscar() {
 
   data.forEach(r => {
     const tr = document.createElement("tr");
+    const partidoCell = r.partido_siglas
+      ? `<span class="badge badge-partido">${escapeHtml(r.partido_siglas)}</span>`
+      : `<span style="color: var(--texto-suave); font-size: 0.8rem;">—</span>`;
     tr.innerHTML = `
       <td class="cedula-cell">${escapeHtml(r.cedula)}</td>
       <td>${escapeHtml(r.nombre_completo)}</td>
       <td><span class="badge">${escapeHtml(r.corregimiento)}</span></td>
       <td>${escapeHtml(r.mesa)}</td>
       <td>${escapeHtml(r.centro_votacion)}</td>
+      <td>${partidoCell}</td>
     `;
     tbody.appendChild(tr);
   });

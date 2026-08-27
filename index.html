@@ -164,6 +164,90 @@
     background: #e9f7ee;
     color: var(--exito);
   }
+  .badge-fallecido {
+    background: #fdecea;
+    color: var(--error);
+  }
+  .badge-no_vive_aqui {
+    background: #fff4e5;
+    color: #a15c00;
+  }
+  .badge-cambio_residencia {
+    background: #eaf1fd;
+    color: #1a56c4;
+  }
+  .fila-fallecido .cedula-cell,
+  .fila-fallecido td:nth-child(2) {
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+  .btn-marcar {
+    background: none;
+    border: 1px solid var(--borde);
+    color: var(--texto-suave);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-marcar:hover { background: #f0f1f6; color: var(--texto); }
+  .btn-marcar.tiene-nota { border-color: var(--azul-claro); color: var(--azul-claro); }
+
+  /* ---- Modal ---- */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 20, 35, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 16px;
+  }
+  .modal-card {
+    background: var(--tarjeta);
+    border-radius: 12px;
+    padding: 26px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  .modal-card h3 { margin: 0 0 4px; color: var(--azul); }
+  .modal-nombre { color: var(--texto-suave); font-size: 0.88rem; margin-top: 0; margin-bottom: 16px; }
+  .modal-card select,
+  .modal-card textarea {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--borde);
+    border-radius: 7px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: vertical;
+  }
+  .modal-info {
+    font-size: 0.78rem;
+    color: var(--texto-suave);
+    margin-top: -4px;
+    margin-bottom: 10px;
+  }
+  .modal-botones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .modal-botones .btn-primary { width: auto; padding: 9px 18px; }
+  .btn-secundario {
+    padding: 9px 18px;
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--texto);
+  }
+  .btn-secundario:hover { background: #f0f1f6; }
   .empty-state { text-align: center; padding: 50px 20px; color: var(--texto-suave); }
   .pagina-nav { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 18px 0; }
   .pagina-nav button {
@@ -241,6 +325,13 @@
           <option value="RM">Inscritos en RM</option>
           <option value="NINGUNO">Sin partido registrado</option>
         </select>
+        <select id="filtro-estado">
+          <option value="">Todos los estados</option>
+          <option value="ACTIVO">Sin marcar</option>
+          <option value="fallecido">Fallecidos</option>
+          <option value="no_vive_aqui">No vive en el lugar</option>
+          <option value="cambio_residencia">Cambio de residencia</option>
+        </select>
       </div>
     </div>
     <div class="stats" id="stats">Cargando…</div>
@@ -254,6 +345,8 @@
             <th>Mesa</th>
             <th>Centro de votación</th>
             <th>Partido</th>
+            <th>Estado</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="resultados"></tbody>
@@ -262,6 +355,33 @@
     <div id="empty" class="empty-state hidden">Sin resultados para tu búsqueda.</div>
     <div class="pagina-nav" id="pagina-nav"></div>
   </main>
+</div>
+
+<!-- ===== MODAL: marcar estado del elector ===== -->
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3>Marcar estado</h3>
+    <p class="modal-nombre" id="modal-nombre"></p>
+    <div class="field">
+      <label>Estado</label>
+      <select id="modal-estado">
+        <option value="">Sin marcar (elector activo)</option>
+        <option value="fallecido">Fallecido</option>
+        <option value="no_vive_aqui">No vive en el lugar</option>
+        <option value="cambio_residencia">Cambio de residencia</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Nota (opcional)</label>
+      <textarea id="modal-nota" rows="3" placeholder="Ej: confirmado por vecino el 12/08, se mudó a David…"></textarea>
+    </div>
+    <div id="modal-info" class="modal-info"></div>
+    <div id="modal-msg"></div>
+    <div class="modal-botones">
+      <button id="modal-cancelar" class="btn-secundario">Cancelar</button>
+      <button id="modal-guardar" class="btn-primary">Guardar</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -304,10 +424,13 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
   await sb.auth.signOut();
 });
 
+let currentUserEmail = "";
+
 sb.auth.onAuthStateChange((_event, session) => {
   if (session) {
     authScreen.classList.add("hidden");
     appScreen.classList.remove("hidden");
+    currentUserEmail = session.user.email;
     document.getElementById("user-email").textContent = session.user.email;
     inicializarApp();
   } else {
@@ -335,6 +458,7 @@ async function inicializarApp() {
   document.getElementById("filtro-corregimiento").addEventListener("change", () => { paginaActual = 0; buscar(); });
   document.getElementById("filtro-mesa").addEventListener("change", () => { paginaActual = 0; buscar(); });
   document.getElementById("filtro-partido").addEventListener("change", () => { paginaActual = 0; buscar(); });
+  document.getElementById("filtro-estado").addEventListener("change", () => { paginaActual = 0; buscar(); });
 }
 
 async function cargarFiltros() {
@@ -379,13 +503,17 @@ async function buscar() {
   const corregimiento = document.getElementById("filtro-corregimiento").value;
   const mesa = document.getElementById("filtro-mesa").value;
   const partido = document.getElementById("filtro-partido").value;
+  const estado = document.getElementById("filtro-estado").value;
   const stats = document.getElementById("stats");
   const tbody = document.getElementById("resultados");
   const empty = document.getElementById("empty");
 
   stats.textContent = "Buscando…";
 
-  let query = sb.from("electores_con_partido").select("cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas", { count: "exact" });
+  let query = sb.from("electores_con_partido").select(
+    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, estado_nota, nota_texto, nota_actualizado_por, nota_fecha",
+    { count: "exact" }
+  );
 
   if (termino) {
     const t = termino.replace(/[%_]/g, "");
@@ -395,6 +523,8 @@ async function buscar() {
   if (mesa) query = query.eq("mesa", mesa);
   if (partido === "NINGUNO") query = query.is("partido_siglas", null);
   else if (partido) query = query.eq("partido_siglas", partido);
+  if (estado === "ACTIVO") query = query.is("estado_nota", null);
+  else if (estado) query = query.eq("estado_nota", estado);
 
   const desde = paginaActual * PAGE_SIZE;
   const hasta = desde + PAGE_SIZE - 1;
@@ -417,11 +547,27 @@ async function buscar() {
   }
   empty.classList.add("hidden");
 
+  const ESTADO_LABEL = {
+    fallecido: "Fallecido",
+    no_vive_aqui: "No vive aquí",
+    cambio_residencia: "Cambio de resid.",
+  };
+
   data.forEach(r => {
     const tr = document.createElement("tr");
+    if (r.estado_nota === "fallecido") tr.classList.add("fila-fallecido");
+
     const partidoCell = r.partido_siglas
       ? `<span class="badge badge-partido">${escapeHtml(r.partido_siglas)}</span>`
       : `<span style="color: var(--texto-suave); font-size: 0.8rem;">—</span>`;
+
+    const estadoCell = r.estado_nota
+      ? `<span class="badge badge-${r.estado_nota}">${ESTADO_LABEL[r.estado_nota] || r.estado_nota}</span>`
+      : `<span style="color: var(--texto-suave); font-size: 0.8rem;">—</span>`;
+
+    const btnLabel = r.estado_nota ? "Editar" : "Marcar";
+    const btnClase = r.estado_nota ? "btn-marcar tiene-nota" : "btn-marcar";
+
     tr.innerHTML = `
       <td class="cedula-cell">${escapeHtml(r.cedula)}</td>
       <td>${escapeHtml(r.nombre_completo)}</td>
@@ -429,8 +575,14 @@ async function buscar() {
       <td>${escapeHtml(r.mesa)}</td>
       <td>${escapeHtml(r.centro_votacion)}</td>
       <td>${partidoCell}</td>
+      <td>${estadoCell}</td>
+      <td><button class="${btnClase}" data-cedula="${escapeHtml(r.cedula)}">${btnLabel}</button></td>
     `;
     tbody.appendChild(tr);
+
+    tr.querySelector(".btn-marcar").addEventListener("click", () => {
+      abrirModal(r);
+    });
   });
 
   const totalPaginas = Math.ceil(count / PAGE_SIZE);
@@ -469,6 +621,72 @@ function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+
+// ---------- MODAL: marcar estado ----------
+let cedulaEnEdicion = null;
+
+const modalOverlay = document.getElementById("modal-overlay");
+const modalNombre = document.getElementById("modal-nombre");
+const modalEstado = document.getElementById("modal-estado");
+const modalNota = document.getElementById("modal-nota");
+const modalInfo = document.getElementById("modal-info");
+const modalMsg = document.getElementById("modal-msg");
+
+function abrirModal(registro) {
+  cedulaEnEdicion = registro.cedula;
+  modalNombre.textContent = `${registro.nombre_completo} — ${registro.cedula}`;
+  modalEstado.value = registro.estado_nota || "";
+  modalNota.value = registro.nota_texto || "";
+  modalMsg.innerHTML = "";
+  modalInfo.textContent = registro.estado_nota
+    ? `Última actualización: ${registro.nota_actualizado_por || "—"} · ${new Date(registro.nota_fecha).toLocaleString("es-PA")}`
+    : "";
+  modalOverlay.classList.remove("hidden");
+}
+
+function cerrarModal() {
+  modalOverlay.classList.add("hidden");
+  cedulaEnEdicion = null;
+}
+
+document.getElementById("modal-cancelar").addEventListener("click", cerrarModal);
+modalOverlay.addEventListener("click", (e) => {
+  if (e.target === modalOverlay) cerrarModal();
+});
+
+document.getElementById("modal-guardar").addEventListener("click", async () => {
+  if (!cedulaEnEdicion) return;
+  const estado = modalEstado.value;
+  const nota = modalNota.value.trim();
+  const btn = document.getElementById("modal-guardar");
+  btn.disabled = true;
+  btn.textContent = "Guardando…";
+  modalMsg.innerHTML = "";
+
+  try {
+    if (!estado) {
+      // Sin marcar = quitar cualquier nota existente
+      const { error } = await sb.from("notas_electores").delete().eq("cedula", cedulaEnEdicion);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from("notas_electores").upsert({
+        cedula: cedulaEnEdicion,
+        estado,
+        nota: nota || null,
+        actualizado_por: currentUserEmail,
+        fecha_actualizacion: new Date().toISOString(),
+      }, { onConflict: "cedula" });
+      if (error) throw error;
+    }
+    cerrarModal();
+    buscar();
+  } catch (err) {
+    modalMsg.innerHTML = `<div class="msg error">${err.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Guardar";
+  }
+});
 </script>
 </body>
 </html>

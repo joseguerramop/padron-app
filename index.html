@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Padrón Electoral — Gualaca</title>
+<style>
+  :root {
+    --azul: #0b3d91;
+    --azul-claro: #1a56c4;
+    --fondo: #f4f6fb;
+    --tarjeta: #ffffff;
+    --texto: #1c2333;
+    --texto-suave: #5b6472;
+    --borde: #e1e5ee;
+    --exito: #1a7f37;
+    --error: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--fondo);
+    color: var(--texto);
+  }
+  header {
+    background: linear-gradient(135deg, var(--azul), var(--azul-claro));
+    color: white;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header h1 {
+    font-size: 1.3rem;
+    margin: 0;
+    font-weight: 600;
+  }
+  header .sub {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+  header button {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  header button:hover { background: rgba(255,255,255,0.25); }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  /* ---- Auth screen ---- */
+  #auth-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .auth-card {
+    background: var(--tarjeta);
+    border-radius: 12px;
+    padding: 32px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    border: 1px solid var(--borde);
+  }
+  .auth-card h2 { margin-top: 0; color: var(--azul); }
+  .auth-card p.desc { color: var(--texto-suave); font-size: 0.88rem; margin-top: -8px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 0.82rem; margin-bottom: 5px; color: var(--texto-suave); }
+  .field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--borde);
+    border-radius: 7px;
+    font-size: 0.95rem;
+  }
+  .field input:focus { outline: 2px solid var(--azul-claro); border-color: transparent; }
+  .btn-primary {
+    width: 100%;
+    padding: 11px;
+    background: var(--azul);
+    color: white;
+    border: none;
+    border-radius: 7px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .btn-primary:hover { background: var(--azul-claro); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  .toggle-mode {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 0.85rem;
+  }
+  .toggle-mode a { color: var(--azul-claro); cursor: pointer; text-decoration: underline; }
+  .msg { font-size: 0.85rem; padding: 9px 12px; border-radius: 6px; margin-bottom: 12px; }
+  .msg.error { background: #fdecea; color: var(--error); }
+  .msg.success { background: #e9f7ee; color: var(--exito); }
+
+  /* ---- App screen ---- */
+  .search-bar {
+    background: var(--tarjeta);
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    border: 1px solid var(--borde);
+    margin-bottom: 16px;
+  }
+  .search-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .search-row input[type=text] {
+    flex: 1 1 260px;
+    padding: 12px 14px;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+  .search-row input:focus { outline: 2px solid var(--azul-claro); border-color: transparent; }
+  .filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .filtros select {
+    padding: 8px 10px;
+    border: 1px solid var(--borde);
+    border-radius: 7px;
+    font-size: 0.85rem;
+    background: white;
+    color: var(--texto);
+  }
+  .stats { font-size: 0.82rem; color: var(--texto-suave); margin: 10px 2px; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--tarjeta); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+  thead th {
+    background: #eef1f8;
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--texto-suave);
+    border-bottom: 1px solid var(--borde);
+  }
+  tbody td { padding: 11px 12px; font-size: 0.88rem; border-bottom: 1px solid #f0f1f6; }
+  tbody tr:hover { background: #f7f9fd; }
+  .cedula-cell { font-weight: 600; color: var(--azul); white-space: nowrap; }
+  .badge {
+    display: inline-block;
+    background: #eef1f8;
+    color: var(--azul);
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--texto-suave); }
+  .pagina-nav { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 18px 0; }
+  .pagina-nav button {
+    padding: 8px 16px;
+    border: 1px solid var(--borde);
+    background: white;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .pagina-nav button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .table-wrap { overflow-x: auto; }
+  .hidden { display: none !important; }
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ===== PANTALLA DE LOGIN ===== -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <h2 id="auth-title">Iniciar Sesión</h2>
+    <p class="desc">Padrón Electoral — Distrito de Gualaca</p>
+    <div id="auth-msg"></div>
+    <form id="auth-form">
+      <div class="field">
+        <label>Correo electrónico</label>
+        <input type="email" id="auth-email" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="auth-password" required autocomplete="current-password" minlength="6" />
+      </div>
+      <button type="submit" class="btn-primary" id="auth-submit">Entrar</button>
+    </form>
+    <div class="toggle-mode" style="color: var(--texto-suave); font-size: 0.8rem;">
+      Acceso solo por invitación. Si necesitas una cuenta, contacta al administrador.
+    </div>
+  </div>
+</div>
+
+<!-- ===== PANTALLA PRINCIPAL ===== -->
+<div id="app-screen" class="hidden">
+  <header>
+    <div>
+      <h1>Padrón Electoral — Gualaca</h1>
+      <div class="sub" id="user-email"></div>
+    </div>
+    <button id="logout-btn">Cerrar sesión</button>
+  </header>
+  <main>
+    <div class="search-bar">
+      <div class="search-row">
+        <input type="text" id="buscar" placeholder="Buscar por cédula, nombre o apellido…" autocomplete="off" />
+      </div>
+      <div class="filtros">
+        <select id="filtro-corregimiento">
+          <option value="">Todos los corregimientos</option>
+        </select>
+        <select id="filtro-mesa">
+          <option value="">Todas las mesas</option>
+        </select>
+      </div>
+    </div>
+    <div class="stats" id="stats">Cargando…</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Cédula</th>
+            <th>Nombre completo</th>
+            <th>Corregimiento</th>
+            <th>Mesa</th>
+            <th>Centro de votación</th>
+          </tr>
+        </thead>
+        <tbody id="resultados"></tbody>
+      </table>
+    </div>
+    <div id="empty" class="empty-state hidden">Sin resultados para tu búsqueda.</div>
+    <div class="pagina-nav" id="pagina-nav"></div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = "https://ydedoolppdjyzxweqcex.supabase.co";
+const SUPABASE_KEY = "sb_publishable_pDxqUEcWzzOw6VGtDCddRg_g2ChE45Y";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const PAGE_SIZE = 30;
+let paginaActual = 0;
+let debounceTimer = null;
+
+// ---------- AUTH ----------
+const authScreen = document.getElementById("auth-screen");
+const appScreen = document.getElementById("app-screen");
+const authForm = document.getElementById("auth-form");
+const authMsg = document.getElementById("auth-msg");
+const authSubmit = document.getElementById("auth-submit");
+
+authForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("auth-email").value.trim();
+  const password = document.getElementById("auth-password").value;
+  authMsg.innerHTML = "";
+  authSubmit.disabled = true;
+  authSubmit.innerHTML = '<span class="spinner"></span>Entrando…';
+
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  } catch (err) {
+    authMsg.innerHTML = `<div class="msg error">${err.message}</div>`;
+  } finally {
+    authSubmit.disabled = false;
+    authSubmit.textContent = "Entrar";
+  }
+});
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+  await sb.auth.signOut();
+});
+
+sb.auth.onAuthStateChange((_event, session) => {
+  if (session) {
+    authScreen.classList.add("hidden");
+    appScreen.classList.remove("hidden");
+    document.getElementById("user-email").textContent = session.user.email;
+    inicializarApp();
+  } else {
+    authScreen.classList.remove("hidden");
+    appScreen.classList.add("hidden");
+  }
+});
+
+// ---------- APP ----------
+let filtrosInicializados = false;
+
+async function inicializarApp() {
+  if (filtrosInicializados) {
+    buscar();
+    return;
+  }
+  filtrosInicializados = true;
+  await cargarFiltros();
+  buscar();
+
+  document.getElementById("buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => { paginaActual = 0; buscar(); }, 300);
+  });
+  document.getElementById("filtro-corregimiento").addEventListener("change", () => { paginaActual = 0; buscar(); });
+  document.getElementById("filtro-mesa").addEventListener("change", () => { paginaActual = 0; buscar(); });
+}
+
+async function cargarFiltros() {
+  const { data, error } = await sb
+    .from("electores")
+    .select("corregimiento")
+    .limit(1000);
+  if (error) return;
+  const unicos = [...new Set(data.map(r => r.corregimiento))].sort();
+  const sel = document.getElementById("filtro-corregimiento");
+  unicos.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+}
+
+async function cargarMesasPorCorregimiento(corregimiento) {
+  const selMesa = document.getElementById("filtro-mesa");
+  selMesa.innerHTML = '<option value="">Todas las mesas</option>';
+  if (!corregimiento) return;
+  let query = sb.from("electores").select("mesa").eq("corregimiento", corregimiento).limit(2000);
+  const { data, error } = await query;
+  if (error) return;
+  const unicas = [...new Set(data.map(r => r.mesa))].sort();
+  unicas.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m; opt.textContent = "Mesa " + m;
+    selMesa.appendChild(opt);
+  });
+}
+
+document.getElementById("filtro-corregimiento").addEventListener("change", (e) => {
+  cargarMesasPorCorregimiento(e.target.value);
+});
+
+function normalizar(txt) {
+  return txt.trim().toLowerCase();
+}
+
+async function buscar() {
+  const termino = normalizar(document.getElementById("buscar").value);
+  const corregimiento = document.getElementById("filtro-corregimiento").value;
+  const mesa = document.getElementById("filtro-mesa").value;
+  const stats = document.getElementById("stats");
+  const tbody = document.getElementById("resultados");
+  const empty = document.getElementById("empty");
+
+  stats.textContent = "Buscando…";
+
+  let query = sb.from("electores").select("cedula, nombre_completo, corregimiento, mesa, centro_votacion", { count: "exact" });
+
+  if (termino) {
+    const t = termino.replace(/[%_]/g, "");
+    query = query.or(`cedula.ilike.%${t}%,nombre_completo.ilike.%${t}%`);
+  }
+  if (corregimiento) query = query.eq("corregimiento", corregimiento);
+  if (mesa) query = query.eq("mesa", mesa);
+
+  const desde = paginaActual * PAGE_SIZE;
+  const hasta = desde + PAGE_SIZE - 1;
+  query = query.order("nombre_completo", { ascending: true }).range(desde, hasta);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    stats.textContent = "Error al buscar: " + error.message;
+    tbody.innerHTML = "";
+    return;
+  }
+
+  tbody.innerHTML = "";
+  if (!data || data.length === 0) {
+    empty.classList.remove("hidden");
+    stats.textContent = `0 resultados`;
+    renderPaginacion(0);
+    return;
+  }
+  empty.classList.add("hidden");
+
+  data.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="cedula-cell">${escapeHtml(r.cedula)}</td>
+      <td>${escapeHtml(r.nombre_completo)}</td>
+      <td><span class="badge">${escapeHtml(r.corregimiento)}</span></td>
+      <td>${escapeHtml(r.mesa)}</td>
+      <td>${escapeHtml(r.centro_votacion)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const totalPaginas = Math.ceil(count / PAGE_SIZE);
+  stats.textContent = `${count.toLocaleString("es-PA")} electores encontrados — página ${paginaActual + 1} de ${totalPaginas}`;
+  renderPaginacion(totalPaginas);
+}
+
+function renderPaginacion(totalPaginas) {
+  const nav = document.getElementById("pagina-nav");
+  if (totalPaginas <= 1) { nav.innerHTML = ""; return; }
+  nav.innerHTML = "";
+
+  const btnPrev = document.createElement("button");
+  btnPrev.textContent = "← Anterior";
+  btnPrev.disabled = paginaActual === 0;
+  btnPrev.onclick = () => { paginaActual--; buscar(); window.scrollTo(0,0); };
+
+  const info = document.createElement("span");
+  info.textContent = `${paginaActual + 1} / ${totalPaginas}`;
+  info.style.fontSize = "0.85rem";
+  info.style.color = "var(--texto-suave)";
+
+  const btnNext = document.createElement("button");
+  btnNext.textContent = "Siguiente →";
+  btnNext.disabled = paginaActual >= totalPaginas - 1;
+  btnNext.onclick = () => { paginaActual++; buscar(); window.scrollTo(0,0); };
+
+  nav.appendChild(btnPrev);
+  nav.appendChild(info);
+  nav.appendChild(btnNext);
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>

@@ -366,8 +366,16 @@
     font-size: 0.82rem;
   }
   .btn-gps:hover { background: #eaf1fd; }
+  .fila-botones-ubicacion { display: flex; gap: 8px; flex-wrap: wrap; }
   .gps-estado { font-size: 0.78rem; color: var(--texto-suave); margin-top: 6px; }
   .gps-estado.ok { color: var(--exito); }
+  .mini-mapa-ayuda { font-size: 0.78rem; color: var(--texto-suave); margin: 10px 0 6px; }
+  #modal-mini-mapa {
+    height: 220px;
+    border-radius: 8px;
+    border: 1px solid var(--borde);
+    cursor: crosshair;
+  }
 </style>
 </head>
 <body>
@@ -503,9 +511,16 @@
       <textarea id="modal-nota" rows="3" placeholder="Ej: confirmado por vecino el 12/08, se mudó a David…"></textarea>
     </div>
     <div class="field">
-      <label>Ubicación de la visita</label>
-      <button type="button" class="btn-gps" id="btn-capturar-gps">📍 Usar mi ubicación actual</button>
+      <label>Ubicación</label>
+      <div class="fila-botones-ubicacion">
+        <button type="button" class="btn-gps" id="btn-capturar-gps">📍 Usar mi ubicación actual</button>
+        <button type="button" class="btn-gps" id="btn-marcar-mapa">🗺️ Marcar en el mapa</button>
+      </div>
       <div class="gps-estado" id="gps-estado"></div>
+      <div id="modal-mini-mapa-wrap" class="hidden">
+        <p class="mini-mapa-ayuda">Toca el mapa donde vive la persona. Puedes arrastrar el pin para ajustarlo.</p>
+        <div id="modal-mini-mapa"></div>
+      </div>
     </div>
     <div id="modal-info" class="modal-info"></div>
     <div id="modal-msg"></div>
@@ -801,11 +816,13 @@ function abrirModal(registro) {
   modalInfo.textContent = registro.nota_fecha
     ? `Última actualización: ${registro.nota_actualizado_por || "—"} · ${new Date(registro.nota_fecha).toLocaleString("es-PA")}`
     : "";
+  document.getElementById("modal-mini-mapa-wrap").classList.add("hidden");
   modalOverlay.classList.remove("hidden");
 }
 
 function cerrarModal() {
   modalOverlay.classList.add("hidden");
+  document.getElementById("modal-mini-mapa-wrap").classList.add("hidden");
   cedulaEnEdicion = null;
   gpsLat = null;
   gpsLng = null;
@@ -838,6 +855,52 @@ document.getElementById("btn-capturar-gps").addEventListener("click", () => {
     { enableHighAccuracy: true, timeout: 15000 }
   );
 });
+
+// ---------- MINI-MAPA: marcar ubicación manualmente ----------
+let miniMapa = null;
+let miniMarcador = null;
+const GUALACA_CENTRO_MODAL = [8.5333, -82.2986];
+
+document.getElementById("btn-marcar-mapa").addEventListener("click", () => {
+  document.getElementById("modal-mini-mapa-wrap").classList.remove("hidden");
+  setTimeout(() => {
+    if (!miniMapa) {
+      miniMapa = L.map("modal-mini-mapa").setView(GUALACA_CENTRO_MODAL, 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap",
+      }).addTo(miniMapa);
+      miniMapa.on("click", (e) => colocarMiniMarcador(e.latlng.lat, e.latlng.lng));
+    } else {
+      miniMapa.invalidateSize();
+      if (miniMarcador) { miniMapa.removeLayer(miniMarcador); miniMarcador = null; }
+    }
+    if (gpsLat && gpsLng) {
+      miniMapa.setView([gpsLat, gpsLng], 15);
+      colocarMiniMarcador(gpsLat, gpsLng, false);
+    } else {
+      miniMapa.setView(GUALACA_CENTRO_MODAL, 13);
+    }
+  }, 0);
+});
+
+function colocarMiniMarcador(lat, lng, actualizarDatos = true) {
+  if (miniMarcador) miniMapa.removeLayer(miniMarcador);
+  miniMarcador = L.marker([lat, lng], { draggable: true }).addTo(miniMapa);
+  miniMarcador.on("dragend", () => {
+    const pos = miniMarcador.getLatLng();
+    gpsLat = pos.lat;
+    gpsLng = pos.lng;
+    gpsEstado.textContent = `Ubicación marcada en el mapa: ${gpsLat.toFixed(5)}, ${gpsLng.toFixed(5)}`;
+    gpsEstado.classList.add("ok");
+  });
+  if (actualizarDatos) {
+    gpsLat = lat;
+    gpsLng = lng;
+    gpsEstado.textContent = `Ubicación marcada en el mapa: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    gpsEstado.classList.add("ok");
+  }
+}
 
 document.getElementById("modal-guardar").addEventListener("click", async () => {
   if (!cedulaEnEdicion) return;

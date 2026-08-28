@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Padrón Electoral — Gualaca</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   :root {
     --azul: #0b3d91;
@@ -272,6 +273,98 @@
     margin-right: 6px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Tabs ---- */
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 9px 16px;
+    border: 1px solid var(--borde);
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--texto-suave);
+  }
+  .tab-btn.activo { background: var(--azul); color: white; border-color: var(--azul); }
+
+  /* ---- Mapa ---- */
+  #mapa {
+    height: 480px;
+    border-radius: 10px;
+    border: 1px solid var(--borde);
+    margin-bottom: 14px;
+  }
+  .mapa-leyenda {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 0.78rem; color: var(--texto-suave);
+    margin-bottom: 10px;
+  }
+  .mapa-leyenda span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot-rm { background: #1a7f37; }
+  .dot-otro { background: #8e44ad; }
+  .dot-sinpartido { background: #1a56c4; }
+  .dot-marcado { background: #1c2333; }
+
+  .popup-marcador { font-size: 0.85rem; }
+  .popup-marcador b { display: block; margin-bottom: 3px; }
+  .popup-marcador .btn-ruta {
+    margin-top: 8px;
+    padding: 5px 10px;
+    border: 1px solid var(--azul-claro);
+    color: var(--azul-claro);
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+  }
+  .popup-marcador .btn-ruta.en-ruta { background: var(--azul-claro); color: white; }
+
+  .ruta-panel {
+    background: var(--tarjeta);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .ruta-panel h3 { margin: 0 0 10px; font-size: 1rem; color: var(--azul); }
+  .ruta-lista { list-style: none; padding: 0; margin: 0 0 12px; }
+  .ruta-lista li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0; border-bottom: 1px solid #f0f1f6; font-size: 0.85rem;
+  }
+  .ruta-lista li button {
+    background: none; border: none; color: var(--error); cursor: pointer; font-size: 0.8rem;
+  }
+  .ruta-botones { display: flex; gap: 10px; flex-wrap: wrap; }
+  .ruta-botones button {
+    padding: 9px 14px; border-radius: 7px; font-size: 0.85rem; cursor: pointer;
+  }
+  .btn-ruta-google { background: var(--exito); color: white; border: none; }
+  .btn-ruta-orden { background: white; border: 1px solid var(--borde); color: var(--texto); }
+  .ruta-vacia { color: var(--texto-suave); font-size: 0.85rem; }
+
+  /* ---- Campos de teléfono/ubicación en el modal ---- */
+  .modal-card input[type=tel] {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--borde);
+    border-radius: 7px;
+    font-size: 0.9rem;
+  }
+  .btn-gps {
+    margin-top: 6px;
+    padding: 7px 12px;
+    border: 1px solid var(--azul-claro);
+    color: var(--azul-claro);
+    background: white;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.82rem;
+  }
+  .btn-gps:hover { background: #eaf1fd; }
+  .gps-estado { font-size: 0.78rem; color: var(--texto-suave); margin-top: 6px; }
+  .gps-estado.ok { color: var(--exito); }
 </style>
 </head>
 <body>
@@ -309,51 +402,77 @@
     <button id="logout-btn">Cerrar sesión</button>
   </header>
   <main>
-    <div class="search-bar">
-      <div class="search-row">
-        <input type="text" id="buscar" placeholder="Buscar por cédula, nombre o apellido…" autocomplete="off" />
+    <div class="tabs">
+      <button class="tab-btn activo" id="tab-buscar-btn">🔍 Buscar</button>
+      <button class="tab-btn" id="tab-mapa-btn">🗺️ Mapa y ruta</button>
+    </div>
+
+    <div id="vista-buscar">
+      <div class="search-bar">
+        <div class="search-row">
+          <input type="text" id="buscar" placeholder="Buscar por cédula, nombre o apellido…" autocomplete="off" />
+        </div>
+        <div class="filtros">
+          <select id="filtro-corregimiento">
+            <option value="">Todos los corregimientos</option>
+          </select>
+          <select id="filtro-mesa">
+            <option value="">Todas las mesas</option>
+          </select>
+          <select id="filtro-partido">
+            <option value="">Todos (inscritos y no inscritos)</option>
+            <option value="RM">Inscritos en RM</option>
+            <option value="NINGUNO">Sin partido registrado</option>
+          </select>
+          <select id="filtro-estado">
+            <option value="">Todos los estados</option>
+            <option value="ACTIVO">Sin marcar</option>
+            <option value="fallecido">Fallecidos</option>
+            <option value="no_vive_aqui">No vive en el lugar</option>
+            <option value="cambio_residencia">Cambio de residencia</option>
+          </select>
+        </div>
       </div>
-      <div class="filtros">
-        <select id="filtro-corregimiento">
-          <option value="">Todos los corregimientos</option>
-        </select>
-        <select id="filtro-mesa">
-          <option value="">Todas las mesas</option>
-        </select>
-        <select id="filtro-partido">
-          <option value="">Todos (inscritos y no inscritos)</option>
-          <option value="RM">Inscritos en RM</option>
-          <option value="NINGUNO">Sin partido registrado</option>
-        </select>
-        <select id="filtro-estado">
-          <option value="">Todos los estados</option>
-          <option value="ACTIVO">Sin marcar</option>
-          <option value="fallecido">Fallecidos</option>
-          <option value="no_vive_aqui">No vive en el lugar</option>
-          <option value="cambio_residencia">Cambio de residencia</option>
-        </select>
+      <div class="stats" id="stats">Cargando…</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Cédula</th>
+              <th>Nombre completo</th>
+              <th>Corregimiento</th>
+              <th>Mesa</th>
+              <th>Centro de votación</th>
+              <th>Partido</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="resultados"></tbody>
+        </table>
+      </div>
+      <div id="empty" class="empty-state hidden">Sin resultados para tu búsqueda.</div>
+      <div class="pagina-nav" id="pagina-nav"></div>
+    </div>
+
+    <div id="vista-mapa" class="hidden">
+      <div class="mapa-leyenda">
+        <span><span class="dot dot-rm"></span> Inscrito en RM</span>
+        <span><span class="dot dot-otro"></span> Inscrito en otro partido</span>
+        <span><span class="dot dot-sinpartido"></span> Sin partido</span>
+        <span><span class="dot dot-marcado"></span> Borde oscuro = fallecido / no vive aquí / cambio de residencia</span>
+      </div>
+      <div id="mapa"></div>
+      <div class="ruta-panel">
+        <h3>Ruta de recorrido</h3>
+        <p id="ruta-vacia" class="ruta-vacia">Haz clic en los pines del mapa y presiona "Agregar a ruta" para armar tu recorrido.</p>
+        <ol class="ruta-lista" id="ruta-lista"></ol>
+        <div class="ruta-botones">
+          <button class="btn-ruta-orden" id="btn-ordenar-ruta">Ordenar por cercanía</button>
+          <button class="btn-ruta-google" id="btn-abrir-google-maps">Abrir ruta en Google Maps</button>
+        </div>
       </div>
     </div>
-    <div class="stats" id="stats">Cargando…</div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Cédula</th>
-            <th>Nombre completo</th>
-            <th>Corregimiento</th>
-            <th>Mesa</th>
-            <th>Centro de votación</th>
-            <th>Partido</th>
-            <th>Estado</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="resultados"></tbody>
-      </table>
-    </div>
-    <div id="empty" class="empty-state hidden">Sin resultados para tu búsqueda.</div>
-    <div class="pagina-nav" id="pagina-nav"></div>
   </main>
 </div>
 
@@ -372,8 +491,17 @@
       </select>
     </div>
     <div class="field">
+      <label>Teléfono (opcional)</label>
+      <input type="tel" id="modal-telefono" placeholder="Ej: 6123-4567" />
+    </div>
+    <div class="field">
       <label>Nota (opcional)</label>
       <textarea id="modal-nota" rows="3" placeholder="Ej: confirmado por vecino el 12/08, se mudó a David…"></textarea>
+    </div>
+    <div class="field">
+      <label>Ubicación de la visita</label>
+      <button type="button" class="btn-gps" id="btn-capturar-gps">📍 Usar mi ubicación actual</button>
+      <div class="gps-estado" id="gps-estado"></div>
     </div>
     <div id="modal-info" class="modal-info"></div>
     <div id="modal-msg"></div>
@@ -385,6 +513,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const SUPABASE_URL = "https://ydedoolppdjyzxweqcex.supabase.co";
 const SUPABASE_KEY = "sb_publishable_pDxqUEcWzzOw6VGtDCddRg_g2ChE45Y";
@@ -459,6 +588,21 @@ async function inicializarApp() {
   document.getElementById("filtro-mesa").addEventListener("change", () => { paginaActual = 0; buscar(); });
   document.getElementById("filtro-partido").addEventListener("change", () => { paginaActual = 0; buscar(); });
   document.getElementById("filtro-estado").addEventListener("change", () => { paginaActual = 0; buscar(); });
+
+  document.getElementById("tab-buscar-btn").addEventListener("click", () => cambiarTab("buscar"));
+  document.getElementById("tab-mapa-btn").addEventListener("click", () => cambiarTab("mapa"));
+}
+
+// ---------- TABS ----------
+function cambiarTab(tab) {
+  const esBuscar = tab === "buscar";
+  document.getElementById("vista-buscar").classList.toggle("hidden", !esBuscar);
+  document.getElementById("vista-mapa").classList.toggle("hidden", esBuscar);
+  document.getElementById("tab-buscar-btn").classList.toggle("activo", esBuscar);
+  document.getElementById("tab-mapa-btn").classList.toggle("activo", !esBuscar);
+  if (!esBuscar) {
+    setTimeout(() => { inicializarMapa(); cargarMapa(); }, 0);
+  }
 }
 
 async function cargarFiltros() {
@@ -511,7 +655,7 @@ async function buscar() {
   stats.textContent = "Buscando…";
 
   let query = sb.from("electores_con_partido").select(
-    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, estado_nota, nota_texto, nota_actualizado_por, nota_fecha",
+    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha",
     { count: "exact" }
   );
 
@@ -565,8 +709,9 @@ async function buscar() {
       ? `<span class="badge badge-${r.estado_nota}">${ESTADO_LABEL[r.estado_nota] || r.estado_nota}</span>`
       : `<span style="color: var(--texto-suave); font-size: 0.8rem;">—</span>`;
 
-    const btnLabel = r.estado_nota ? "Editar" : "Marcar";
-    const btnClase = r.estado_nota ? "btn-marcar tiene-nota" : "btn-marcar";
+    const tieneNota = r.estado_nota || r.telefono || r.nota_texto || r.latitud;
+    const btnLabel = tieneNota ? "Editar" : "Marcar";
+    const btnClase = tieneNota ? "btn-marcar tiene-nota" : "btn-marcar";
 
     tr.innerHTML = `
       <td class="cedula-cell">${escapeHtml(r.cedula)}</td>
@@ -622,23 +767,34 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-// ---------- MODAL: marcar estado ----------
+// ---------- MODAL: marcar estado / teléfono / ubicación ----------
 let cedulaEnEdicion = null;
+let gpsLat = null;
+let gpsLng = null;
 
 const modalOverlay = document.getElementById("modal-overlay");
 const modalNombre = document.getElementById("modal-nombre");
 const modalEstado = document.getElementById("modal-estado");
+const modalTelefono = document.getElementById("modal-telefono");
 const modalNota = document.getElementById("modal-nota");
 const modalInfo = document.getElementById("modal-info");
 const modalMsg = document.getElementById("modal-msg");
+const gpsEstado = document.getElementById("gps-estado");
 
 function abrirModal(registro) {
   cedulaEnEdicion = registro.cedula;
   modalNombre.textContent = `${registro.nombre_completo} — ${registro.cedula}`;
   modalEstado.value = registro.estado_nota || "";
+  modalTelefono.value = registro.telefono || "";
   modalNota.value = registro.nota_texto || "";
   modalMsg.innerHTML = "";
-  modalInfo.textContent = registro.estado_nota
+  gpsLat = registro.latitud || null;
+  gpsLng = registro.longitud || null;
+  gpsEstado.textContent = gpsLat
+    ? `Ubicación guardada: ${gpsLat.toFixed(5)}, ${gpsLng.toFixed(5)}`
+    : "";
+  gpsEstado.classList.toggle("ok", !!gpsLat);
+  modalInfo.textContent = registro.nota_fecha
     ? `Última actualización: ${registro.nota_actualizado_por || "—"} · ${new Date(registro.nota_fecha).toLocaleString("es-PA")}`
     : "";
   modalOverlay.classList.remove("hidden");
@@ -647,6 +803,8 @@ function abrirModal(registro) {
 function cerrarModal() {
   modalOverlay.classList.add("hidden");
   cedulaEnEdicion = null;
+  gpsLat = null;
+  gpsLng = null;
 }
 
 document.getElementById("modal-cancelar").addEventListener("click", cerrarModal);
@@ -654,28 +812,61 @@ modalOverlay.addEventListener("click", (e) => {
   if (e.target === modalOverlay) cerrarModal();
 });
 
+document.getElementById("btn-capturar-gps").addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    gpsEstado.textContent = "Tu navegador no permite obtener la ubicación.";
+    gpsEstado.classList.remove("ok");
+    return;
+  }
+  gpsEstado.textContent = "Obteniendo ubicación…";
+  gpsEstado.classList.remove("ok");
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      gpsLat = pos.coords.latitude;
+      gpsLng = pos.coords.longitude;
+      gpsEstado.textContent = `Ubicación capturada: ${gpsLat.toFixed(5)}, ${gpsLng.toFixed(5)}`;
+      gpsEstado.classList.add("ok");
+    },
+    (err) => {
+      gpsEstado.textContent = "No se pudo obtener la ubicación: " + err.message;
+      gpsEstado.classList.remove("ok");
+    },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+});
+
 document.getElementById("modal-guardar").addEventListener("click", async () => {
   if (!cedulaEnEdicion) return;
   const estado = modalEstado.value;
+  const telefono = modalTelefono.value.trim();
   const nota = modalNota.value.trim();
   const btn = document.getElementById("modal-guardar");
   btn.disabled = true;
   btn.textContent = "Guardando…";
   modalMsg.innerHTML = "";
 
+  const sinDatos = !estado && !telefono && !nota && !gpsLat;
+
   try {
-    if (!estado) {
-      // Sin marcar = quitar cualquier nota existente
+    if (sinDatos) {
+      // Nada que guardar = quitar cualquier nota existente
       const { error } = await sb.from("notas_electores").delete().eq("cedula", cedulaEnEdicion);
       if (error) throw error;
     } else {
-      const { error } = await sb.from("notas_electores").upsert({
+      const payload = {
         cedula: cedulaEnEdicion,
-        estado,
+        estado: estado || null,
+        telefono: telefono || null,
         nota: nota || null,
         actualizado_por: currentUserEmail,
         fecha_actualizacion: new Date().toISOString(),
-      }, { onConflict: "cedula" });
+      };
+      if (gpsLat && gpsLng) {
+        payload.latitud = gpsLat;
+        payload.longitud = gpsLng;
+        payload.fecha_visita = new Date().toISOString();
+      }
+      const { error } = await sb.from("notas_electores").upsert(payload, { onConflict: "cedula" });
       if (error) throw error;
     }
     cerrarModal();
@@ -686,6 +877,166 @@ document.getElementById("modal-guardar").addEventListener("click", async () => {
     btn.disabled = false;
     btn.textContent = "Guardar";
   }
+});
+
+// ---------- MAPA ----------
+let leafletMap = null;
+let capaMarcadores = null;
+let rutaSeleccionados = []; // [{cedula, nombre, lat, lng}]
+
+const GUALACA_CENTRO = [8.5333, -82.2986]; // centro aproximado del distrito de Gualaca, Chiriquí
+
+function inicializarMapa() {
+  if (leafletMap) { leafletMap.invalidateSize(); return; }
+  leafletMap = L.map("mapa").setView(GUALACA_CENTRO, 12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap",
+  }).addTo(leafletMap);
+  capaMarcadores = L.layerGroup().addTo(leafletMap);
+}
+
+function colorPorPartido(siglas) {
+  if (siglas === "RM") return "#1a7f37";     // verde
+  if (siglas) return "#8e44ad";               // otro partido - morado
+  return "#1a56c4";                            // sin partido - azul
+}
+
+async function cargarMapa() {
+  if (!capaMarcadores) return;
+  capaMarcadores.clearLayers();
+
+  const { data, error } = await sb
+    .from("electores_con_partido")
+    .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, nota_fecha")
+    .not("latitud", "is", null)
+    .not("longitud", "is", null);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const bounds = [];
+
+  data.forEach(r => {
+    const marcado = !!r.estado_nota;
+    const marker = L.circleMarker([r.latitud, r.longitud], {
+      radius: 8,
+      color: marcado ? "#1c2333" : colorPorPartido(r.partido_siglas),
+      weight: marcado ? 3 : 1.5,
+      fillColor: colorPorPartido(r.partido_siglas),
+      fillOpacity: 0.85,
+    });
+
+    const ESTADO_LABEL = {
+      fallecido: "⚠️ Fallecido",
+      no_vive_aqui: "⚠️ No vive aquí",
+      cambio_residencia: "⚠️ Cambio de residencia",
+    };
+
+    const partidoTxt = r.partido_siglas ? `Partido: ${escapeHtml(r.partido_siglas)}` : "Sin partido registrado";
+    const estadoTxt = r.estado_nota ? `<br>${ESTADO_LABEL[r.estado_nota] || r.estado_nota}` : "";
+    const telTxt = r.telefono ? `<br>📞 ${escapeHtml(r.telefono)}` : "";
+    const notaTxt = r.nota_texto ? `<br><em>${escapeHtml(r.nota_texto)}</em>` : "";
+    const fechaTxt = r.nota_fecha ? `<br><small>Visitado: ${new Date(r.nota_fecha).toLocaleDateString("es-PA")}</small>` : "";
+
+    const yaEnRuta = rutaSeleccionados.some(p => p.cedula === r.cedula);
+    const popupHtml = `
+      <div class="popup-marcador">
+        <b>${escapeHtml(r.nombre_completo)}</b>
+        ${escapeHtml(r.cedula)} — ${escapeHtml(r.corregimiento)}, Mesa ${escapeHtml(r.mesa)}<br>
+        ${partidoTxt}${estadoTxt}${telTxt}${notaTxt}${fechaTxt}
+        <br><button class="btn-ruta ${yaEnRuta ? "en-ruta" : ""}" data-cedula="${escapeHtml(r.cedula)}">
+          ${yaEnRuta ? "✓ En la ruta" : "Agregar a ruta"}
+        </button>
+      </div>`;
+
+    marker.bindPopup(popupHtml);
+    marker.on("popupopen", (e) => {
+      const btn = e.popup.getElement().querySelector(".btn-ruta");
+      if (btn) btn.addEventListener("click", () => {
+        toggleRuta({ cedula: r.cedula, nombre: r.nombre_completo, lat: r.latitud, lng: r.longitud });
+        marker.closePopup();
+      });
+    });
+
+    marker.addTo(capaMarcadores);
+    bounds.push([r.latitud, r.longitud]);
+  });
+
+  if (bounds.length > 0) {
+    leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+  }
+}
+
+// ---------- RUTA ----------
+function toggleRuta(persona) {
+  const idx = rutaSeleccionados.findIndex(p => p.cedula === persona.cedula);
+  if (idx >= 0) rutaSeleccionados.splice(idx, 1);
+  else rutaSeleccionados.push(persona);
+  renderRutaPanel();
+}
+
+function quitarDeRuta(cedula) {
+  rutaSeleccionados = rutaSeleccionados.filter(p => p.cedula !== cedula);
+  renderRutaPanel();
+}
+
+function renderRutaPanel() {
+  const lista = document.getElementById("ruta-lista");
+  const vacia = document.getElementById("ruta-vacia");
+  lista.innerHTML = "";
+
+  if (rutaSeleccionados.length === 0) {
+    vacia.classList.remove("hidden");
+    return;
+  }
+  vacia.classList.add("hidden");
+
+  rutaSeleccionados.forEach((p, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${i + 1}. ${escapeHtml(p.nombre)}</span>`;
+    const btnQuitar = document.createElement("button");
+    btnQuitar.textContent = "Quitar";
+    btnQuitar.addEventListener("click", () => quitarDeRuta(p.cedula));
+    li.appendChild(btnQuitar);
+    lista.appendChild(li);
+  });
+}
+
+function distanciaKm(a, b) {
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const h = Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+document.getElementById("btn-ordenar-ruta").addEventListener("click", () => {
+  if (rutaSeleccionados.length < 3) return;
+  // Vecino más cercano, partiendo del primer punto seleccionado
+  const ordenados = [rutaSeleccionados[0]];
+  const restantes = rutaSeleccionados.slice(1);
+  while (restantes.length > 0) {
+    const actual = ordenados[ordenados.length - 1];
+    let idxCercano = 0;
+    let distMin = Infinity;
+    restantes.forEach((p, i) => {
+      const d = distanciaKm(actual, p);
+      if (d < distMin) { distMin = d; idxCercano = i; }
+    });
+    ordenados.push(restantes.splice(idxCercano, 1)[0]);
+  }
+  rutaSeleccionados = ordenados;
+  renderRutaPanel();
+});
+
+document.getElementById("btn-abrir-google-maps").addEventListener("click", () => {
+  if (rutaSeleccionados.length === 0) return;
+  const puntos = rutaSeleccionados.map(p => `${p.lat},${p.lng}`).join("/");
+  window.open(`https://www.google.com/maps/dir/${puntos}`, "_blank");
 });
 </script>
 </body>

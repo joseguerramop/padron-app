@@ -369,6 +369,16 @@
   .fila-botones-ubicacion { display: flex; gap: 8px; flex-wrap: wrap; }
   .gps-estado { font-size: 0.78rem; color: var(--texto-suave); margin-top: 6px; }
   .gps-estado.ok { color: var(--exito); }
+  .btn-quitar-ubicacion {
+    margin-top: 6px;
+    background: none;
+    border: none;
+    color: var(--error);
+    font-size: 0.78rem;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
   .mini-mapa-ayuda { font-size: 0.78rem; color: var(--texto-suave); margin: 10px 0 6px; }
   #modal-mini-mapa {
     height: 220px;
@@ -517,6 +527,7 @@
         <button type="button" class="btn-gps" id="btn-marcar-mapa">🗺️ Marcar en el mapa</button>
       </div>
       <div class="gps-estado" id="gps-estado"></div>
+      <button type="button" class="btn-quitar-ubicacion hidden" id="btn-quitar-ubicacion">🗑️ Quitar ubicación guardada</button>
       <div id="modal-mini-mapa-wrap" class="hidden">
         <p class="mini-mapa-ayuda">Toca el mapa donde vive la persona. Puedes arrastrar el pin para ajustarlo.</p>
         <div id="modal-mini-mapa"></div>
@@ -813,6 +824,7 @@ function abrirModal(registro) {
     ? `Ubicación guardada: ${gpsLat.toFixed(5)}, ${gpsLng.toFixed(5)}`
     : "";
   gpsEstado.classList.toggle("ok", !!gpsLat);
+  document.getElementById("btn-quitar-ubicacion").classList.toggle("hidden", !gpsLat);
   modalInfo.textContent = registro.nota_fecha
     ? `Última actualización: ${registro.nota_actualizado_por || "—"} · ${new Date(registro.nota_fecha).toLocaleString("es-PA")}`
     : "";
@@ -831,6 +843,16 @@ function cerrarModal() {
 document.getElementById("modal-cancelar").addEventListener("click", cerrarModal);
 modalOverlay.addEventListener("click", (e) => {
   if (e.target === modalOverlay) cerrarModal();
+});
+
+document.getElementById("btn-quitar-ubicacion").addEventListener("click", () => {
+  gpsLat = null;
+  gpsLng = null;
+  gpsEstado.textContent = "Ubicación quitada — se eliminará al presionar Guardar.";
+  gpsEstado.classList.remove("ok");
+  document.getElementById("btn-quitar-ubicacion").classList.add("hidden");
+  document.getElementById("modal-mini-mapa-wrap").classList.add("hidden");
+  if (miniMarcador && miniMapa) { miniMapa.removeLayer(miniMarcador); miniMarcador = null; }
 });
 
 document.getElementById("btn-capturar-gps").addEventListener("click", () => {
@@ -927,12 +949,10 @@ document.getElementById("modal-guardar").addEventListener("click", async () => {
         nota: nota || null,
         actualizado_por: currentUserEmail,
         fecha_actualizacion: new Date().toISOString(),
+        latitud: gpsLat || null,
+        longitud: gpsLng || null,
+        fecha_visita: (gpsLat && gpsLng) ? new Date().toISOString() : null,
       };
-      if (gpsLat && gpsLng) {
-        payload.latitud = gpsLat;
-        payload.longitud = gpsLng;
-        payload.fecha_visita = new Date().toISOString();
-      }
       const { error } = await sb.from("notas_electores").upsert(payload, { onConflict: "cedula" });
       if (error) throw error;
     }

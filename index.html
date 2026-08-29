@@ -138,8 +138,11 @@
   }
   .stats { font-size: 0.82rem; color: var(--texto-suave); margin: 10px 2px; }
 
-  table { width: 100%; border-collapse: collapse; background: var(--tarjeta); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+  table { width: 100%; border-collapse: collapse; background: var(--tarjeta); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
   thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
     background: #eef1f8;
     text-align: left;
     padding: 10px 12px;
@@ -147,7 +150,7 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
     color: var(--texto-suave);
-    border-bottom: 1px solid var(--borde);
+    box-shadow: inset 0 -1px 0 var(--borde);
   }
   tbody td { padding: 11px 12px; font-size: 0.88rem; border-bottom: 1px solid #f0f1f6; }
   tbody tr:hover { background: #f7f9fd; }
@@ -260,7 +263,12 @@
     font-size: 0.85rem;
   }
   .pagina-nav button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .table-wrap { overflow-x: auto; }
+  .table-wrap {
+    overflow: auto;
+    max-height: calc(100vh - 250px);
+    border-radius: 10px;
+    border: 1px solid var(--borde);
+  }
   .hidden { display: none !important; }
   .spinner {
     display: inline-block;
@@ -386,6 +394,70 @@
     border: 1px solid var(--borde);
     cursor: crosshair;
   }
+
+  /* ---- Rol en el header ---- */
+  .rol-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 100px;
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.35);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ---- Panel de administración ---- */
+  .admin-card {
+    background: var(--tarjeta);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+  .admin-card h3 { margin: 0 0 4px; color: var(--azul); font-size: 1rem; }
+  .admin-card p.hint { margin: 0 0 14px; color: var(--texto-suave); font-size: 0.82rem; }
+  .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .admin-field label { display: block; font-size: 0.78rem; margin-bottom: 4px; color: var(--texto-suave); }
+  .admin-field input, .admin-field select {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--borde);
+    border-radius: 7px; font-size: 0.9rem; background: white; color: var(--texto);
+  }
+  .admin-field select[multiple] { min-height: 140px; }
+  .admin-actions { margin-top: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .admin-actions .btn-primary { width: auto; padding: 10px 20px; }
+  .admin-msg { font-size: 0.85rem; margin-top: 12px; }
+  .cred-box {
+    margin-top: 12px; padding: 12px 14px; border-radius: 8px;
+    background: #e9f7ee; border: 1px solid #b7e0c4; font-size: 0.88rem;
+  }
+  .cred-box code {
+    background: white; padding: 2px 6px; border-radius: 4px;
+    border: 1px solid var(--borde); font-size: 0.9rem;
+  }
+  table.admin-users { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  table.admin-users th {
+    text-align: left; padding: 8px 10px; background: #eef1f8;
+    font-size: 0.72rem; text-transform: uppercase; color: var(--texto-suave);
+  }
+  table.admin-users td { padding: 8px 10px; border-bottom: 1px solid #f0f1f6; vertical-align: top; }
+  table.admin-users .areas-cell { color: var(--texto-suave); font-size: 0.8rem; max-width: 260px; }
+  .mini-btn {
+    padding: 4px 9px; border: 1px solid var(--borde); background: white;
+    border-radius: 6px; font-size: 0.75rem; cursor: pointer; margin-right: 4px;
+  }
+  .mini-btn:hover { background: #f0f1f6; }
+  .import-preview {
+    margin-top: 12px; max-height: 260px; overflow: auto;
+    border: 1px solid var(--borde); border-radius: 8px;
+  }
+  .import-preview table { font-size: 0.78rem; }
+  .import-preview th { position: sticky; top: 0; }
+  .barra-progreso { height: 8px; background: #eef1f8; border-radius: 100px; overflow: hidden; margin-top: 10px; }
+  .barra-progreso > div { height: 100%; background: var(--exito); width: 0; transition: width 0.2s; }
+  .val-error { color: var(--error); font-size: 0.82rem; margin-top: 8px; white-space: pre-wrap; }
 </style>
 </head>
 <body>
@@ -418,7 +490,7 @@
   <header>
     <div>
       <h1>Padrón Electoral — Gualaca</h1>
-      <div class="sub" id="user-email"></div>
+      <div class="sub"><span id="user-email"></span><span id="rol-badge" class="rol-badge hidden"></span></div>
     </div>
     <button id="logout-btn">Cerrar sesión</button>
   </header>
@@ -426,6 +498,7 @@
     <div class="tabs">
       <button class="tab-btn activo" id="tab-buscar-btn">🔍 Buscar</button>
       <button class="tab-btn" id="tab-mapa-btn">🗺️ Mapa y ruta</button>
+      <button class="tab-btn hidden" id="tab-admin-btn">⚙️ Administración</button>
     </div>
 
     <div id="vista-buscar">
@@ -495,6 +568,90 @@
         <div id="ruta-msg" class="ruta-vacia" style="margin-top:8px;"></div>
       </div>
     </div>
+
+    <!-- ===== VISTA: ADMINISTRACIÓN (solo rol admin) ===== -->
+    <div id="vista-admin" class="hidden">
+
+      <div class="admin-card">
+        <h3>Crear cuenta de colaborador</h3>
+        <p class="hint">Se crea la cuenta con una contraseña temporal que deberás compartir con la persona. El acceso queda limitado al área que elijas según el nivel.</p>
+        <div class="admin-grid">
+          <div class="admin-field">
+            <label>Nombre y apellido</label>
+            <input type="text" id="nu-nombre" placeholder="Ej: María Pérez" />
+          </div>
+          <div class="admin-field">
+            <label>Correo electrónico</label>
+            <input type="email" id="nu-email" placeholder="persona@correo.com" autocomplete="off" />
+          </div>
+          <div class="admin-field">
+            <label>Nivel de candidato / rol</label>
+            <select id="nu-rol">
+              <option value="">Elige un nivel…</option>
+              <option value="presidente">1 · Presidente (acceso nacional)</option>
+              <option value="diputado">2 · Diputado (por circuito)</option>
+              <option value="alcalde">3 · Alcalde (por distrito)</option>
+              <option value="representante">4 · Representante (por corregimiento)</option>
+              <option value="secretaria_organizacion">5 · Secretaría de organización (por corregimiento)</option>
+              <option value="admin">Administrador (acceso total + gestión)</option>
+            </select>
+          </div>
+          <div class="admin-field" id="nu-area-wrap" style="display:none;">
+            <label id="nu-area-label">Área permitida</label>
+            <select id="nu-area" multiple></select>
+            <p class="hint" style="margin:6px 0 0;">Ctrl/Cmd + clic para elegir varias.</p>
+          </div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn-primary" id="nu-crear">Crear cuenta</button>
+          <span class="admin-msg" id="nu-msg"></span>
+        </div>
+        <div id="nu-cred" class="cred-box hidden"></div>
+      </div>
+
+      <div class="admin-card">
+        <h3>Colaboradores</h3>
+        <p class="hint">Cuentas con acceso al sistema y el área que cada una puede consultar.</p>
+        <div style="overflow:auto;">
+          <table class="admin-users">
+            <thead><tr><th>Nombre</th><th>Correo</th><th>Nivel</th><th>Área</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="admin-users-body"></tbody>
+          </table>
+        </div>
+        <div class="admin-msg" id="admin-users-msg"></div>
+      </div>
+
+      <div class="admin-card">
+        <h3>Carga masiva (Excel / CSV)</h3>
+        <p class="hint">Sube el padrón de electores o listas de adherentes de un partido. El archivo se procesa en tu navegador y se sube por bloques. La primera fila debe tener los encabezados.</p>
+        <div class="admin-grid">
+          <div class="admin-field">
+            <label>Tipo de carga</label>
+            <select id="imp-tipo">
+              <option value="electores">Electores (padrón)</option>
+              <option value="adherentes">Adherentes de partido</option>
+            </select>
+          </div>
+          <div class="admin-field" id="imp-partido-wrap" style="display:none;">
+            <label>Siglas del partido</label>
+            <input type="text" id="imp-partido" placeholder="Ej: RM, PRD, CD…" />
+          </div>
+          <div class="admin-field">
+            <label>Archivo .xlsx / .csv</label>
+            <input type="file" id="imp-file" accept=".xlsx,.xls,.csv" />
+          </div>
+        </div>
+        <div id="imp-columnas" class="hint" style="margin-top:10px;"></div>
+        <div id="imp-val" class="val-error"></div>
+        <div id="imp-preview" class="import-preview hidden"></div>
+        <div class="admin-actions">
+          <button class="btn-primary" id="imp-subir" disabled>Subir al sistema</button>
+          <span class="admin-msg" id="imp-msg"></span>
+        </div>
+        <div class="barra-progreso hidden" id="imp-barra"><div></div></div>
+      </div>
+
+    </div>
   </main>
 </div>
 
@@ -544,13 +701,15 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 const SUPABASE_URL = "https://ydedoolppdjyzxweqcex.supabase.co";
 const SUPABASE_KEY = "sb_publishable_pDxqUEcWzzOw6VGtDCddRg_g2ChE45Y";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 10;
 let paginaActual = 0;
+let perfilActual = null; // { rol, nombre }
 let debounceTimer = null;
 
 // ---------- AUTH ----------
@@ -584,19 +743,55 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 });
 
 let currentUserEmail = "";
+let currentUserId = null;
+
+const ROL_LABEL = {
+  admin: "Administrador",
+  presidente: "Presidente",
+  diputado: "Diputado",
+  alcalde: "Alcalde",
+  representante: "Representante",
+  secretaria_organizacion: "Secretaría organización",
+};
 
 sb.auth.onAuthStateChange((_event, session) => {
   if (session) {
     authScreen.classList.add("hidden");
     appScreen.classList.remove("hidden");
     currentUserEmail = session.user.email;
+    currentUserId = session.user.id;
     document.getElementById("user-email").textContent = session.user.email;
-    inicializarApp();
+    cargarPerfil(session.user.id).then(inicializarApp);
   } else {
+    perfilActual = null;
+    filtrosInicializados = false;
+    const selCorr = document.getElementById("filtro-corregimiento");
+    if (selCorr) selCorr.innerHTML = '<option value="">Todos los corregimientos</option>';
+    ubicacionesCache = null; circuitosCache = null;
     authScreen.classList.remove("hidden");
     appScreen.classList.add("hidden");
   }
 });
+
+async function cargarPerfil(uid) {
+  perfilActual = null;
+  const { data, error } = await sb
+    .from("perfiles_usuario")
+    .select("rol, nombre, activo")
+    .eq("user_id", uid)
+    .maybeSingle();
+  const badge = document.getElementById("rol-badge");
+  const btnAdmin = document.getElementById("tab-admin-btn");
+  if (!error && data) {
+    perfilActual = data;
+    badge.textContent = ROL_LABEL[data.rol] || data.rol;
+    badge.classList.remove("hidden");
+    btnAdmin.classList.toggle("hidden", data.rol !== "admin");
+  } else {
+    badge.classList.add("hidden");
+    btnAdmin.classList.add("hidden");
+  }
+}
 
 // ---------- APP ----------
 let filtrosInicializados = false;
@@ -621,17 +816,24 @@ async function inicializarApp() {
 
   document.getElementById("tab-buscar-btn").addEventListener("click", () => cambiarTab("buscar"));
   document.getElementById("tab-mapa-btn").addEventListener("click", () => cambiarTab("mapa"));
+  document.getElementById("tab-admin-btn").addEventListener("click", () => cambiarTab("admin"));
+  initAdmin();
 }
 
 // ---------- TABS ----------
 function cambiarTab(tab) {
-  const esBuscar = tab === "buscar";
-  document.getElementById("vista-buscar").classList.toggle("hidden", !esBuscar);
-  document.getElementById("vista-mapa").classList.toggle("hidden", esBuscar);
-  document.getElementById("tab-buscar-btn").classList.toggle("activo", esBuscar);
-  document.getElementById("tab-mapa-btn").classList.toggle("activo", !esBuscar);
-  if (!esBuscar) {
+  const vistas = { buscar: "vista-buscar", mapa: "vista-mapa", admin: "vista-admin" };
+  const botones = { buscar: "tab-buscar-btn", mapa: "tab-mapa-btn", admin: "tab-admin-btn" };
+  Object.entries(vistas).forEach(([k, id]) => {
+    document.getElementById(id).classList.toggle("hidden", k !== tab);
+  });
+  Object.entries(botones).forEach(([k, id]) => {
+    document.getElementById(id).classList.toggle("activo", k === tab);
+  });
+  if (tab === "mapa") {
     setTimeout(() => { inicializarMapa(); cargarMapa(); renderRutaPanel(); }, 0);
+  } else if (tab === "admin") {
+    cargarListaUsuarios();
   }
 }
 
@@ -1173,6 +1375,449 @@ document.getElementById("btn-ordenar-ruta").addEventListener("click", () => {
   rutaSeleccionados = ordenados;
   renderRutaPanel();
 });
+
+// ============================================================
+// ================  PANEL DE ADMINISTRACIÓN  =================
+// ============================================================
+const EDGE_CREAR_USUARIO = SUPABASE_URL + "/functions/v1/admin-crear-usuario";
+
+const NIVEL_POR_ROL = {
+  presidente: "nacional",
+  diputado: "circuito",
+  alcalde: "distrito",
+  representante: "corregimiento",
+  secretaria_organizacion: "corregimiento",
+  admin: "nacional",
+};
+
+let ubicacionesCache = null;   // [{provincia,distrito,corregimiento,circuito_codigo}]
+let circuitosCache = null;     // [{codigo,provincia,descripcion}]
+
+async function cargarUbicaciones() {
+  if (ubicacionesCache) return ubicacionesCache;
+  const todas = [];
+  let desde = 0;
+  while (true) {
+    const { data, error } = await sb
+      .from("ubicaciones")
+      .select("provincia,distrito,corregimiento,circuito_codigo")
+      .order("provincia").order("distrito").order("corregimiento")
+      .range(desde, desde + 999);
+    if (error) { console.error(error); break; }
+    todas.push(...data);
+    if (data.length < 1000) break;
+    desde += 1000;
+  }
+  ubicacionesCache = todas;
+  return todas;
+}
+
+async function cargarCircuitos() {
+  if (circuitosCache) return circuitosCache;
+  const { data, error } = await sb
+    .from("circuitos_electorales")
+    .select("codigo,provincia,descripcion")
+    .order("codigo");
+  circuitosCache = error ? [] : data;
+  return circuitosCache;
+}
+
+function initAdmin() {
+  const rolSel = document.getElementById("nu-rol");
+  const areaWrap = document.getElementById("nu-area-wrap");
+  if (!rolSel || rolSel.dataset.init) return;
+  rolSel.dataset.init = "1";
+
+  rolSel.addEventListener("change", () => construirSelectorArea(rolSel.value));
+  document.getElementById("nu-crear").addEventListener("click", crearUsuario);
+
+  document.getElementById("imp-tipo").addEventListener("change", (e) => {
+    document.getElementById("imp-partido-wrap").style.display =
+      e.target.value === "adherentes" ? "block" : "none";
+    resetImport();
+  });
+  document.getElementById("imp-file").addEventListener("change", manejarArchivoImport);
+  document.getElementById("imp-subir").addEventListener("click", subirImport);
+}
+
+async function construirSelectorArea(rol) {
+  const wrap = document.getElementById("nu-area-wrap");
+  const nivel = NIVEL_POR_ROL[rol];
+  if (!rol || nivel === "nacional") {
+    wrap.style.display = "none";
+    wrap.innerHTML = "";
+    return;
+  }
+  wrap.style.display = "block";
+  wrap.innerHTML = `<label id="nu-area-label"></label>`;
+
+  if (nivel === "circuito") {
+    const circuitos = await cargarCircuitos();
+    document.getElementById("nu-area-label").textContent = "Circuito(s) electoral(es) permitido(s)";
+    const sel = document.createElement("select");
+    sel.id = "nu-area"; sel.multiple = true;
+    circuitos.forEach(c => {
+      const o = document.createElement("option");
+      o.value = c.codigo;
+      o.textContent = `${c.codigo} · ${c.provincia} — ${c.descripcion}`;
+      sel.appendChild(o);
+    });
+    wrap.appendChild(sel);
+  } else if (nivel === "distrito") {
+    const ubic = await cargarUbicaciones();
+    const distritos = [...new Map(ubic.map(u => [u.provincia + "|" + u.distrito, u])).values()];
+    document.getElementById("nu-area-label").textContent = "Distrito(s) permitido(s)";
+    const sel = document.createElement("select");
+    sel.id = "nu-area"; sel.multiple = true;
+    distritos.forEach(u => {
+      const o = document.createElement("option");
+      o.value = u.distrito;
+      o.textContent = `${u.provincia} — ${u.distrito}`;
+      sel.appendChild(o);
+    });
+    wrap.appendChild(sel);
+  } else { // corregimiento — filtrado por distrito
+    const ubic = await cargarUbicaciones();
+    document.getElementById("nu-area-label").textContent = "Corregimiento(s) permitido(s)";
+    const distSel = document.createElement("select");
+    distSel.id = "nu-area-distrito";
+    distSel.innerHTML = `<option value="">Primero elige un distrito…</option>`;
+    [...new Map(ubic.map(u => [u.provincia + "|" + u.distrito, u])).values()].forEach(u => {
+      const o = document.createElement("option");
+      o.value = u.provincia + "|" + u.distrito;
+      o.textContent = `${u.provincia} — ${u.distrito}`;
+      distSel.appendChild(o);
+    });
+    const sel = document.createElement("select");
+    sel.id = "nu-area"; sel.multiple = true;
+    sel.style.marginTop = "8px";
+    distSel.addEventListener("change", () => {
+      const [prov, dist] = distSel.value.split("|");
+      sel.innerHTML = "";
+      ubic.filter(u => u.provincia === prov && u.distrito === dist).forEach(u => {
+        const o = document.createElement("option");
+        o.value = u.corregimiento;
+        o.textContent = u.corregimiento;
+        o.selected = true;
+        sel.appendChild(o);
+      });
+    });
+    wrap.appendChild(distSel);
+    wrap.appendChild(sel);
+  }
+  const hint = document.createElement("p");
+  hint.className = "hint";
+  hint.style.margin = "6px 0 0";
+  hint.textContent = "Ctrl/Cmd + clic para elegir varias.";
+  wrap.appendChild(hint);
+}
+
+async function crearUsuario() {
+  const nombre = document.getElementById("nu-nombre").value.trim();
+  const email = document.getElementById("nu-email").value.trim().toLowerCase();
+  const rol = document.getElementById("nu-rol").value;
+  const msg = document.getElementById("nu-msg");
+  const cred = document.getElementById("nu-cred");
+  const btn = document.getElementById("nu-crear");
+  msg.innerHTML = ""; cred.classList.add("hidden");
+
+  if (!email || !rol) { msg.innerHTML = `<span class="val-error">Completa correo y nivel.</span>`; return; }
+
+  const nivel = NIVEL_POR_ROL[rol];
+  let areas = [];
+  if (nivel === "nacional") {
+    areas = [{ nivel: "nacional", valor: null }];
+  } else {
+    const sel = document.getElementById("nu-area");
+    const vals = sel ? [...sel.selectedOptions].map(o => o.value) : [];
+    if (vals.length === 0) { msg.innerHTML = `<span class="val-error">Elige al menos un área.</span>`; return; }
+    areas = vals.map(v => ({ nivel, valor: v }));
+  }
+
+  btn.disabled = true; btn.textContent = "Creando…";
+  try {
+    const { data: sess } = await sb.auth.getSession();
+    const token = sess?.session?.access_token;
+    const resp = await fetch(EDGE_CREAR_USUARIO, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token, "apikey": SUPABASE_KEY },
+      body: JSON.stringify({ email, nombre, rol, areas }),
+    });
+    const out = await resp.json();
+    if (!resp.ok || !out.ok) throw new Error(out.error || "No se pudo crear la cuenta");
+    cred.classList.remove("hidden");
+    cred.innerHTML = `Cuenta creada para <b>${escapeHtml(out.email)}</b>.<br>
+      Contraseña temporal: <code>${escapeHtml(out.password_temporal)}</code><br>
+      <small>Compártela con la persona. Podrá cambiarla luego. Esta contraseña no se vuelve a mostrar.</small>`;
+    document.getElementById("nu-nombre").value = "";
+    document.getElementById("nu-email").value = "";
+    document.getElementById("nu-rol").value = "";
+    construirSelectorArea("");
+    cargarListaUsuarios();
+  } catch (err) {
+    msg.innerHTML = `<span class="val-error">${escapeHtml(err.message)}</span>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Crear cuenta";
+  }
+}
+
+async function cargarListaUsuarios() {
+  const body = document.getElementById("admin-users-body");
+  const msg = document.getElementById("admin-users-msg");
+  body.innerHTML = ""; msg.textContent = "Cargando…";
+  const [{ data: perfiles, error: e1 }, { data: areas, error: e2 }] = await Promise.all([
+    sb.from("perfiles_usuario").select("user_id,nombre,rol,activo,creado_en").order("creado_en"),
+    sb.from("usuario_areas").select("user_id,nivel,valor"),
+  ]);
+  if (e1) { msg.textContent = "Error: " + e1.message; return; }
+  msg.textContent = "";
+  const areasPorU = {};
+  (areas || []).forEach(a => {
+    (areasPorU[a.user_id] = areasPorU[a.user_id] || []).push(
+      a.nivel === "nacional" ? "Nacional" : `${a.valor}`
+    );
+  });
+  perfiles.forEach(p => {
+    const tr = document.createElement("tr");
+    const areaTxt = (areasPorU[p.user_id] || []).join(", ") || "—";
+    tr.innerHTML = `
+      <td>${escapeHtml(p.nombre || "—")}</td>
+      <td class="areas-cell">${escapeHtml(p.user_id.slice(0, 8))}…</td>
+      <td>${escapeHtml(ROL_LABEL[p.rol] || p.rol)}</td>
+      <td class="areas-cell">${escapeHtml(areaTxt)}</td>
+      <td>${p.activo ? "Activo" : "Inactivo"}</td>
+      <td></td>`;
+    const acc = tr.lastElementChild;
+    const btnT = document.createElement("button");
+    btnT.className = "mini-btn";
+    btnT.textContent = p.activo ? "Desactivar" : "Activar";
+    btnT.addEventListener("click", async () => {
+      btnT.disabled = true;
+      const { error } = await sb.from("perfiles_usuario")
+        .update({ activo: !p.activo }).eq("user_id", p.user_id);
+      if (error) alert(error.message);
+      cargarListaUsuarios();
+    });
+    acc.appendChild(btnT);
+    body.appendChild(tr);
+  });
+  if (perfiles.length === 0) msg.textContent = "Aún no hay colaboradores.";
+}
+
+// ---------- Carga masiva Excel / CSV ----------
+let importFilas = null;   // filas ya normalizadas listas para subir
+let importTabla = null;   // 'electores' | 'afiliaciones'
+
+const H_ELECTORES = {
+  cedula: ["cedula"],
+  nombres: ["nombres", "nombre"],
+  apellidos: ["apellidos", "apellido"],
+  nombre_completo: ["nombre_completo", "nombrecompleto"],
+  mesa: ["mesa"],
+  centro_votacion: ["centro_votacion", "centro_de_votacion", "centro"],
+  corregimiento: ["corregimiento"],
+  distrito: ["distrito"],
+  provincia: ["provincia"],
+  num_padron: ["num_padron", "padron", "no_padron"],
+};
+const H_ADHERENTES = {
+  cedula: ["cedula"],
+  nombre_completo_partido: ["nombre_completo", "nombre", "nombre_completo_partido"],
+  sexo: ["sexo"],
+  fecha_inscripcion: ["fecha_inscripcion", "fecha"],
+  corregimiento_partido: ["corregimiento", "corregimiento_partido"],
+};
+
+function quitarTildes(s) {
+  return String(s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "");
+}
+
+function normHeader(h) {
+  return quitarTildes(h).trim().toLowerCase().replace(/[\s.\-]+/g, "_");
+}
+
+function mapearColumnas(headersRaw, dict) {
+  const norm = headersRaw.map(normHeader);
+  const map = {};
+  for (const [campo, alias] of Object.entries(dict)) {
+    const i = norm.findIndex(h => alias.includes(h));
+    if (i >= 0) map[campo] = i;
+  }
+  return map;
+}
+
+function resetImport() {
+  importFilas = null; importTabla = null;
+  document.getElementById("imp-preview").classList.add("hidden");
+  document.getElementById("imp-preview").innerHTML = "";
+  document.getElementById("imp-val").textContent = "";
+  document.getElementById("imp-columnas").textContent = "";
+  document.getElementById("imp-msg").textContent = "";
+  document.getElementById("imp-subir").disabled = true;
+  document.getElementById("imp-barra").classList.add("hidden");
+  document.querySelector("#imp-barra > div").style.width = "0";
+}
+
+async function manejarArchivoImport(e) {
+  resetImport();
+  const file = e.target.files[0];
+  if (!file) return;
+  const tipo = document.getElementById("imp-tipo").value;
+  const val = document.getElementById("imp-val");
+
+  let rows;
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
+  } catch (err) {
+    val.textContent = "No se pudo leer el archivo: " + err.message;
+    return;
+  }
+  rows = rows.filter(r => r.some(c => String(c).trim() !== ""));
+  if (rows.length < 2) { val.textContent = "El archivo no tiene datos."; return; }
+
+  const headers = rows[0];
+  const dict = tipo === "electores" ? H_ELECTORES : H_ADHERENTES;
+  const map = mapearColumnas(headers, dict);
+
+  const requeridas = tipo === "electores" ? ["cedula", "corregimiento"] : ["cedula"];
+  const faltan = requeridas.filter(c => !(c in map));
+  if (faltan.length) {
+    val.textContent = `Faltan columnas obligatorias: ${faltan.join(", ")}.\n` +
+      `Encabezados encontrados: ${headers.join(" | ")}`;
+    return;
+  }
+
+  const ubic = tipo === "electores" ? await cargarUbicaciones() : null;
+  const corregSet = ubic
+    ? new Set(ubic.map(u => normUbicJS(u.corregimiento)))
+    : null;
+
+  const filas = [];
+  const errores = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const get = (campo) => (campo in map ? String(r[map[campo]] ?? "").trim() : "");
+    const cedula = get("cedula");
+    if (!cedula) { errores.push(`Fila ${i + 1}: cédula vacía`); continue; }
+
+    if (tipo === "electores") {
+      const corr = get("corregimiento");
+      if (corregSet && corr && !corregSet.has(normUbicJS(corr))) {
+        errores.push(`Fila ${i + 1}: corregimiento no reconocido ("${corr}")`);
+      }
+      const nombres = get("nombres");
+      const apellidos = get("apellidos");
+      let nc = get("nombre_completo");
+      if (!nc) nc = `${nombres} ${apellidos}`.trim();
+      const np = get("num_padron");
+      filas.push({
+        cedula, nombres, apellidos, nombre_completo: nc,
+        mesa: get("mesa"), centro_votacion: get("centro_votacion"),
+        corregimiento: corr, distrito: get("distrito"), provincia: get("provincia"),
+        num_padron: np ? Number(np.replace(/\D/g, "")) || null : null,
+      });
+    } else {
+      filas.push({
+        cedula,
+        nombre_completo_partido: get("nombre_completo_partido") || null,
+        sexo: get("sexo") || null,
+        fecha_inscripcion: parseFechaJS(get("fecha_inscripcion")),
+        corregimiento_partido: get("corregimiento_partido") || null,
+      });
+    }
+  }
+
+  document.getElementById("imp-columnas").textContent =
+    "Columnas detectadas: " + Object.keys(map).join(", ");
+
+  const val2 = document.getElementById("imp-val");
+  val2.textContent = errores.length
+    ? `${errores.length} advertencia(s):\n` + errores.slice(0, 15).join("\n") +
+      (errores.length > 15 ? `\n… y ${errores.length - 15} más` : "")
+    : "";
+
+  if (filas.length === 0) { val2.textContent += "\nNo hay filas válidas para subir."; return; }
+
+  importFilas = filas;
+  importTabla = tipo === "electores" ? "electores" : "afiliaciones";
+
+  // vista previa
+  const prev = document.getElementById("imp-preview");
+  const cols = Object.keys(filas[0]);
+  let html = "<table><thead><tr>" + cols.map(c => `<th>${escapeHtml(c)}</th>`).join("") + "</tr></thead><tbody>";
+  filas.slice(0, 20).forEach(f => {
+    html += "<tr>" + cols.map(c => `<td>${escapeHtml(String(f[c] ?? ""))}</td>`).join("") + "</tr>";
+  });
+  html += "</tbody></table>";
+  prev.innerHTML = html;
+  prev.classList.remove("hidden");
+
+  document.getElementById("imp-msg").textContent = `${filas.length} fila(s) listas para subir.`;
+  document.getElementById("imp-subir").disabled = false;
+}
+
+function normUbicJS(t) {
+  return quitarTildes(t)
+    .replace(/\s*\(\s*cabec\.?\s*\)\s*$/i, "").trim().toUpperCase();
+}
+
+function parseFechaJS(s) {
+  if (!s) return null;
+  s = s.trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  return null;
+}
+
+async function subirImport() {
+  if (!importFilas || !importTabla) return;
+  const btn = document.getElementById("imp-subir");
+  const msg = document.getElementById("imp-msg");
+  const barra = document.getElementById("imp-barra");
+  const barraFill = barra.querySelector("div");
+  btn.disabled = true; btn.textContent = "Subiendo…";
+  barra.classList.remove("hidden");
+
+  let filas = importFilas;
+
+  // adherentes: resolver / crear el partido y adjuntar partido_id
+  if (importTabla === "afiliaciones") {
+    const siglas = document.getElementById("imp-partido").value.trim().toUpperCase();
+    if (!siglas) { msg.textContent = "Indica las siglas del partido."; btn.disabled = false; btn.textContent = "Subir al sistema"; return; }
+    let { data: pRow } = await sb.from("partidos").select("id").eq("siglas", siglas).maybeSingle();
+    if (!pRow) {
+      const { data: nuevo, error } = await sb.from("partidos")
+        .insert({ siglas, nombre: siglas }).select("id").single();
+      if (error) { msg.textContent = "No se pudo crear el partido: " + error.message; btn.disabled = false; btn.textContent = "Subir al sistema"; return; }
+      pRow = nuevo;
+    }
+    filas = filas.map(f => ({ ...f, partido_id: pRow.id }));
+  }
+
+  const CHUNK = 500;
+  const onConflict = importTabla === "electores" ? "cedula" : "cedula";
+  let subidas = 0, fallos = 0;
+  for (let i = 0; i < filas.length; i += CHUNK) {
+    const lote = filas.slice(i, i + CHUNK);
+    const { error } = await sb.from(importTabla).upsert(lote, { onConflict });
+    if (error) { fallos += lote.length; console.error(error); }
+    else subidas += lote.length;
+    barraFill.style.width = Math.round(((i + lote.length) / filas.length) * 100) + "%";
+    msg.textContent = `Subiendo… ${i + lote.length}/${filas.length}`;
+  }
+
+  msg.textContent = `Listo. ${subidas} fila(s) subida(s)` +
+    (fallos ? `, ${fallos} con error (ver consola).` : ".") +
+    " Recarga la página para ver los cambios en la búsqueda.";
+  btn.textContent = "Subir al sistema";
+  btn.disabled = true;
+  importFilas = null;
+}
 </script>
 </body>
 </html>

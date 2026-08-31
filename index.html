@@ -380,6 +380,10 @@
   }
   #area-stats h4 { margin: 0 0 3px; font-size: 0.95rem; color: var(--azul); }
   #area-stats .total { font-size: 0.82rem; color: var(--texto-suave); margin-bottom: 10px; }
+  #area-stats .stat-sub {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--texto-suave); margin: 10px 0 6px; font-weight: 600;
+  }
   .stat-fila { display: grid; grid-template-columns: 130px 1fr 90px; gap: 10px; align-items: center; margin-bottom: 7px; font-size: 0.85rem; }
   .stat-fila .etq { display: flex; align-items: center; gap: 6px; }
   .stat-fila .barra { height: 9px; background: #eef1f8; border-radius: 100px; overflow: hidden; }
@@ -1782,6 +1786,7 @@ function limpiarArea() {
   leafletMap.setMaxBounds(null);
   leafletMap.setMinZoom(MIN_ZOOM_DEFAULT);
   if (!leafletMap.hasLayer(capaMarcadores)) capaMarcadores.addTo(leafletMap);
+  statsAreaActual = null;
   pintarOverlay();
   ajustarCajaMapa(null);
   document.getElementById("circuito-info").classList.add("hidden");
@@ -1807,51 +1812,77 @@ function pintarArea(geo, titulo, subtitulo, tipo, slug, valor) {
 const PARTIDO_LABEL = { RM: "Realizando Metas" };
 const PARTIDO_COLOR = { RM: "#1a7f37", __sin: "#1a56c4", __otro: "#8e44ad" };
 
+let statsAreaActual = null;   // { total, partidos:[{etq,color,n,pct}], campo:[{etq,color,n,pct}] }
+
 async function cargarStatsArea(titulo, tipo, valor) {
   const cont = document.getElementById("area-stats");
   cont.classList.remove("hidden");
   cont.innerHTML = `<div class="stat-vacio">Contando electores…</div>`;
+  statsAreaActual = null;
   try {
     const { data, error } = await sb.rpc("stats_area", { nivel: tipo, valores: [String(valor)] });
     if (error) throw error;
     if (!areaActiva || areaActiva.valor !== valor) return;   // el usuario ya cambió de área
-    renderStatsArea(cont, titulo, data || []);
+    renderStatsArea(cont, titulo, data || {});
   } catch (e) {
     console.error(e);
     cont.innerHTML = `<div class="stat-vacio">No se pudieron cargar las estadísticas.</div>`;
   }
 }
 
-function renderStatsArea(cont, titulo, filas) {
-  const total = filas.reduce((s, f) => s + Number(f.n), 0);
+function renderStatsArea(cont, titulo, obj) {
+  const total = Number(obj.total || 0);
   if (total === 0) {
+    statsAreaActual = { total: 0, partidos: [], campo: [] };
     cont.innerHTML = `<h4>${escapeHtml(titulo)}</h4>` +
       `<div class="stat-vacio">Aún no hay electores cargados en esta área.</div>`;
     return;
   }
-  // ordenar: partidos por cantidad desc, "sin partido" al final
-  const conPartido = filas.filter(f => f.partido_siglas).sort((a, b) => b.n - a.n);
-  const sinPartido = filas.find(f => !f.partido_siglas);
-  const pct = (n) => (n / total * 100).toFixed(1).replace(".0", "") + "%";
+  const pctN = (n) => n / total * 100;
+  const pctTxt = (n) => {
+    const p = pctN(n);
+    if (n > 0 && p < 0.05) return "<0.1%";
+    return p.toFixed(1).replace(".0", "") + "%";
+  };
+
+  // ---- por partido ----
+  const conPartido = (obj.partidos || []).filter(f => f.siglas).sort((a, b) => b.n - a.n);
+  const sinPartido = (obj.partidos || []).find(f => !f.siglas);
+  const partidos = conPartido.map(f => ({
+    etq: PARTIDO_LABEL[f.siglas] || f.siglas,
+    color: PARTIDO_COLOR[f.siglas] || PARTIDO_COLOR.__otro,
+    n: Number(f.n), pct: pctN(Number(f.n)),
+  }));
+  if (sinPartido) partidos.push({ etq: "Sin partido", color: PARTIDO_COLOR.__sin, n: Number(sinPartido.n), pct: pctN(Number(sinPartido.n)) });
+
+  // ---- trabajo de campo ----
+  const c = obj.campo || {};
+  const campoDefs = [
+    ["Marcados (con seguimiento)", "#0b3d91", c.marcados],
+    ["Con ubicación en el mapa", "#1a56c4", c.con_ubicacion],
+    ["Con teléfono", "#1a7f37", c.con_telefono],
+    ["Fallecidos", "#c0392b", c.fallecido],
+    ["No vive en el lugar", "#a15c00", c.no_vive_aqui],
+    ["Cambio de residencia", "#8e44ad", c.cambio_residencia],
+  ];
+  const campo = campoDefs
+    .filter(([, , n], i) => i < 3 || Number(n) > 0)   // los 3 primeros siempre; estados solo si hay
+    .map(([etq, color, n]) => ({ etq, color, n: Number(n || 0), pct: pctN(Number(n || 0)) }));
+
+  statsAreaActual = { total, partidos, campo };
+
+  const filaHtml = (it) => `<div class="stat-fila">
+      <span class="etq"><span class="dot" style="background:${it.color}"></span>${escapeHtml(it.etq)}</span>
+      <span class="barra"><div style="width:${it.pct.toFixed(1)}%;background:${it.color}"></div></span>
+      <span class="num"><b>${it.n.toLocaleString("es-PA")}</b> · ${pctTxt(it.n)}</span>
+    </div>`;
 
   let html = `<h4>${escapeHtml(titulo)}</h4>` +
     `<div class="total">${total.toLocaleString("es-PA")} electores en el padrón</div>`;
-
-  const fila = (etq, color, n) => {
-    const p = n / total * 100;
-    return `<div class="stat-fila">
-      <span class="etq"><span class="dot" style="background:${color}"></span>${escapeHtml(etq)}</span>
-      <span class="barra"><div style="width:${p.toFixed(1)}%;background:${color}"></div></span>
-      <span class="num"><b>${Number(n).toLocaleString("es-PA")}</b> · ${pct(n)}</span>
-    </div>`;
-  };
-
-  conPartido.forEach(f => {
-    html += fila(PARTIDO_LABEL[f.partido_siglas] || f.partido_siglas,
-      PARTIDO_COLOR[f.partido_siglas] || PARTIDO_COLOR.__otro, f.n);
-  });
-  if (sinPartido) html += fila("Sin partido", PARTIDO_COLOR.__sin, sinPartido.n);
-
+  html += `<div class="stat-sub">Por partido</div>`;
+  partidos.forEach(it => { html += filaHtml(it); });
+  html += `<div class="stat-sub">Trabajo de campo</div>`;
+  campo.forEach(it => { html += filaHtml(it); });
   cont.innerHTML = html;
 }
 
@@ -1965,6 +1996,14 @@ async function exportarMapaPDF() {
   const btn = document.getElementById("mapa-pdf-btn");
   btn.disabled = true; btn.textContent = "Generando…";
   try {
+    // asegurar estadísticas para el PDF si todavía no llegaron
+    if (areaActiva && !statsAreaActual) {
+      try {
+        const { data } = await sb.rpc("stats_area",
+          { nivel: areaActiva.tipo, valores: [String(areaActiva.valor)] });
+        renderStatsArea(document.getElementById("area-stats"), areaActiva.titulo, data || []);
+      } catch (e) { console.error(e); }
+    }
     const ESC = 2;
     const canvas = await capturarMapaCanvas(ESC);
     const proj = (ll) => leafletMap.latLngToContainerPoint(ll);
@@ -1990,10 +2029,15 @@ async function exportarMapaPDF() {
       if (q) sub += (sub ? "  ·  " : "") + `Búsqueda: ${q}`;
       if (sub) pdf.text(sub, margin, margin + 10);
 
-      // imagen del mapa
+      const hayStats = statsAreaActual && statsAreaActual.total > 0;
+      const nFilasStats = hayStats
+        ? statsAreaActual.partidos.length + statsAreaActual.campo.length : 0;
+
+      // imagen del mapa (deja espacio abajo para leyenda + estadísticas + pie)
       const imgY = margin + 14;
       const availW = pw - margin * 2;
-      const availH = ph - imgY - 16;
+      const reservaAbajo = hayStats ? 22 + 5.6 * nFilasStats + 12 : 20;
+      const availH = ph - imgY - reservaAbajo;
       const ratio = Math.min(availW / canvas.width, availH / canvas.height);
       const imgW = canvas.width * ratio;
       const imgH = canvas.height * ratio;
@@ -2003,10 +2047,10 @@ async function exportarMapaPDF() {
       // leyenda
       const leyY = imgY + imgH + 6;
       const items = [
-        ["#1a7f37", "Inscrito en RM"],
-        ["#8e44ad", "Inscrito en otro partido"],
+        ["#1a7f37", "RM"],
+        ["#8e44ad", "Otro partido"],
         ["#1a56c4", "Sin partido"],
-        ["#1c2333", "Borde oscuro = fallecido / no vive aquí / cambio de residencia"],
+        ["#1c2333", "Borde oscuro = marcado (fallecido / mudado)"],
       ];
       let lx = margin;
       pdf.setFontSize(8); pdf.setTextColor(60, 60, 60);
@@ -2016,6 +2060,37 @@ async function exportarMapaPDF() {
         pdf.text(txt, lx + 5, leyY);
         lx += pdf.getTextWidth(txt) + 14;
       });
+
+      // estadísticas del área (electores por partido + trabajo de campo)
+      if (hayStats) {
+        let sy = leyY + 7;
+        pdf.setFontSize(9.5); pdf.setTextColor(11, 61, 145);
+        pdf.text(`Padrón en el área: ${statsAreaActual.total.toLocaleString("es-PA")} electores`, margin, sy);
+        sy += 5;
+        const barX = margin + 62, barW = 66;
+        const seccion = (titulo, filas) => {
+          pdf.setFontSize(7.5); pdf.setTextColor(120, 120, 120);
+          pdf.text(titulo.toUpperCase(), margin, sy); sy += 4;
+          filas.forEach(it => {
+            pdf.setFillColor(it.color);
+            pdf.circle(margin + 1.4, sy - 1.1, 1.3, "F");
+            pdf.setFontSize(8); pdf.setTextColor(40, 40, 40);
+            pdf.text(it.etq, margin + 4.5, sy);
+            pdf.setFillColor(238, 241, 248);
+            pdf.rect(barX, sy - 2.4, barW, 2.8, "F");
+            pdf.setFillColor(it.color);
+            pdf.rect(barX, sy - 2.4, Math.max(0.5, barW * it.pct / 100), 2.8, "F");
+            pdf.setTextColor(60, 60, 60);
+            const pTxt = (it.n > 0 && it.pct < 0.05) ? "<0.1%"
+              : it.pct.toFixed(1).replace(".0", "") + "%";
+            pdf.text(`${it.n.toLocaleString("es-PA")}  ·  ${pTxt}`, barX + barW + 4, sy);
+            sy += 5.6;
+          });
+          sy += 1.5;
+        };
+        seccion("Por partido", statsAreaActual.partidos);
+        seccion("Trabajo de campo", statsAreaActual.campo);
+      }
 
       // pie
       pdf.setFontSize(7); pdf.setTextColor(130, 130, 130);

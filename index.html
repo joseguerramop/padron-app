@@ -1349,10 +1349,10 @@ function inicializarMapa() {
 }
 
 // Radio del pin según el zoom: chico de lejos, más grande (y clickeable) de cerca.
-function radioSegunZoom(marcado, z) {
+// Todos los pines miden igual (la distinción de "marcado" es el borde oscuro).
+function radioSegunZoom(z) {
   z = (z == null && leafletMap) ? leafletMap.getZoom() : (z == null ? 12 : z);
-  const base = Math.max(3.2, Math.min(10, 3.2 + (z - 11) * 1.15));
-  return marcado ? base + 1.2 : base;
+  return Math.max(3.2, Math.min(10, 3.2 + (z - 11) * 1.15));
 }
 
 function refrescarRadios() {
@@ -1361,7 +1361,7 @@ function refrescarRadios() {
 }
 
 function dibujarPunto(ctx, x, y, info, k) {
-  const r = radioSegunZoom(info.marcado);
+  const r = radioSegunZoom();
   ctx.beginPath();
   ctx.arc(x, y, r * k, 0, Math.PI * 2);
   ctx.globalAlpha = 0.95; ctx.fillStyle = info.colorBase; ctx.fill(); ctx.globalAlpha = 1;
@@ -1483,9 +1483,9 @@ async function cargarMapa() {
     const colorBase = colorPorPartido(r.partido_siglas);
     const marcado = !!r.estado_nota;
     const marker = L.circleMarker([r.latitud, r.longitud], {
-      radius: radioSegunZoom(marcado),
+      radius: radioSegunZoom(),
       color: marcado ? "#1c2333" : "#ffffff",
-      weight: marcado ? 1.6 : 0.8,
+      weight: marcado ? 1.6 : 0.9,
       fillColor: colorBase,
       fillOpacity: 0.95,
     });
@@ -1551,14 +1551,14 @@ function aplicarEstiloRuta(cedula) {
   if (enRuta) {
     info.marker.setStyle({
       color: "#1c2333", weight: 2, fillColor: COLOR_RUTA,
-      radius: radioSegunZoom(info.marcado) + 2,
+      radius: radioSegunZoom() + 2,
     });
   } else {
     info.marker.setStyle({
       color: info.marcado ? "#1c2333" : "#ffffff",
-      weight: info.marcado ? 1.6 : 0.8,
+      weight: info.marcado ? 1.6 : 0.9,
       fillColor: info.colorBase,
-      radius: radioSegunZoom(info.marcado),
+      radius: radioSegunZoom(),
     });
   }
 }

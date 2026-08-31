@@ -335,8 +335,6 @@
     position: relative;
     z-index: 0;               /* contiene los z-index internos de Leaflet bajo la barra superior */
   }
-  /* la máscara "mundo con agujeros": los agujeros recortan el mapa base */
-  path.area-mascara { fill-rule: evenodd; }
   .mapa-leyenda {
     display: flex; gap: 14px; flex-wrap: wrap;
     font-size: 0.78rem; color: var(--texto-suave);
@@ -1304,20 +1302,55 @@ const COLOR_RUTA = "#f5b700"; // resalte dorado para pines agregados a la ruta
 const GUALACA_CENTRO = [8.5333, -82.2986]; // centro aproximado del distrito de Gualaca, Chiriquí
 
 const MIN_ZOOM_DEFAULT = 6;
+let mascaraCanvas = null;
 
 function inicializarMapa() {
   if (leafletMap) { leafletMap.invalidateSize(); return; }
-  leafletMap = L.map("mapa", { minZoom: MIN_ZOOM_DEFAULT }).setView(GUALACA_CENTRO, 12);
+  // preferCanvas: los vectores (pines, contorno) se dibujan en <canvas>
+  // para que html2canvas los capture bien al exportar el PDF.
+  leafletMap = L.map("mapa", { minZoom: MIN_ZOOM_DEFAULT, preferCanvas: true }).setView(GUALACA_CENTRO, 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     crossOrigin: true,           // necesario para exportar el mapa a imagen/PDF
     attribution: "&copy; OpenStreetMap",
   }).addTo(leafletMap);
-  leafletMap.createPane("mascara");
-  leafletMap.getPane("mascara").style.zIndex = 350;
-  leafletMap.getPane("mascara").style.pointerEvents = "none";
+
+  // Canvas de máscara: cubre el contenedor con gris y "recorta" el área activa.
+  mascaraCanvas = document.createElement("canvas");
+  Object.assign(mascaraCanvas.style, {
+    position: "absolute", left: "0", top: "0", zIndex: "300", pointerEvents: "none",
+  });
+  document.getElementById("mapa").appendChild(mascaraCanvas);
+  leafletMap.on("move zoom zoomend moveend resize viewreset", dibujarMascara);
+
   capaMarcadores = L.featureGroup().addTo(leafletMap);
   initMapaHerramientas();
+}
+
+function dibujarMascara() {
+  if (!mascaraCanvas || !leafletMap) return;
+  const size = leafletMap.getSize();
+  if (mascaraCanvas.width !== size.x || mascaraCanvas.height !== size.y) {
+    mascaraCanvas.width = size.x; mascaraCanvas.height = size.y;
+    mascaraCanvas.style.width = size.x + "px";
+    mascaraCanvas.style.height = size.y + "px";
+  }
+  const ctx = mascaraCanvas.getContext("2d");
+  ctx.clearRect(0, 0, size.x, size.y);
+  if (!areaRingsActual) return;
+  ctx.fillStyle = "#eef1f6";
+  ctx.fillRect(0, 0, size.x, size.y);
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  areaRingsActual.forEach(ring => {
+    ring.forEach((c, i) => {
+      const p = leafletMap.latLngToContainerPoint([c[0], c[1]]);
+      if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
+  });
+  ctx.fill();
+  ctx.globalCompositeOperation = "source-over";
 }
 
 function colorPorPartido(siglas) {
@@ -1516,7 +1549,6 @@ document.getElementById("btn-ordenar-ruta").addEventListener("click", () => {
 // ============================================================
 let marcadorBusqueda = null;
 let capaArea = null;
-let capaMascara = null;
 let areaActiva = null;          // { tipo, titulo, subtitulo, slug }
 let areaRingsActual = null;     // anillos exteriores [lat,lng] del área activa (para filtrar pines)
 const areaGeoCache = {};
@@ -1526,8 +1558,7 @@ let distritoMetaActual = null;  // {id, provincia, distrito, ...}
 let mapaHerramientasInit = false;
 
 const AREA_STYLE = { color: "#0b3d91", weight: 2.5, fill: false };
-const MASCARA_STYLE = { className: "area-mascara", stroke: false, fillColor: "#eef1f6", fillOpacity: 1, pane: "mascara", interactive: false };
-const MUNDO = [[-85, -200], [-85, 200], [85, 200], [85, -200]];
+let cajaTimer = null;
 
 // GeoJSON -> anillos exteriores en [lat,lng]
 function ringsLatLng(geo) {
@@ -1567,7 +1598,10 @@ function ajustarCajaMapa(bounds) {
   const el = document.getElementById("mapa");
   if (!bounds) {
     el.style.width = ""; el.style.height = ""; el.style.margin = "";
-    setTimeout(() => leafletMap && leafletMap.invalidateSize(), 40);
+    clearTimeout(cajaTimer);
+    cajaTimer = setTimeout(() => {
+      if (leafletMap) { leafletMap.invalidateSize({ animate: false }); dibujarMascara(); }
+    }, 40);
     return;
   }
   const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
@@ -1584,14 +1618,17 @@ function ajustarCajaMapa(bounds) {
   el.style.width = Math.round(width) + "px";
   el.style.height = Math.round(height) + "px";
   el.style.margin = "0 auto 14px";
-  setTimeout(() => {
+  clearTimeout(cajaTimer);
+  cajaTimer = setTimeout(() => {
+    leafletMap.stop();
     leafletMap.setMinZoom(MIN_ZOOM_DEFAULT);
     leafletMap.setMaxBounds(null);
-    leafletMap.invalidateSize();
-    leafletMap.fitBounds(bounds, { padding: [22, 22] });
-    leafletMap.setMaxBounds(bounds.pad(0.35));
+    leafletMap.invalidateSize({ animate: false });
+    leafletMap.fitBounds(bounds, { padding: [24, 24], animate: false });
+    leafletMap.setMaxBounds(bounds.pad(0.4));
     leafletMap.setMinZoom(Math.max(MIN_ZOOM_DEFAULT, leafletMap.getZoom() - 1));
-  }, 60);
+    dibujarMascara();
+  }, 80);
 }
 
 async function initMapaHerramientas() {
@@ -1658,9 +1695,9 @@ function resetCorregimientoSel() {
 
 function limpiarArea() {
   if (capaArea) { leafletMap.removeLayer(capaArea); capaArea = null; }
-  if (capaMascara) { leafletMap.removeLayer(capaMascara); capaMascara = null; }
   areaActiva = null;
   areaRingsActual = null;
+  dibujarMascara();
   leafletMap.setMaxBounds(null);
   leafletMap.setMinZoom(MIN_ZOOM_DEFAULT);
   filtrarMarcadoresArea(null);
@@ -1670,14 +1707,9 @@ function limpiarArea() {
 
 function pintarArea(geo, titulo, subtitulo, tipo, slug) {
   if (capaArea) { leafletMap.removeLayer(capaArea); capaArea = null; }
-  if (capaMascara) { leafletMap.removeLayer(capaMascara); capaMascara = null; }
 
-  const rings = ringsLatLng(geo);
-  areaRingsActual = rings;
-
-  // máscara: mundo entero opaco con "agujeros" en el área -> recorte total
-  capaMascara = L.polygon([MUNDO, ...rings], MASCARA_STYLE).addTo(leafletMap);
-  // contorno del área encima
+  areaRingsActual = ringsLatLng(geo);
+  // contorno del área
   capaArea = L.geoJSON(geo, { style: AREA_STYLE }).addTo(leafletMap);
 
   areaActiva = { tipo, titulo, subtitulo, slug };
@@ -1685,8 +1717,9 @@ function pintarArea(geo, titulo, subtitulo, tipo, slug) {
   info.textContent = subtitulo ? `${titulo} · ${subtitulo}` : titulo;
   info.classList.remove("hidden");
 
-  filtrarMarcadoresArea(rings);
+  filtrarMarcadoresArea(areaRingsActual);
   try { ajustarCajaMapa(capaArea.getBounds()); } catch (e) { console.error(e); }
+  dibujarMascara();
 }
 
 async function mostrarCircuito(codigo) {
@@ -1802,10 +1835,35 @@ async function exportarMapaPDF() {
     // esperar a que carguen los tiles visibles
     await new Promise(r => setTimeout(r, 600));
     const canvas = await html2canvas(document.getElementById("mapa"), {
-      useCORS: true, allowTaint: false, backgroundColor: "#e8ecf3",
+      useCORS: true, allowTaint: false, backgroundColor: "#eef1f6",
       logging: false, scale: 2,
       ignoreElements: (el) => el.classList && el.classList.contains("leaflet-control-container"),
     });
+
+    // html2canvas no captura el canvas de máscara -> se pinta aquí con la misma proyección
+    if (areaRingsActual) {
+      const cx = canvas.getContext("2d");
+      const esc = canvas.width / leafletMap.getSize().x;
+      const trazarAnillos = () => areaRingsActual.forEach(ring => {
+        ring.forEach((c, i) => {
+          const p = leafletMap.latLngToContainerPoint([c[0], c[1]]);
+          if (i === 0) cx.moveTo(p.x * esc, p.y * esc); else cx.lineTo(p.x * esc, p.y * esc);
+        });
+        cx.closePath();
+      });
+      cx.save();
+      cx.fillStyle = "#eef1f6";
+      cx.beginPath();
+      cx.rect(0, 0, canvas.width, canvas.height);
+      trazarAnillos();
+      cx.fill("evenodd");
+      cx.beginPath();
+      trazarAnillos();
+      cx.strokeStyle = "#0b3d91";
+      cx.lineWidth = Math.max(2, 2.5 * esc);
+      cx.stroke();
+      cx.restore();
+    }
     {
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });

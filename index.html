@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Padrón Electoral — Gualaca</title>
+<title>Control de Campaña</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   :root {
@@ -533,7 +533,7 @@
 <div id="auth-screen">
   <div class="auth-card">
     <h2 id="auth-title">Iniciar Sesión</h2>
-    <p class="desc">Padrón Electoral — Distrito de Gualaca</p>
+    <p class="desc">Control de Campaña · Trabajo territorial electoral</p>
     <div id="auth-msg"></div>
     <form id="auth-form">
       <div class="field">
@@ -556,7 +556,7 @@
 <div id="app-screen" class="hidden">
   <header>
     <div>
-      <h1>Padrón Electoral — Gualaca</h1>
+      <h1>Control de Campaña</h1>
       <div class="sub"><span id="user-email"></span><span id="rol-badge" class="rol-badge hidden"></span></div>
     </div>
     <button id="logout-btn">Cerrar sesión</button>
@@ -1912,7 +1912,7 @@ async function exportarMapaPDF() {
 
       // encabezado
       pdf.setFontSize(15); pdf.setTextColor(11, 61, 145);
-      const titulo = areaActiva ? areaActiva.titulo : "Mapa de recorrido — Padrón Gualaca";
+      const titulo = areaActiva ? areaActiva.titulo : "Control de Campaña — Recorrido de campo";
       pdf.text(titulo, margin, margin + 4);
       pdf.setFontSize(9); pdf.setTextColor(90, 100, 114);
       let sub = areaActiva && areaActiva.subtitulo ? areaActiva.subtitulo : "";

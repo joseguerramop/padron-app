@@ -374,6 +374,19 @@
     background: #eef4ff; border: 1px solid #cfe0ff; border-radius: 8px;
     padding: 9px 12px; font-size: 0.83rem; color: var(--azul); margin-bottom: 10px;
   }
+  #area-stats {
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+  #area-stats h4 { margin: 0 0 3px; font-size: 0.95rem; color: var(--azul); }
+  #area-stats .total { font-size: 0.82rem; color: var(--texto-suave); margin-bottom: 10px; }
+  .stat-fila { display: grid; grid-template-columns: 130px 1fr 90px; gap: 10px; align-items: center; margin-bottom: 7px; font-size: 0.85rem; }
+  .stat-fila .etq { display: flex; align-items: center; gap: 6px; }
+  .stat-fila .barra { height: 9px; background: #eef1f8; border-radius: 100px; overflow: hidden; }
+  .stat-fila .barra > div { height: 100%; border-radius: 100px; }
+  .stat-fila .num { text-align: right; color: var(--texto-suave); font-variant-numeric: tabular-nums; }
+  .stat-fila .num b { color: var(--texto); }
+  .stat-vacio { font-size: 0.85rem; color: var(--texto-suave); }
   .mapa-atrib { font-size: 0.72rem; color: var(--texto-suave); margin-top: 4px; }
   .mapa-leyenda span { display: flex; align-items: center; gap: 5px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
@@ -665,6 +678,7 @@
         <span><span class="dot dot-marcado"></span> Borde oscuro = fallecido / no vive aquí / cambio de residencia</span>
       </div>
       <div id="mapa"></div>
+      <div id="area-stats" class="hidden"></div>
       <div class="ruta-panel">
         <h3>Ruta de recorrido</h3>
         <p id="ruta-vacia" class="ruta-vacia">Haz clic en los pines del mapa y presiona "Agregar a ruta" para armar tu recorrido.</p>
@@ -1325,6 +1339,17 @@ function inicializarMapa() {
   initMapaHerramientas();
 }
 
+const RADIO_PIN = 3.2;          // pines chicos para distinguir partidos aún saturados
+const RADIO_PIN_MARCADO = 4;
+
+function dibujarPunto(ctx, x, y, info, k) {
+  ctx.beginPath();
+  ctx.arc(x, y, (info.marcado ? RADIO_PIN_MARCADO : RADIO_PIN) * k, 0, Math.PI * 2);
+  ctx.globalAlpha = 0.95; ctx.fillStyle = info.colorBase; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.lineWidth = (info.marcado ? 1.6 : 0.8) * k;
+  ctx.strokeStyle = info.marcado ? "#1c2333" : "#ffffff"; ctx.stroke();
+}
+
 // Dibuja el recorte (gris por fuera + contorno + puntos) en cualquier contexto 2D.
 // `k` = factor de escala; `proj(latlng)` -> {x,y} en píxeles de contenedor (sin escalar).
 function dibujarRecorte(ctx, W, H, k, proj) {
@@ -1345,11 +1370,7 @@ function dibujarRecorte(ctx, W, H, k, proj) {
   Object.values(marcadoresPorCedula).forEach(info => {
     if (!puntoEnArea(info.lat, info.lng, areaRingsActual)) return;
     const p = proj([info.lat, info.lng]);
-    ctx.beginPath();
-    ctx.arc(p.x * k, p.y * k, (info.marcado ? 8 : 7) * k, 0, Math.PI * 2);
-    ctx.globalAlpha = 0.9; ctx.fillStyle = info.colorBase; ctx.fill(); ctx.globalAlpha = 1;
-    ctx.lineWidth = (info.marcado ? 3 : 1.5) * k;
-    ctx.strokeStyle = info.marcado ? "#1c2333" : info.colorBase; ctx.stroke();
+    dibujarPunto(ctx, p.x * k, p.y * k, info, k);
   });
   ctx.restore();
 }
@@ -1369,11 +1390,7 @@ function pintarOverlay() {
 function dibujarPines(ctx, k, proj) {
   Object.values(marcadoresPorCedula).forEach(info => {
     const p = proj([info.lat, info.lng]);
-    ctx.beginPath();
-    ctx.arc(p.x * k, p.y * k, (info.marcado ? 8 : 7) * k, 0, Math.PI * 2);
-    ctx.globalAlpha = 0.9; ctx.fillStyle = info.colorBase; ctx.fill(); ctx.globalAlpha = 1;
-    ctx.lineWidth = (info.marcado ? 3 : 1.5) * k;
-    ctx.strokeStyle = info.marcado ? "#1c2333" : info.colorBase; ctx.stroke();
+    dibujarPunto(ctx, p.x * k, p.y * k, info, k);
   });
 }
 
@@ -1445,11 +1462,11 @@ async function cargarMapa() {
     const colorBase = colorPorPartido(r.partido_siglas);
     const marcado = !!r.estado_nota;
     const marker = L.circleMarker([r.latitud, r.longitud], {
-      radius: 8,
-      color: marcado ? "#1c2333" : colorBase,
-      weight: marcado ? 3 : 1.5,
+      radius: marcado ? 4 : 3.2,
+      color: marcado ? "#1c2333" : "#ffffff",
+      weight: marcado ? 1.6 : 0.8,
       fillColor: colorBase,
-      fillOpacity: 0.85,
+      fillOpacity: 0.95,
     });
 
     marker.bindPopup(() => construirPopupHtml(r));
@@ -1513,13 +1530,13 @@ function aplicarEstiloRuta(cedula) {
   if (!info) return;
   const enRuta = rutaSeleccionados.some(p => p.cedula === cedula);
   if (enRuta) {
-    info.marker.setStyle({ color: COLOR_RUTA, weight: 4, fillColor: COLOR_RUTA, radius: 10 });
+    info.marker.setStyle({ color: "#1c2333", weight: 2, fillColor: COLOR_RUTA, radius: 5.5 });
   } else {
     info.marker.setStyle({
-      color: info.marcado ? "#1c2333" : info.colorBase,
-      weight: info.marcado ? 3 : 1.5,
+      color: info.marcado ? "#1c2333" : "#ffffff",
+      weight: info.marcado ? 1.6 : 0.8,
       fillColor: info.colorBase,
-      radius: 8,
+      radius: info.marcado ? 4 : 3.2,
     });
   }
 }
@@ -1768,11 +1785,12 @@ function limpiarArea() {
   pintarOverlay();
   ajustarCajaMapa(null);
   document.getElementById("circuito-info").classList.add("hidden");
+  document.getElementById("area-stats").classList.add("hidden");
 }
 
-function pintarArea(geo, titulo, subtitulo, tipo, slug) {
+function pintarArea(geo, titulo, subtitulo, tipo, slug, valor) {
   areaRingsActual = ringsLatLng(geo);
-  areaActiva = { tipo, titulo, subtitulo, slug };
+  areaActiva = { tipo, titulo, subtitulo, slug, valor };
 
   const info = document.getElementById("circuito-info");
   info.textContent = subtitulo ? `${titulo} · ${subtitulo}` : titulo;
@@ -1783,6 +1801,58 @@ function pintarArea(geo, titulo, subtitulo, tipo, slug) {
 
   try { ajustarCajaMapa(boundsDeRings(areaRingsActual)); } catch (e) { console.error(e); }
   pintarOverlay();
+  cargarStatsArea(titulo, tipo, valor);
+}
+
+const PARTIDO_LABEL = { RM: "Realizando Metas" };
+const PARTIDO_COLOR = { RM: "#1a7f37", __sin: "#1a56c4", __otro: "#8e44ad" };
+
+async function cargarStatsArea(titulo, tipo, valor) {
+  const cont = document.getElementById("area-stats");
+  cont.classList.remove("hidden");
+  cont.innerHTML = `<div class="stat-vacio">Contando electores…</div>`;
+  try {
+    const { data, error } = await sb.rpc("stats_area", { nivel: tipo, valores: [String(valor)] });
+    if (error) throw error;
+    if (!areaActiva || areaActiva.valor !== valor) return;   // el usuario ya cambió de área
+    renderStatsArea(cont, titulo, data || []);
+  } catch (e) {
+    console.error(e);
+    cont.innerHTML = `<div class="stat-vacio">No se pudieron cargar las estadísticas.</div>`;
+  }
+}
+
+function renderStatsArea(cont, titulo, filas) {
+  const total = filas.reduce((s, f) => s + Number(f.n), 0);
+  if (total === 0) {
+    cont.innerHTML = `<h4>${escapeHtml(titulo)}</h4>` +
+      `<div class="stat-vacio">Aún no hay electores cargados en esta área.</div>`;
+    return;
+  }
+  // ordenar: partidos por cantidad desc, "sin partido" al final
+  const conPartido = filas.filter(f => f.partido_siglas).sort((a, b) => b.n - a.n);
+  const sinPartido = filas.find(f => !f.partido_siglas);
+  const pct = (n) => (n / total * 100).toFixed(1).replace(".0", "") + "%";
+
+  let html = `<h4>${escapeHtml(titulo)}</h4>` +
+    `<div class="total">${total.toLocaleString("es-PA")} electores en el padrón</div>`;
+
+  const fila = (etq, color, n) => {
+    const p = n / total * 100;
+    return `<div class="stat-fila">
+      <span class="etq"><span class="dot" style="background:${color}"></span>${escapeHtml(etq)}</span>
+      <span class="barra"><div style="width:${p.toFixed(1)}%;background:${color}"></div></span>
+      <span class="num"><b>${Number(n).toLocaleString("es-PA")}</b> · ${pct(n)}</span>
+    </div>`;
+  };
+
+  conPartido.forEach(f => {
+    html += fila(PARTIDO_LABEL[f.partido_siglas] || f.partido_siglas,
+      PARTIDO_COLOR[f.partido_siglas] || PARTIDO_COLOR.__otro, f.n);
+  });
+  if (sinPartido) html += fila("Sin partido", PARTIDO_COLOR.__sin, sinPartido.n);
+
+  cont.innerHTML = html;
 }
 
 async function mostrarCircuito(codigo) {
@@ -1796,7 +1866,7 @@ async function mostrarCircuito(codigo) {
     const sub = `${p.descripcion} · ${p.diputados_a_elegir} ` +
       `${p.diputados_a_elegir === 1 ? "diputado" : "diputados"} · ` +
       `${Number(p.poblacion_electores_2022).toLocaleString("es-PA")} electores (2022)`;
-    pintarArea(geo, `Circuito electoral ${p.codigo}`, sub, "circuito", p.codigo);
+    pintarArea(geo, `Circuito electoral ${p.codigo}`, sub, "circuito", p.codigo, p.codigo);
   } catch (e) { areaError(e); }
 }
 
@@ -1825,7 +1895,7 @@ async function mostrarDistrito(id) {
     selCorr.disabled = false;
     pintarArea(geo, `Distrito de ${meta.distrito || ""}`,
       `${meta.provincia || ""} · ${geo.features.length} corregimientos`, "distrito",
-      "dist-" + id);
+      "dist-" + id, meta.distrito || "");
   } catch (e) { areaError(e); }
 }
 
@@ -1835,7 +1905,7 @@ function mostrarCorregimiento(nombre) {
     const m = distritoMetaActual || {};
     pintarArea(distritoGeoActual, `Distrito de ${m.distrito || ""}`,
       `${m.provincia || ""} · ${distritoGeoActual.features.length} corregimientos`, "distrito",
-      "dist-" + (m.id || ""));
+      "dist-" + (m.id || ""), m.distrito || "");
     return;
   }
   const feat = distritoGeoActual.features.find(f => f.properties.corregimiento === nombre);
@@ -1843,7 +1913,7 @@ function mostrarCorregimiento(nombre) {
   const p = feat.properties;
   pintarArea({ type: "FeatureCollection", features: [feat] },
     `Corregimiento ${p.corregimiento}`, `Distrito de ${p.distrito} · ${p.provincia}`,
-    "corregimiento", "corr-" + p.corregimiento.replace(/\s+/g, "_"));
+    "corregimiento", "corr-" + p.corregimiento.replace(/\s+/g, "_"), p.corregimiento);
 }
 
 function areaError(e) {

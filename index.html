@@ -16,6 +16,8 @@
     --borde: #e1e5ee;
     --exito: #1a7f37;
     --error: #c0392b;
+    --header-h: 64px;
+    --topbar-h: 118px;
   }
   * { box-sizing: border-box; }
   body {
@@ -27,12 +29,15 @@
   header {
     background: linear-gradient(135deg, var(--azul), var(--azul-claro));
     color: white;
-    padding: 18px 24px;
+    padding: 14px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 40;
   }
   header h1 {
     font-size: 1.3rem;
@@ -55,7 +60,7 @@
   }
   header button:hover { background: rgba(255,255,255,0.25); }
 
-  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 0 20px 20px; }
 
   /* ---- Auth screen ---- */
   #auth-screen {
@@ -109,34 +114,46 @@
   .msg.error { background: #fdecea; color: var(--error); }
   .msg.success { background: #e9f7ee; color: var(--exito); }
 
-  /* ---- App screen ---- */
-  .search-bar {
+  /* ---- App screen — búsqueda en 2 columnas ---- */
+  #vista-buscar {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  .panel-filtros {
     background: var(--tarjeta);
     border-radius: 10px;
-    padding: 16px;
+    padding: 14px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     border: 1px solid var(--borde);
-    margin-bottom: 16px;
+    position: sticky;
+    top: calc(var(--topbar-h) + 10px);
   }
-  .search-row { display: flex; gap: 10px; flex-wrap: wrap; }
-  .search-row input[type=text] {
-    flex: 1 1 260px;
-    padding: 12px 14px;
+  .panel-filtros .campo { margin-bottom: 12px; }
+  .panel-filtros .campo:last-child { margin-bottom: 0; }
+  .panel-filtros label {
+    display: block; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.03em; color: var(--texto-suave); margin-bottom: 4px;
+  }
+  .panel-filtros input[type=text],
+  .panel-filtros select {
+    width: 100%;
+    padding: 9px 11px;
     border: 1px solid var(--borde);
     border-radius: 8px;
-    font-size: 1rem;
-  }
-  .search-row input:focus { outline: 2px solid var(--azul-claro); border-color: transparent; }
-  .filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-  .filtros select {
-    padding: 8px 10px;
-    border: 1px solid var(--borde);
-    border-radius: 7px;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     background: white;
     color: var(--texto);
   }
-  .stats { font-size: 0.82rem; color: var(--texto-suave); margin: 10px 2px; }
+  .panel-filtros input:focus,
+  .panel-filtros select:focus { outline: 2px solid var(--azul-claro); border-color: transparent; }
+  .panel-resultados { min-width: 0; }
+  .stats { font-size: 0.82rem; color: var(--texto-suave); margin: 2px 2px 10px; }
+  @media (max-width: 900px) {
+    #vista-buscar { grid-template-columns: 1fr; }
+    .panel-filtros { position: static; }
+  }
 
   table { width: 100%; border-collapse: collapse; background: var(--tarjeta); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
   thead th {
@@ -265,7 +282,7 @@
   .pagina-nav button:disabled { opacity: 0.4; cursor: not-allowed; }
   .table-wrap {
     overflow: auto;
-    max-height: calc(100vh - 250px);
+    max-height: calc(100vh - var(--topbar-h) - 70px);
     border-radius: 10px;
     border: 1px solid var(--borde);
   }
@@ -283,7 +300,17 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ---- Tabs ---- */
-  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px 0;
+    margin-bottom: 12px;
+    position: sticky;
+    top: var(--header-h);
+    z-index: 35;
+    background: var(--fondo);
+    border-bottom: 1px solid var(--borde);
+  }
   .tab-btn {
     padding: 9px 16px;
     border: 1px solid var(--borde);
@@ -298,7 +325,8 @@
 
   /* ---- Mapa ---- */
   #mapa {
-    height: 480px;
+    height: calc(100vh - var(--topbar-h) - 150px);
+    min-height: 360px;
     border-radius: 10px;
     border: 1px solid var(--borde);
     margin-bottom: 14px;
@@ -308,6 +336,40 @@
     font-size: 0.78rem; color: var(--texto-suave);
     margin-bottom: 10px;
   }
+  .mapa-herramientas {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
+    background: var(--tarjeta); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 12px; margin-bottom: 10px;
+  }
+  .mapa-herramientas .campo { display: flex; flex-direction: column; gap: 4px; }
+  .mapa-herramientas label {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--texto-suave);
+  }
+  .mapa-herramientas input[type=text], .mapa-herramientas select {
+    padding: 8px 10px; border: 1px solid var(--borde); border-radius: 7px;
+    font-size: 0.88rem; background: white; color: var(--texto); min-width: 200px;
+  }
+  .mapa-herramientas button {
+    padding: 8px 14px; border: 1px solid var(--azul-claro); background: var(--azul);
+    color: white; border-radius: 7px; font-size: 0.85rem; cursor: pointer;
+  }
+  .mapa-herramientas button.sec {
+    background: white; color: var(--texto); border-color: var(--borde);
+  }
+  .mapa-herramientas button:disabled { opacity: 0.55; cursor: not-allowed; }
+  #mapa-buscar-resultados {
+    list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.82rem;
+    border: 1px solid var(--borde); border-radius: 7px; overflow: hidden; display: none;
+  }
+  #mapa-buscar-resultados li { padding: 7px 10px; cursor: pointer; border-bottom: 1px solid #f0f1f6; }
+  #mapa-buscar-resultados li:last-child { border-bottom: none; }
+  #mapa-buscar-resultados li:hover { background: #f0f4fd; }
+  #circuito-info {
+    background: #eef4ff; border: 1px solid #cfe0ff; border-radius: 8px;
+    padding: 9px 12px; font-size: 0.83rem; color: var(--azul); margin-bottom: 10px;
+  }
+  .mapa-atrib { font-size: 0.72rem; color: var(--texto-suave); margin-top: 4px; }
   .mapa-leyenda span { display: flex; align-items: center; gap: 5px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
   .dot-rm { background: #1a7f37; }
@@ -502,22 +564,33 @@
     </div>
 
     <div id="vista-buscar">
-      <div class="search-bar">
-        <div class="search-row">
-          <input type="text" id="buscar" placeholder="Buscar por cédula, nombre o apellido…" autocomplete="off" />
+      <aside class="panel-filtros">
+        <div class="campo">
+          <label>Buscar</label>
+          <input type="text" id="buscar" placeholder="Cédula, nombre o apellido…" autocomplete="off" />
         </div>
-        <div class="filtros">
+        <div class="campo">
+          <label>Corregimiento</label>
           <select id="filtro-corregimiento">
             <option value="">Todos los corregimientos</option>
           </select>
+        </div>
+        <div class="campo">
+          <label>Mesa</label>
           <select id="filtro-mesa">
             <option value="">Todas las mesas</option>
           </select>
+        </div>
+        <div class="campo">
+          <label>Partido</label>
           <select id="filtro-partido">
             <option value="">Todos (inscritos y no inscritos)</option>
             <option value="RM">Inscritos en RM</option>
             <option value="NINGUNO">Sin partido registrado</option>
           </select>
+        </div>
+        <div class="campo">
+          <label>Estado</label>
           <select id="filtro-estado">
             <option value="">Todos los estados</option>
             <option value="ACTIVO">Sin marcar</option>
@@ -526,30 +599,52 @@
             <option value="cambio_residencia">Cambio de residencia</option>
           </select>
         </div>
+      </aside>
+
+      <div class="panel-resultados">
+        <div class="stats" id="stats">Cargando…</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cédula</th>
+                <th>Nombre completo</th>
+                <th>Corregimiento</th>
+                <th>Mesa</th>
+                <th>Centro de votación</th>
+                <th>Partido</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="resultados"></tbody>
+          </table>
+        </div>
+        <div id="empty" class="empty-state hidden">Sin resultados para tu búsqueda.</div>
+        <div class="pagina-nav" id="pagina-nav"></div>
       </div>
-      <div class="stats" id="stats">Cargando…</div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Cédula</th>
-              <th>Nombre completo</th>
-              <th>Corregimiento</th>
-              <th>Mesa</th>
-              <th>Centro de votación</th>
-              <th>Partido</th>
-              <th>Estado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="resultados"></tbody>
-        </table>
-      </div>
-      <div id="empty" class="empty-state hidden">Sin resultados para tu búsqueda.</div>
-      <div class="pagina-nav" id="pagina-nav"></div>
     </div>
 
     <div id="vista-mapa" class="hidden">
+      <div class="mapa-herramientas">
+        <div class="campo">
+          <label>Buscar lugar</label>
+          <input type="text" id="mapa-buscar" placeholder="Ej: El Higuerón, Gualaca" autocomplete="off" />
+          <ul id="mapa-buscar-resultados"></ul>
+          <div class="mapa-atrib">Búsqueda por OpenStreetMap / Nominatim</div>
+        </div>
+        <div class="campo">
+          <button id="mapa-buscar-btn">Buscar</button>
+        </div>
+        <div class="campo">
+          <label>Circuito electoral</label>
+          <select id="mapa-circuito"><option value="">— Ninguno —</option></select>
+        </div>
+        <div class="campo">
+          <button id="mapa-pdf-btn" class="sec">🧾 Exportar PDF</button>
+        </div>
+      </div>
+      <div id="circuito-info" class="hidden"></div>
       <div class="mapa-leyenda">
         <span><span class="dot dot-rm"></span> Inscrito en RM</span>
         <span><span class="dot dot-otro"></span> Inscrito en otro partido</span>
@@ -702,6 +797,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 const SUPABASE_URL = "https://ydedoolppdjyzxweqcex.supabase.co";
 const SUPABASE_KEY = "sb_publishable_pDxqUEcWzzOw6VGtDCddRg_g2ChE45Y";
@@ -796,7 +893,20 @@ async function cargarPerfil(uid) {
 // ---------- APP ----------
 let filtrosInicializados = false;
 
+function medirTopbar() {
+  const h = document.querySelector("header");
+  const t = document.querySelector(".tabs");
+  if (!h || !t || !window.innerWidth) return;
+  const hh = Math.min(Math.max(h.offsetHeight, 48), 140);
+  const th = Math.min(Math.max(t.offsetHeight, 40), 90);
+  document.documentElement.style.setProperty("--header-h", hh + "px");
+  document.documentElement.style.setProperty("--topbar-h", (hh + th) + "px");
+}
+window.addEventListener("resize", medirTopbar);
+
 async function inicializarApp() {
+  medirTopbar();
+  setTimeout(medirTopbar, 200);
   if (filtrosInicializados) {
     buscar();
     return;
@@ -830,8 +940,9 @@ function cambiarTab(tab) {
   Object.entries(botones).forEach(([k, id]) => {
     document.getElementById(id).classList.toggle("activo", k === tab);
   });
+  medirTopbar();
   if (tab === "mapa") {
-    setTimeout(() => { inicializarMapa(); cargarMapa(); renderRutaPanel(); }, 0);
+    setTimeout(() => { inicializarMapa(); cargarMapa(); renderRutaPanel(); medirTopbar(); }, 0);
   } else if (tab === "admin") {
     cargarListaUsuarios();
   }
@@ -1182,9 +1293,11 @@ function inicializarMapa() {
   leafletMap = L.map("mapa").setView(GUALACA_CENTRO, 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
+    crossOrigin: true,           // necesario para exportar el mapa a imagen/PDF
     attribution: "&copy; OpenStreetMap",
   }).addTo(leafletMap);
-  capaMarcadores = L.layerGroup().addTo(leafletMap);
+  capaMarcadores = L.featureGroup().addTo(leafletMap);
+  initMapaHerramientas();
 }
 
 function colorPorPartido(siglas) {
@@ -1375,6 +1488,188 @@ document.getElementById("btn-ordenar-ruta").addEventListener("click", () => {
   rutaSeleccionados = ordenados;
   renderRutaPanel();
 });
+
+// ============================================================
+// ============  MAPA: buscar lugar / circuito / PDF  ==========
+// ============================================================
+let marcadorBusqueda = null;
+let capaCircuito = null;
+let circuitoActivo = null;      // { codigo, provincia, descripcion, diputados_a_elegir, poblacion_electores_2022 }
+const circuitoGeoCache = {};
+let mapaHerramientasInit = false;
+
+async function initMapaHerramientas() {
+  if (mapaHerramientasInit) return;
+  mapaHerramientasInit = true;
+
+  // ---- selector de circuito ----
+  const sel = document.getElementById("mapa-circuito");
+  try {
+    const idx = await fetch("circuitos/index.json").then(r => r.json());
+    idx.forEach(c => {
+      const o = document.createElement("option");
+      o.value = c.codigo;
+      o.textContent = `${c.codigo} · ${c.provincia} — ${c.descripcion}`;
+      sel.appendChild(o);
+    });
+  } catch (e) { console.error("index de circuitos", e); }
+  sel.addEventListener("change", () => mostrarCircuito(sel.value));
+
+  // ---- buscar lugar ----
+  document.getElementById("mapa-buscar-btn").addEventListener("click", buscarLugar);
+  document.getElementById("mapa-buscar").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); buscarLugar(); }
+  });
+
+  // ---- exportar PDF ----
+  document.getElementById("mapa-pdf-btn").addEventListener("click", exportarMapaPDF);
+}
+
+async function mostrarCircuito(codigo) {
+  const info = document.getElementById("circuito-info");
+  if (capaCircuito) { leafletMap.removeLayer(capaCircuito); capaCircuito = null; }
+  circuitoActivo = null;
+  if (!codigo) { info.classList.add("hidden"); return; }
+
+  try {
+    let geo = circuitoGeoCache[codigo];
+    if (!geo) {
+      geo = await fetch(`circuitos/${codigo}.geojson`).then(r => r.json());
+      circuitoGeoCache[codigo] = geo;
+    }
+    circuitoActivo = geo.features[0].properties;
+    capaCircuito = L.geoJSON(geo, {
+      style: { color: "#0b3d91", weight: 2, fillColor: "#1a56c4", fillOpacity: 0.08 },
+    }).addTo(leafletMap);
+    leafletMap.fitBounds(capaCircuito.getBounds(), { padding: [20, 20] });
+    const p = circuitoActivo;
+    info.textContent = `Circuito ${p.codigo} · ${p.descripcion} · ` +
+      `${p.diputados_a_elegir} ${p.diputados_a_elegir === 1 ? "diputado" : "diputados"} · ` +
+      `${Number(p.poblacion_electores_2022).toLocaleString("es-PA")} electores (2022)`;
+    info.classList.remove("hidden");
+  } catch (e) {
+    info.textContent = "No se pudo cargar el área del circuito.";
+    info.classList.remove("hidden");
+    console.error(e);
+  }
+}
+
+async function buscarLugar() {
+  const q = document.getElementById("mapa-buscar").value.trim();
+  const lista = document.getElementById("mapa-buscar-resultados");
+  lista.innerHTML = ""; lista.style.display = "none";
+  if (!q) return;
+  const btn = document.getElementById("mapa-buscar-btn");
+  btn.disabled = true; btn.textContent = "Buscando…";
+  try {
+    const url = "https://nominatim.openstreetmap.org/search?format=json&limit=6&countrycodes=pa&addressdetails=1&q=" +
+      encodeURIComponent(q);
+    const res = await fetch(url, { headers: { "Accept-Language": "es" } });
+    const arr = await res.json();
+    if (!arr.length) { lista.innerHTML = "<li>Sin resultados en Panamá</li>"; lista.style.display = "block"; return; }
+    if (arr.length === 1) { irALugar(arr[0]); return; }
+    arr.forEach(r => {
+      const li = document.createElement("li");
+      li.textContent = r.display_name;
+      li.addEventListener("click", () => { lista.style.display = "none"; irALugar(r); });
+      lista.appendChild(li);
+    });
+    lista.style.display = "block";
+  } catch (e) {
+    lista.innerHTML = "<li>Error al buscar el lugar</li>"; lista.style.display = "block";
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = "Buscar";
+  }
+}
+
+function irALugar(r) {
+  const bb = r.boundingbox.map(Number); // [south, north, west, east]
+  leafletMap.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { maxZoom: 16, padding: [30, 30] });
+  if (marcadorBusqueda) leafletMap.removeLayer(marcadorBusqueda);
+  marcadorBusqueda = L.circleMarker([Number(r.lat), Number(r.lon)], {
+    radius: 9, color: "#b8860b", weight: 3, fillColor: "#f5b700", fillOpacity: 0.9,
+  }).addTo(leafletMap).bindPopup(escapeHtml(r.display_name)).openPopup();
+}
+
+async function exportarMapaPDF() {
+  const btn = document.getElementById("mapa-pdf-btn");
+  btn.disabled = true; btn.textContent = "Generando…";
+  try {
+    // esperar a que carguen los tiles visibles
+    await new Promise(r => setTimeout(r, 600));
+    const canvas = await html2canvas(document.getElementById("mapa"), {
+      useCORS: true, allowTaint: false, backgroundColor: "#e8ecf3",
+      logging: false, scale: 2,
+      ignoreElements: (el) => el.classList && el.classList.contains("leaflet-control-container"),
+    });
+    {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+
+      // encabezado
+      pdf.setFontSize(15); pdf.setTextColor(11, 61, 145);
+      const titulo = circuitoActivo
+        ? `Circuito electoral ${circuitoActivo.codigo} — ${circuitoActivo.provincia}`
+        : "Mapa de recorrido — Padrón Gualaca";
+      pdf.text(titulo, margin, margin + 4);
+      pdf.setFontSize(9); pdf.setTextColor(90, 100, 114);
+      let sub = "";
+      if (circuitoActivo) {
+        sub = `${circuitoActivo.descripcion} · ${circuitoActivo.diputados_a_elegir} ` +
+          `${circuitoActivo.diputados_a_elegir === 1 ? "diputado" : "diputados"} · ` +
+          `${Number(circuitoActivo.poblacion_electores_2022).toLocaleString("es-PA")} electores (2022)`;
+      }
+      const q = document.getElementById("mapa-buscar").value.trim();
+      if (q) sub += (sub ? "  ·  " : "") + `Búsqueda: ${q}`;
+      if (sub) pdf.text(sub, margin, margin + 10);
+
+      // imagen del mapa
+      const imgY = margin + 14;
+      const availW = pw - margin * 2;
+      const availH = ph - imgY - 16;
+      const ratio = Math.min(availW / canvas.width, availH / canvas.height);
+      const imgW = canvas.width * ratio;
+      const imgH = canvas.height * ratio;
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG",
+        margin + (availW - imgW) / 2, imgY, imgW, imgH);
+
+      // leyenda
+      const leyY = imgY + imgH + 6;
+      const items = [
+        ["#1a7f37", "Inscrito en RM"],
+        ["#8e44ad", "Inscrito en otro partido"],
+        ["#1a56c4", "Sin partido"],
+        ["#1c2333", "Borde oscuro = fallecido / no vive aquí / cambio de residencia"],
+      ];
+      let lx = margin;
+      pdf.setFontSize(8); pdf.setTextColor(60, 60, 60);
+      items.forEach(([color, txt]) => {
+        pdf.setFillColor(color);
+        pdf.circle(lx + 1.5, leyY - 1, 1.5, "F");
+        pdf.text(txt, lx + 5, leyY);
+        lx += pdf.getTextWidth(txt) + 14;
+      });
+
+      // pie
+      pdf.setFontSize(7); pdf.setTextColor(130, 130, 130);
+      pdf.text(`Generado ${new Date().toLocaleString("es-PA")}  ·  Mapa © OpenStreetMap`,
+        margin, ph - 6);
+
+      const nombre = "mapa-" + (circuitoActivo ? circuitoActivo.codigo : "gualaca") +
+        "-" + new Date().toISOString().slice(0, 10) + ".pdf";
+      pdf.save(nombre);
+    }
+  } catch (e) {
+    alert("No se pudo generar el PDF: " + (e.message || e));
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = "🧾 Exportar PDF";
+  }
+}
 
 // ============================================================
 // ================  PANEL DE ADMINISTRACIÓN  =================

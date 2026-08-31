@@ -1,0 +1,275 @@
+[
+ {
+  "codigo": "1-1",
+  "provincia": "Bocas del Toro",
+  "descripcion": "Changuinola, Bocas del Toro, Chiriquí Grande, Almirante y Naso Tjër Di",
+  "diputados": 2,
+  "poblacion": 94567
+ },
+ {
+  "codigo": "2-1",
+  "provincia": "Coclé",
+  "descripcion": "Distrito de Penonomé",
+  "diputados": 2,
+  "poblacion": 70921
+ },
+ {
+  "codigo": "2-2",
+  "provincia": "Coclé",
+  "descripcion": "Distrito de Antón",
+  "diputados": 1,
+  "poblacion": 42660
+ },
+ {
+  "codigo": "2-3",
+  "provincia": "Coclé",
+  "descripcion": "La Pintada, Natá y Olá",
+  "diputados": 1,
+  "poblacion": 44345
+ },
+ {
+  "codigo": "2-4",
+  "provincia": "Coclé",
+  "descripcion": "Distrito de Aguadulce",
+  "diputados": 1,
+  "poblacion": 36800
+ },
+ {
+  "codigo": "3-1",
+  "provincia": "Colón",
+  "descripcion": "Distrito de Colón",
+  "diputados": 4,
+  "poblacion": 157674
+ },
+ {
+  "codigo": "3-2",
+  "provincia": "Colón",
+  "descripcion": "Chagres, Donoso, Portobelo, Santa Isabel y Omar Torrijos Herrera",
+  "diputados": 1,
+  "poblacion": 34235
+ },
+ {
+  "codigo": "4-1",
+  "provincia": "Chiriquí",
+  "descripcion": "Distrito de David",
+  "diputados": 3,
+  "poblacion": 118274
+ },
+ {
+  "codigo": "4-2",
+  "provincia": "Chiriquí",
+  "descripcion": "Distrito de Barú",
+  "diputados": 1,
+  "poblacion": 47286
+ },
+ {
+  "codigo": "4-3",
+  "provincia": "Chiriquí",
+  "descripcion": "Bugaba y Tierras Altas",
+  "diputados": 2,
+  "poblacion": 64982
+ },
+ {
+  "codigo": "4-4",
+  "provincia": "Chiriquí",
+  "descripcion": "Alanje, Boquerón y Renacimiento",
+  "diputados": 1,
+  "poblacion": 42804
+ },
+ {
+  "codigo": "4-5",
+  "provincia": "Chiriquí",
+  "descripcion": "Boquete, Dolega y Gualaca",
+  "diputados": 1,
+  "poblacion": 45663
+ },
+ {
+  "codigo": "4-6",
+  "provincia": "Chiriquí",
+  "descripcion": "Remedios, San Félix, San Lorenzo y Tolé",
+  "diputados": 1,
+  "poblacion": 26067
+ },
+ {
+  "codigo": "5-1",
+  "provincia": "Darién",
+  "descripcion": "Chepigana, Santa Fe y Sambú",
+  "diputados": 1,
+  "poblacion": 25319
+ },
+ {
+  "codigo": "5-2",
+  "provincia": "Darién",
+  "descripcion": "Pinogana y Cémaco",
+  "diputados": 1,
+  "poblacion": 19153
+ },
+ {
+  "codigo": "6-1",
+  "provincia": "Herrera",
+  "descripcion": "Distrito de Chitré",
+  "diputados": 1,
+  "poblacion": 42143
+ },
+ {
+  "codigo": "6-2",
+  "provincia": "Herrera",
+  "descripcion": "Los Pozos, Parita y Pesé",
+  "diputados": 1,
+  "poblacion": 28613
+ },
+ {
+  "codigo": "6-3",
+  "provincia": "Herrera",
+  "descripcion": "Las Minas, Ocú y Santa María",
+  "diputados": 1,
+  "poblacion": 29460
+ },
+ {
+  "codigo": "7-1",
+  "provincia": "Los Santos",
+  "descripcion": "Las Tablas, Pocrí, Pedasí y Guararé",
+  "diputados": 1,
+  "poblacion": 41919
+ },
+ {
+  "codigo": "7-2",
+  "provincia": "Los Santos",
+  "descripcion": "Los Santos, Macaracas y Tonosí",
+  "diputados": 1,
+  "poblacion": 39946
+ },
+ {
+  "codigo": "8-1",
+  "provincia": "Panamá",
+  "descripcion": "Balboa, Chepo, Chimán y Taboga",
+  "diputados": 1,
+  "poblacion": 44421
+ },
+ {
+  "codigo": "8-2",
+  "provincia": "Panamá",
+  "descripcion": "Distrito de San Miguelito",
+  "diputados": 7,
+  "poblacion": 243978
+ },
+ {
+  "codigo": "8-3",
+  "provincia": "Panamá",
+  "descripcion": "San Felipe, El Chorrillo, Santa Ana, Calidonia, Curundú, Ancón, Bella Vista, Betania y Pueblo Nuevo",
+  "diputados": 5,
+  "poblacion": 159132
+ },
+ {
+  "codigo": "8-4",
+  "provincia": "Panamá",
+  "descripcion": "Río Abajo, San Francisco, Parque Lefevre, Juan Díaz y Don Bosco",
+  "diputados": 5,
+  "poblacion": 161151
+ },
+ {
+  "codigo": "8-5",
+  "provincia": "Panamá",
+  "descripcion": "Chilibre, Las Cumbres, Alcalde Díaz, Ernesto Córdoba Campos y Caimitillo",
+  "diputados": 3,
+  "poblacion": 133448
+ },
+ {
+  "codigo": "8-6",
+  "provincia": "Panamá",
+  "descripcion": "Pedregal, Pacora, San Martín, Tocumen, Las Mañanitas, 24 de Diciembre y Las Garzas",
+  "diputados": 4,
+  "poblacion": 209336
+ },
+ {
+  "codigo": "9-1",
+  "provincia": "Veraguas",
+  "descripcion": "Distrito de Santiago",
+  "diputados": 2,
+  "poblacion": 71592
+ },
+ {
+  "codigo": "9-2",
+  "provincia": "Veraguas",
+  "descripcion": "La Mesa, Soná y Las Palmas",
+  "diputados": 1,
+  "poblacion": 51614
+ },
+ {
+  "codigo": "9-3",
+  "provincia": "Veraguas",
+  "descripcion": "Cañazas, Calobre, Santa Fe y San Francisco",
+  "diputados": 1,
+  "poblacion": 48714
+ },
+ {
+  "codigo": "9-4",
+  "provincia": "Veraguas",
+  "descripcion": "Atalaya, Montijo, Río de Jesús y Mariato",
+  "diputados": 1,
+  "poblacion": 25388
+ },
+ {
+  "codigo": "10-1",
+  "provincia": "Comarca Guna Yala",
+  "descripcion": "Narganá, parte de Ailigandí y comarca Madungandí",
+  "diputados": 1,
+  "poblacion": 14586
+ },
+ {
+  "codigo": "10-2",
+  "provincia": "Comarca Guna Yala",
+  "descripcion": "Resto de Ailigandí, Tubualá, Puerto Obaldía y comarca Wargandí",
+  "diputados": 1,
+  "poblacion": 12978
+ },
+ {
+  "codigo": "12-1",
+  "provincia": "Comarca Ngäbe-Buglé",
+  "descripcion": "Kankintú, Kusapin, Jirondai y Santa Catalina",
+  "diputados": 1,
+  "poblacion": 51294
+ },
+ {
+  "codigo": "12-2",
+  "provincia": "Comarca Ngäbe-Buglé",
+  "descripcion": "Besiko, Mironó y Nole Duima",
+  "diputados": 1,
+  "poblacion": 47495
+ },
+ {
+  "codigo": "12-3",
+  "provincia": "Comarca Ngäbe-Buglé",
+  "descripcion": "Müna y Ñürüm",
+  "diputados": 1,
+  "poblacion": 41158
+ },
+ {
+  "codigo": "13-1",
+  "provincia": "Panamá Oeste",
+  "descripcion": "Distrito de Arraiján",
+  "diputados": 3,
+  "poblacion": 172102
+ },
+ {
+  "codigo": "13-2",
+  "provincia": "Panamá Oeste",
+  "descripcion": "Distrito de Capira",
+  "diputados": 1,
+  "poblacion": 33452
+ },
+ {
+  "codigo": "13-3",
+  "provincia": "Panamá Oeste",
+  "descripcion": "Chame y San Carlos",
+  "diputados": 1,
+  "poblacion": 36897
+ },
+ {
+  "codigo": "13-4",
+  "provincia": "Panamá Oeste",
+  "descripcion": "Distrito de La Chorrera",
+  "diputados": 3,
+  "poblacion": 138531
+ }
+]

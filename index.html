@@ -492,6 +492,32 @@
     letter-spacing: 0.04em;
   }
 
+  /* ---- Modo demo ---- */
+  body.demo header { background: linear-gradient(135deg, #b45309, #ea8a1e); }
+  body.demo .tab-btn.activo { background: #b45309; border-color: #b45309; }
+  .demo-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 9px;
+    border-radius: 100px;
+    background: rgba(0,0,0,0.28);
+    border: 1px solid rgba(255,255,255,0.55);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+  }
+  .demo-aviso {
+    background: #fff4e5;
+    border: 1px solid #f0c68a;
+    color: #8a4b00;
+    font-size: 0.8rem;
+    padding: 8px 14px;
+    border-radius: 8px;
+    margin: 10px 0 4px;
+  }
+
   /* ---- Panel de administración ---- */
   .admin-card {
     background: var(--tarjeta);
@@ -573,7 +599,7 @@
 <div id="app-screen" class="hidden">
   <header>
     <div>
-      <h1>Control de Campaña</h1>
+      <h1>Control de Campaña<span id="demo-tag" class="demo-tag hidden">Modo demo · datos ficticios</span></h1>
       <div class="sub"><span id="user-email"></span><span id="rol-badge" class="rol-badge hidden"></span></div>
     </div>
     <button id="logout-btn">Cerrar sesión</button>
@@ -607,7 +633,6 @@
           <label>Partido</label>
           <select id="filtro-partido">
             <option value="">Todos (inscritos y no inscritos)</option>
-            <option value="RM">Inscritos en RM</option>
             <option value="NINGUNO">Sin partido registrado</option>
           </select>
         </div>
@@ -675,9 +700,7 @@
         </div>
       </div>
       <div id="circuito-info" class="hidden"></div>
-      <div class="mapa-leyenda">
-        <span><span class="dot dot-rm"></span> Inscrito en RM</span>
-        <span><span class="dot dot-otro"></span> Inscrito en otro partido</span>
+      <div class="mapa-leyenda" id="mapa-leyenda">
         <span><span class="dot dot-sinpartido"></span> Sin partido</span>
         <span><span class="dot dot-marcado"></span> Borde oscuro = fallecido / no vive aquí / cambio de residencia</span>
       </div>
@@ -697,6 +720,10 @@
 
     <!-- ===== VISTA: ADMINISTRACIÓN (solo rol admin) ===== -->
     <div id="vista-admin" class="hidden">
+
+      <div id="admin-demo-aviso" class="demo-aviso hidden">
+        <b>Modo demo.</b> Todo lo que ves aquí son datos ficticios (partidos, electores, ubicaciones y GPS inventados) y las cuentas de colaborador ya están creadas — la creación de cuentas está deshabilitada. La carga masiva y el marcado de electores sí funcionan, pero se guardan como datos demo.
+      </div>
 
       <div class="admin-card">
         <h3>Crear cuenta de colaborador</h3>
@@ -835,7 +862,8 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const PAGE_SIZE = 10;
 let paginaActual = 0;
-let perfilActual = null; // { rol, nombre }
+let perfilActual = null; // { rol, nombre, es_demo }
+let ES_DEMO = false;     // sesión de cuenta demo → datos ficticios
 let debounceTimer = null;
 
 // ---------- AUTH ----------
@@ -890,10 +918,17 @@ sb.auth.onAuthStateChange((_event, session) => {
     cargarPerfil(session.user.id).then(inicializarApp);
   } else {
     perfilActual = null;
+    ES_DEMO = false;
     filtrosInicializados = false;
     const selCorr = document.getElementById("filtro-corregimiento");
     if (selCorr) selCorr.innerHTML = '<option value="">Todos los corregimientos</option>';
+    const selPar = document.getElementById("filtro-partido");
+    if (selPar) selPar.innerHTML =
+      '<option value="">Todos (inscritos y no inscritos)</option>' +
+      '<option value="NINGUNO">Sin partido registrado</option>';
     ubicacionesCache = null; circuitosCache = null;
+    document.body.classList.remove("demo");
+    cambiarTab("buscar");
     authScreen.classList.remove("hidden");
     appScreen.classList.add("hidden");
   }
@@ -903,20 +938,28 @@ async function cargarPerfil(uid) {
   perfilActual = null;
   const { data, error } = await sb
     .from("perfiles_usuario")
-    .select("rol, nombre, activo")
+    .select("rol, nombre, activo, es_demo")
     .eq("user_id", uid)
     .maybeSingle();
   const badge = document.getElementById("rol-badge");
   const btnAdmin = document.getElementById("tab-admin-btn");
   if (!error && data) {
     perfilActual = data;
+    ES_DEMO = !!data.es_demo;
     badge.textContent = ROL_LABEL[data.rol] || data.rol;
     badge.classList.remove("hidden");
     btnAdmin.classList.toggle("hidden", data.rol !== "admin");
   } else {
+    ES_DEMO = false;
     badge.classList.add("hidden");
     btnAdmin.classList.add("hidden");
   }
+  document.body.classList.toggle("demo", ES_DEMO);
+  document.getElementById("demo-tag").classList.toggle("hidden", !ES_DEMO);
+  const avisoAdmin = document.getElementById("admin-demo-aviso");
+  if (avisoAdmin) avisoAdmin.classList.toggle("hidden", !ES_DEMO);
+  const btnCrear = document.getElementById("nu-crear");
+  if (btnCrear && ES_DEMO) { btnCrear.disabled = true; btnCrear.title = "Deshabilitado en modo demo"; }
 }
 
 // ---------- APP ----------
@@ -981,12 +1024,30 @@ async function cargarFiltros() {
   const { data, error } = await sb
     .from("filtro_corregimientos")
     .select("corregimiento");
-  if (error) return;
-  const sel = document.getElementById("filtro-corregimiento");
-  data.forEach(r => {
+  if (!error && data) {
+    const sel = document.getElementById("filtro-corregimiento");
+    data.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.corregimiento; opt.textContent = r.corregimiento;
+      sel.appendChild(opt);
+    });
+  }
+  await cargarFiltroPartidos();
+}
+
+async function cargarFiltroPartidos() {
+  const sel = document.getElementById("filtro-partido");
+  const { data, error } = await sb.from("partidos").select("siglas, nombre").order("siglas");
+  if (error || !data) return;
+  // limpia opciones dinámicas previas (deja "Todos" y "NINGUNO")
+  [...sel.options].forEach(o => { if (o.value && o.value !== "NINGUNO") o.remove(); });
+  const ninguno = sel.querySelector('option[value="NINGUNO"]');
+  data.forEach(p => {
     const opt = document.createElement("option");
-    opt.value = r.corregimiento; opt.textContent = r.corregimiento;
-    sel.appendChild(opt);
+    opt.value = p.siglas;
+    opt.textContent = "Inscritos en " + p.siglas;
+    if (p.nombre && p.nombre !== p.siglas) opt.title = p.nombre;
+    sel.insertBefore(opt, ninguno);
   });
 }
 
@@ -1294,6 +1355,7 @@ document.getElementById("modal-guardar").addEventListener("click", async () => {
         latitud: gpsLat || null,
         longitud: gpsLng || null,
         fecha_visita: (gpsLat && gpsLng) ? new Date().toISOString() : null,
+        es_demo: ES_DEMO,
       };
       const { error } = await sb.from("notas_electores").upsert(payload, { onConflict: "cedula" });
       if (error) throw error;
@@ -1455,9 +1517,14 @@ async function capturarMapaCanvas(escala) {
   return cnv;
 }
 
+// Paleta de partidos (colores distinguibles; no chocan con el dorado de ruta ni el azul "sin partido")
+const PARTIDO_COLORES = {
+  PRD: "#d32f2f", CD: "#f57c00", "PANAMEÑISTA": "#7b1fa2", PANAMENISTA: "#7b1fa2",
+  MOLIRENA: "#00897b", RM: "#1a7f37", PP: "#5d4037", MOCA: "#c2185b", LIBRE: "#455a64",
+};
 function colorPorPartido(siglas) {
-  if (siglas === "RM") return "#1a7f37";     // verde
-  if (siglas) return "#8e44ad";               // otro partido - morado
+  if (PARTIDO_COLORES[siglas]) return PARTIDO_COLORES[siglas];
+  if (siglas) return "#8e44ad";               // partido no catalogado - morado
   return "#1a56c4";                            // sin partido - azul
 }
 
@@ -1510,12 +1577,27 @@ async function cargarMapa() {
     bounds.push([r.latitud, r.longitud]);
   });
 
+  actualizarLeyendaPartidos(data);
+
   if (areaActiva && areaRingsActual) {
     filtrarMarcadoresArea(areaRingsActual);
     pintarOverlay();
   } else if (bounds.length > 0) {
     leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
   }
+}
+
+// Reconstruye la leyenda del mapa con los partidos que realmente aparecen en los pines.
+function actualizarLeyendaPartidos(data) {
+  const ley = document.getElementById("mapa-leyenda");
+  if (!ley) return;
+  const siglas = [...new Set(data.map(r => r.partido_siglas).filter(Boolean))].sort();
+  const chips = siglas.map(s =>
+    `<span><span class="dot" style="background:${colorPorPartido(s)}"></span> ${s}</span>`
+  ).join("");
+  ley.innerHTML = chips +
+    `<span><span class="dot dot-sinpartido"></span> Sin partido</span>` +
+    `<span><span class="dot dot-marcado"></span> Borde oscuro = fallecido / no vive aquí / cambio de residencia</span>`;
 }
 
 const ESTADO_LABEL = {
@@ -1838,8 +1920,17 @@ function pintarArea(geo, titulo, subtitulo, tipo, slug, valor) {
   cargarStatsArea(titulo, tipo, valor);
 }
 
-const PARTIDO_LABEL = { RM: "Realizando Metas" };
-const PARTIDO_COLOR = { RM: "#1a7f37", __sin: "#1a56c4", __otro: "#8e44ad" };
+const PARTIDO_LABEL = {
+  PRD: "Partido Revolucionario Democrático",
+  CD: "Cambio Democrático",
+  "PANAMEÑISTA": "Partido Panameñista", PANAMENISTA: "Partido Panameñista",
+  MOLIRENA: "MOLIRENA",
+  RM: "Realizando Metas",
+  PP: "Partido Popular",
+  MOCA: "Movimiento Otro Camino",
+  LIBRE: "Libre postulación",
+};
+const PARTIDO_COLOR = { ...PARTIDO_COLORES, __sin: "#1a56c4", __otro: "#8e44ad" };
 
 let statsAreaActual = null;   // { total, partidos:[{etq,color,n,pct}], campo:[{etq,color,n,pct}] }
 
@@ -2075,9 +2166,11 @@ async function exportarMapaPDF() {
 
       // leyenda
       const leyY = imgY + imgH + 6;
+      const partidosPdf = (statsAreaActual && statsAreaActual.partidos || [])
+        .filter(p => p.etq !== "Sin partido")
+        .map(p => [p.color, p.etq.length > 14 ? p.etq.slice(0, 13) + "…" : p.etq]);
       const items = [
-        ["#1a7f37", "RM"],
-        ["#8e44ad", "Otro partido"],
+        ...partidosPdf.slice(0, 6),
         ["#1a56c4", "Sin partido"],
         ["#1c2333", "Borde oscuro = marcado (fallecido / mudado)"],
       ];
@@ -2282,6 +2375,11 @@ async function crearUsuario() {
   const cred = document.getElementById("nu-cred");
   const btn = document.getElementById("nu-crear");
   msg.innerHTML = ""; cred.classList.add("hidden");
+
+  if (ES_DEMO) {
+    msg.innerHTML = `<span class="val-error">En el modo demo no se crean cuentas. Ya existen cuentas de ejemplo para cada nivel (demo.presidente, demo.diputado, demo.alcalde, demo.representante, demo.secretaria).</span>`;
+    return;
+  }
 
   if (!email || !rol) { msg.innerHTML = `<span class="val-error">Completa correo y nivel.</span>`; return; }
 
@@ -2545,7 +2643,7 @@ async function subirImport() {
   btn.disabled = true; btn.textContent = "Subiendo…";
   barra.classList.remove("hidden");
 
-  let filas = importFilas;
+  let filas = importFilas.map(f => ({ ...f, es_demo: ES_DEMO }));
 
   // adherentes: resolver / crear el partido y adjuntar partido_id
   if (importTabla === "afiliaciones") {
@@ -2554,7 +2652,7 @@ async function subirImport() {
     let { data: pRow } = await sb.from("partidos").select("id").eq("siglas", siglas).maybeSingle();
     if (!pRow) {
       const { data: nuevo, error } = await sb.from("partidos")
-        .insert({ siglas, nombre: siglas }).select("id").single();
+        .insert({ siglas, nombre: siglas, es_demo: ES_DEMO }).select("id").single();
       if (error) { msg.textContent = "No se pudo crear el partido: " + error.message; btn.disabled = false; btn.textContent = "Subir al sistema"; return; }
       pRow = nuevo;
     }

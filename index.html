@@ -327,12 +327,16 @@
   #mapa {
     height: calc(100vh - var(--topbar-h) - 150px);
     min-height: 360px;
+    max-width: 100%;
     border-radius: 10px;
     border: 1px solid var(--borde);
     margin-bottom: 14px;
+    background: #eef1f6;
     position: relative;
     z-index: 0;               /* contiene los z-index internos de Leaflet bajo la barra superior */
   }
+  /* la máscara "mundo con agujeros": los agujeros recortan el mapa base */
+  path.area-mascara { fill-rule: evenodd; }
   .mapa-leyenda {
     display: flex; gap: 14px; flex-wrap: wrap;
     font-size: 0.78rem; color: var(--texto-suave);
@@ -1299,14 +1303,19 @@ const COLOR_RUTA = "#f5b700"; // resalte dorado para pines agregados a la ruta
 
 const GUALACA_CENTRO = [8.5333, -82.2986]; // centro aproximado del distrito de Gualaca, Chiriquí
 
+const MIN_ZOOM_DEFAULT = 6;
+
 function inicializarMapa() {
   if (leafletMap) { leafletMap.invalidateSize(); return; }
-  leafletMap = L.map("mapa").setView(GUALACA_CENTRO, 12);
+  leafletMap = L.map("mapa", { minZoom: MIN_ZOOM_DEFAULT }).setView(GUALACA_CENTRO, 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     crossOrigin: true,           // necesario para exportar el mapa a imagen/PDF
     attribution: "&copy; OpenStreetMap",
   }).addTo(leafletMap);
+  leafletMap.createPane("mascara");
+  leafletMap.getPane("mascara").style.zIndex = 350;
+  leafletMap.getPane("mascara").style.pointerEvents = "none";
   capaMarcadores = L.featureGroup().addTo(leafletMap);
   initMapaHerramientas();
 }
@@ -1364,12 +1373,14 @@ async function cargarMapa() {
     });
 
     marker.addTo(capaMarcadores);
-    marcadoresPorCedula[r.cedula] = { marker, colorBase, marcado };
+    marcadoresPorCedula[r.cedula] = { marker, colorBase, marcado, lat: r.latitud, lng: r.longitud };
     aplicarEstiloRuta(r.cedula);
     bounds.push([r.latitud, r.longitud]);
   });
 
-  if (bounds.length > 0) {
+  if (areaActiva && areaRingsActual) {
+    filtrarMarcadoresArea(areaRingsActual);
+  } else if (bounds.length > 0) {
     leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
   }
 }
@@ -1505,14 +1516,83 @@ document.getElementById("btn-ordenar-ruta").addEventListener("click", () => {
 // ============================================================
 let marcadorBusqueda = null;
 let capaArea = null;
+let capaMascara = null;
 let areaActiva = null;          // { tipo, titulo, subtitulo, slug }
+let areaRingsActual = null;     // anillos exteriores [lat,lng] del área activa (para filtrar pines)
 const areaGeoCache = {};
 let distritosIndex = null;      // [{id, provincia, distrito, corregimientos:[...]}]
 let distritoGeoActual = null;   // FeatureCollection del distrito seleccionado
 let distritoMetaActual = null;  // {id, provincia, distrito, ...}
 let mapaHerramientasInit = false;
 
-const AREA_STYLE = { color: "#0b3d91", weight: 2, fillColor: "#1a56c4", fillOpacity: 0.08 };
+const AREA_STYLE = { color: "#0b3d91", weight: 2.5, fill: false };
+const MASCARA_STYLE = { className: "area-mascara", stroke: false, fillColor: "#eef1f6", fillOpacity: 1, pane: "mascara", interactive: false };
+const MUNDO = [[-85, -200], [-85, 200], [85, 200], [85, -200]];
+
+// GeoJSON -> anillos exteriores en [lat,lng]
+function ringsLatLng(geo) {
+  const out = [];
+  const feats = geo.type === "FeatureCollection" ? geo.features : [geo];
+  feats.forEach(f => {
+    const g = f.geometry || f;
+    const polys = g.type === "MultiPolygon" ? g.coordinates
+                : g.type === "Polygon" ? [g.coordinates] : [];
+    polys.forEach(rings => out.push(rings[0].map(c => [c[1], c[0]])));
+  });
+  return out;
+}
+
+function puntoEnAnillo(lat, lng, ring) {
+  let dentro = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const yi = ring[i][0], xi = ring[i][1], yj = ring[j][0], xj = ring[j][1];
+    if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) dentro = !dentro;
+  }
+  return dentro;
+}
+function puntoEnArea(lat, lng, rings) {
+  return rings.some(r => puntoEnAnillo(lat, lng, r));
+}
+
+function filtrarMarcadoresArea(rings) {
+  Object.values(marcadoresPorCedula).forEach(info => {
+    const visible = !rings || puntoEnArea(info.lat, info.lng, rings);
+    if (visible && !capaMarcadores.hasLayer(info.marker)) capaMarcadores.addLayer(info.marker);
+    if (!visible && capaMarcadores.hasLayer(info.marker)) capaMarcadores.removeLayer(info.marker);
+  });
+}
+
+// Ajusta el tamaño de la caja del mapa a la forma (proporción) del área
+function ajustarCajaMapa(bounds) {
+  const el = document.getElementById("mapa");
+  if (!bounds) {
+    el.style.width = ""; el.style.height = ""; el.style.margin = "";
+    setTimeout(() => leafletMap && leafletMap.invalidateSize(), 40);
+    return;
+  }
+  const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+  const midLat = (sw.lat + ne.lat) / 2;
+  const w = Math.abs(ne.lng - sw.lng) * Math.cos(midLat * Math.PI / 180);
+  const h = Math.abs(ne.lat - sw.lat) || 0.0001;
+  const ratio = Math.max(0.62, Math.min(2.4, w / h));   // ancho/alto encuadrado
+  const topbarH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h")) || 140;
+  const maxW = Math.min(1150, (el.parentElement.clientWidth || 1150));
+  const maxH = Math.max(420, window.innerHeight - topbarH - 200);
+  let width = maxW, height = width / ratio;
+  if (height > maxH) { height = maxH; width = Math.max(500, Math.round(height * ratio)); }
+  width = Math.min(width, maxW);
+  el.style.width = Math.round(width) + "px";
+  el.style.height = Math.round(height) + "px";
+  el.style.margin = "0 auto 14px";
+  setTimeout(() => {
+    leafletMap.setMinZoom(MIN_ZOOM_DEFAULT);
+    leafletMap.setMaxBounds(null);
+    leafletMap.invalidateSize();
+    leafletMap.fitBounds(bounds, { padding: [22, 22] });
+    leafletMap.setMaxBounds(bounds.pad(0.35));
+    leafletMap.setMinZoom(Math.max(MIN_ZOOM_DEFAULT, leafletMap.getZoom() - 1));
+  }, 60);
+}
 
 async function initMapaHerramientas() {
   if (mapaHerramientasInit) return;
@@ -1578,18 +1658,35 @@ function resetCorregimientoSel() {
 
 function limpiarArea() {
   if (capaArea) { leafletMap.removeLayer(capaArea); capaArea = null; }
+  if (capaMascara) { leafletMap.removeLayer(capaMascara); capaMascara = null; }
   areaActiva = null;
+  areaRingsActual = null;
+  leafletMap.setMaxBounds(null);
+  leafletMap.setMinZoom(MIN_ZOOM_DEFAULT);
+  filtrarMarcadoresArea(null);
+  ajustarCajaMapa(null);
   document.getElementById("circuito-info").classList.add("hidden");
 }
 
 function pintarArea(geo, titulo, subtitulo, tipo, slug) {
   if (capaArea) { leafletMap.removeLayer(capaArea); capaArea = null; }
+  if (capaMascara) { leafletMap.removeLayer(capaMascara); capaMascara = null; }
+
+  const rings = ringsLatLng(geo);
+  areaRingsActual = rings;
+
+  // máscara: mundo entero opaco con "agujeros" en el área -> recorte total
+  capaMascara = L.polygon([MUNDO, ...rings], MASCARA_STYLE).addTo(leafletMap);
+  // contorno del área encima
   capaArea = L.geoJSON(geo, { style: AREA_STYLE }).addTo(leafletMap);
-  try { leafletMap.fitBounds(capaArea.getBounds(), { padding: [20, 20] }); } catch (e) {}
+
   areaActiva = { tipo, titulo, subtitulo, slug };
   const info = document.getElementById("circuito-info");
   info.textContent = subtitulo ? `${titulo} · ${subtitulo}` : titulo;
   info.classList.remove("hidden");
+
+  filtrarMarcadoresArea(rings);
+  try { ajustarCajaMapa(capaArea.getBounds()); } catch (e) { console.error(e); }
 }
 
 async function mostrarCircuito(codigo) {

@@ -1300,6 +1300,7 @@ document.getElementById("modal-guardar").addEventListener("click", async () => {
     }
     cerrarModal();
     buscar();
+    if (leafletMap && !document.getElementById("vista-mapa").classList.contains("hidden")) cargarMapa();
   } catch (err) {
     modalMsg.innerHTML = `<div class="msg error">${err.message}</div>`;
   } finally {
@@ -1338,25 +1339,39 @@ function inicializarMapa() {
   });
   document.getElementById("mapa").appendChild(overlayMapa);
   leafletMap.on("move zoom moveend zoomend resize viewreset", pintarOverlay);
+  leafletMap.on("zoomend", refrescarRadios);
+  // el recorte estorba mientras se lee/edita un popup: se atenúa
+  leafletMap.on("popupopen", () => { if (overlayMapa) overlayMapa.style.opacity = "0"; });
+  leafletMap.on("popupclose", () => { if (overlayMapa) overlayMapa.style.opacity = ""; });
 
   capaMarcadores = L.featureGroup().addTo(leafletMap);
   initMapaHerramientas();
 }
 
-const RADIO_PIN = 3.2;          // pines chicos para distinguir partidos aún saturados
-const RADIO_PIN_MARCADO = 4;
+// Radio del pin según el zoom: chico de lejos, más grande (y clickeable) de cerca.
+function radioSegunZoom(marcado, z) {
+  z = (z == null && leafletMap) ? leafletMap.getZoom() : (z == null ? 12 : z);
+  const base = Math.max(3.2, Math.min(10, 3.2 + (z - 11) * 1.15));
+  return marcado ? base + 1.2 : base;
+}
+
+function refrescarRadios() {
+  Object.keys(marcadoresPorCedula).forEach(aplicarEstiloRuta);
+  pintarOverlay();
+}
 
 function dibujarPunto(ctx, x, y, info, k) {
+  const r = radioSegunZoom(info.marcado);
   ctx.beginPath();
-  ctx.arc(x, y, (info.marcado ? RADIO_PIN_MARCADO : RADIO_PIN) * k, 0, Math.PI * 2);
+  ctx.arc(x, y, r * k, 0, Math.PI * 2);
   ctx.globalAlpha = 0.95; ctx.fillStyle = info.colorBase; ctx.fill(); ctx.globalAlpha = 1;
   ctx.lineWidth = (info.marcado ? 1.6 : 0.8) * k;
   ctx.strokeStyle = info.marcado ? "#1c2333" : "#ffffff"; ctx.stroke();
 }
 
-// Dibuja el recorte (gris por fuera + contorno + puntos) en cualquier contexto 2D.
-// `k` = factor de escala; `proj(latlng)` -> {x,y} en píxeles de contenedor (sin escalar).
-function dibujarRecorte(ctx, W, H, k, proj) {
+// Dibuja el recorte (gris por fuera + contorno) en cualquier contexto 2D.
+// `conPuntos` = true solo para el PDF (en pantalla los pines son marcadores reales clickeables).
+function dibujarRecorte(ctx, W, H, k, proj, conPuntos) {
   if (!areaRingsActual) return;
   const trazar = () => areaRingsActual.forEach(ring => {
     ring.forEach((c, i) => {
@@ -1371,11 +1386,13 @@ function dibujarRecorte(ctx, W, H, k, proj) {
   ctx.fill("evenodd");                       // gris en todo menos los agujeros del área
   ctx.beginPath(); trazar();
   ctx.strokeStyle = "#0b3d91"; ctx.lineWidth = Math.max(2, 2.5 * k); ctx.stroke();
-  Object.values(marcadoresPorCedula).forEach(info => {
-    if (!puntoEnArea(info.lat, info.lng, areaRingsActual)) return;
-    const p = proj([info.lat, info.lng]);
-    dibujarPunto(ctx, p.x * k, p.y * k, info, k);
-  });
+  if (conPuntos) {
+    Object.values(marcadoresPorCedula).forEach(info => {
+      if (!puntoEnArea(info.lat, info.lng, areaRingsActual)) return;
+      const p = proj([info.lat, info.lng]);
+      dibujarPunto(ctx, p.x * k, p.y * k, info, k);
+    });
+  }
   ctx.restore();
 }
 
@@ -1451,7 +1468,7 @@ async function cargarMapa() {
 
   const { data, error } = await sb
     .from("electores_con_partido")
-    .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, nota_fecha")
+    .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, nota_fecha, nota_actualizado_por")
     .not("latitud", "is", null)
     .not("longitud", "is", null);
 
@@ -1466,7 +1483,7 @@ async function cargarMapa() {
     const colorBase = colorPorPartido(r.partido_siglas);
     const marcado = !!r.estado_nota;
     const marker = L.circleMarker([r.latitud, r.longitud], {
-      radius: marcado ? 4 : 3.2,
+      radius: radioSegunZoom(marcado),
       color: marcado ? "#1c2333" : "#ffffff",
       weight: marcado ? 1.6 : 0.8,
       fillColor: colorBase,
@@ -1475,18 +1492,15 @@ async function cargarMapa() {
 
     marker.bindPopup(() => construirPopupHtml(r));
     marker.on("popupopen", (e) => {
-      const btn = e.popup.getElement().querySelector(".btn-ruta");
-      if (btn) btn.addEventListener("click", () => {
-        toggleRuta({ cedula: r.cedula, nombre: r.nombre_completo, lat: r.latitud, lng: r.longitud });
-        e.popup.setContent(construirPopupHtml(r));
-        // re-conectar el botón del popup actualizado
-        setTimeout(() => {
-          const nuevoBtn = e.popup.getElement().querySelector(".btn-ruta");
-          if (nuevoBtn) nuevoBtn.addEventListener("click", () => {
-            toggleRuta({ cedula: r.cedula, nombre: r.nombre_completo, lat: r.latitud, lng: r.longitud });
-            e.popup.setContent(construirPopupHtml(r));
-          });
-        }, 0);
+      const el = e.popup.getElement();
+      el.addEventListener("click", (ev) => {
+        if (ev.target.classList.contains("btn-marcar-mapa")) {
+          abrirModal(r);
+          leafletMap.closePopup();
+        } else if (ev.target.classList.contains("btn-ruta")) {
+          toggleRuta({ cedula: r.cedula, nombre: r.nombre_completo, lat: r.latitud, lng: r.longitud });
+          e.popup.setContent(construirPopupHtml(r));
+        }
       });
     });
 
@@ -1497,7 +1511,7 @@ async function cargarMapa() {
   });
 
   if (areaActiva && areaRingsActual) {
-    if (leafletMap.hasLayer(capaMarcadores)) leafletMap.removeLayer(capaMarcadores);
+    filtrarMarcadoresArea(areaRingsActual);
     pintarOverlay();
   } else if (bounds.length > 0) {
     leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
@@ -1525,6 +1539,7 @@ function construirPopupHtml(r) {
       <br><button class="btn-ruta ${yaEnRuta ? "en-ruta" : ""}" data-cedula="${escapeHtml(r.cedula)}">
         ${yaEnRuta ? "✓ Quitar de la ruta" : "Agregar a ruta"}
       </button>
+      <button class="btn-ruta btn-marcar-mapa" data-cedula="${escapeHtml(r.cedula)}">✏️ Marcar / Editar</button>
     </div>`;
 }
 
@@ -1534,13 +1549,16 @@ function aplicarEstiloRuta(cedula) {
   if (!info) return;
   const enRuta = rutaSeleccionados.some(p => p.cedula === cedula);
   if (enRuta) {
-    info.marker.setStyle({ color: "#1c2333", weight: 2, fillColor: COLOR_RUTA, radius: 5.5 });
+    info.marker.setStyle({
+      color: "#1c2333", weight: 2, fillColor: COLOR_RUTA,
+      radius: radioSegunZoom(info.marcado) + 2,
+    });
   } else {
     info.marker.setStyle({
       color: info.marcado ? "#1c2333" : "#ffffff",
       weight: info.marcado ? 1.6 : 0.8,
       fillColor: info.colorBase,
-      radius: info.marcado ? 4 : 3.2,
+      radius: radioSegunZoom(info.marcado),
     });
   }
 }
@@ -1673,6 +1691,15 @@ function puntoEnArea(lat, lng, rings) {
   return rings.some(r => puntoEnAnillo(lat, lng, r));
 }
 
+// Con área activa: solo se muestran los pines reales que caen dentro del área.
+function filtrarMarcadoresArea(rings) {
+  Object.values(marcadoresPorCedula).forEach(info => {
+    const visible = !rings || puntoEnArea(info.lat, info.lng, rings);
+    if (visible && !capaMarcadores.hasLayer(info.marker)) capaMarcadores.addLayer(info.marker);
+    if (!visible && capaMarcadores.hasLayer(info.marker)) capaMarcadores.removeLayer(info.marker);
+  });
+}
+
 
 // Ajusta el tamaño de la caja del mapa a la forma (proporción) del área
 function ajustarCajaMapa(bounds) {
@@ -1786,6 +1813,7 @@ function limpiarArea() {
   leafletMap.setMaxBounds(null);
   leafletMap.setMinZoom(MIN_ZOOM_DEFAULT);
   if (!leafletMap.hasLayer(capaMarcadores)) capaMarcadores.addTo(leafletMap);
+  filtrarMarcadoresArea(null);
   statsAreaActual = null;
   pintarOverlay();
   ajustarCajaMapa(null);
@@ -1801,8 +1829,9 @@ function pintarArea(geo, titulo, subtitulo, tipo, slug, valor) {
   info.textContent = subtitulo ? `${titulo} · ${subtitulo}` : titulo;
   info.classList.remove("hidden");
 
-  // los pines "reales" de Leaflet se ocultan; se dibujan como puntos en el canvas propio
-  if (leafletMap.hasLayer(capaMarcadores)) leafletMap.removeLayer(capaMarcadores);
+  // solo se muestran los pines reales (clickeables) que caen dentro del área
+  if (!leafletMap.hasLayer(capaMarcadores)) capaMarcadores.addTo(leafletMap);
+  filtrarMarcadoresArea(areaRingsActual);
 
   try { ajustarCajaMapa(boundsDeRings(areaRingsActual)); } catch (e) { console.error(e); }
   pintarOverlay();
@@ -2008,7 +2037,7 @@ async function exportarMapaPDF() {
     const canvas = await capturarMapaCanvas(ESC);
     const proj = (ll) => leafletMap.latLngToContainerPoint(ll);
     if (areaRingsActual) {
-      dibujarRecorte(canvas.getContext("2d"), canvas.width, canvas.height, ESC, proj);
+      dibujarRecorte(canvas.getContext("2d"), canvas.width, canvas.height, ESC, proj, true);
     } else {
       dibujarPines(canvas.getContext("2d"), ESC, proj);
     }

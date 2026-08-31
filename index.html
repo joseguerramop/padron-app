@@ -336,10 +336,19 @@
     z-index: 0;               /* contiene los z-index internos de Leaflet bajo la barra superior */
   }
   .mapa-leyenda {
-    display: flex; gap: 14px; flex-wrap: wrap;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
     font-size: 0.78rem; color: var(--texto-suave);
     margin-bottom: 10px;
   }
+  .mapa-leyenda .ley-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1px solid var(--borde); background: white; border-radius: 100px;
+    padding: 3px 10px; font-size: 0.78rem; color: var(--texto);
+    cursor: pointer; font-family: inherit; line-height: 1.4;
+  }
+  .mapa-leyenda .ley-chip:hover { background: #eef4ff; border-color: var(--azul-claro); }
+  .mapa-leyenda .ley-chip.apagado { opacity: 0.4; text-decoration: line-through; }
+  .mapa-leyenda .ley-nota { display: inline-flex; align-items: center; gap: 5px; margin-left: 4px; }
   .mapa-herramientas {
     display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
     background: var(--tarjeta); border: 1px solid var(--borde);
@@ -1450,7 +1459,7 @@ function dibujarRecorte(ctx, W, H, k, proj, conPuntos) {
   ctx.strokeStyle = "#0b3d91"; ctx.lineWidth = Math.max(2, 2.5 * k); ctx.stroke();
   if (conPuntos) {
     Object.values(marcadoresPorCedula).forEach(info => {
-      if (!puntoEnArea(info.lat, info.lng, areaRingsActual)) return;
+      if (!marcadorVisible(info)) return;
       const p = proj([info.lat, info.lng]);
       dibujarPunto(ctx, p.x * k, p.y * k, info, k);
     });
@@ -1472,6 +1481,7 @@ function pintarOverlay() {
 // Dibuja todos los pines de personas (para el PDF sin área seleccionada).
 function dibujarPines(ctx, k, proj) {
   Object.values(marcadoresPorCedula).forEach(info => {
+    if (!marcadorVisible(info)) return;
     const p = proj([info.lat, info.lng]);
     dibujarPunto(ctx, p.x * k, p.y * k, info, k);
   });
@@ -1533,15 +1543,21 @@ async function cargarMapa() {
   capaMarcadores.clearLayers();
   marcadoresPorCedula = {};
 
-  const { data, error } = await sb
-    .from("electores_con_partido")
-    .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, nota_fecha, nota_actualizado_por")
-    .not("latitud", "is", null)
-    .not("longitud", "is", null);
-
-  if (error) {
-    console.error(error);
-    return;
+  // PostgREST devuelve como máximo ~1000 filas por request → paginar para no perder pines
+  const data = [];
+  let desde = 0;
+  while (true) {
+    const { data: pagina, error } = await sb
+      .from("electores_con_partido")
+      .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, nota_fecha, nota_actualizado_por")
+      .not("latitud", "is", null)
+      .not("longitud", "is", null)
+      .order("cedula", { ascending: true })
+      .range(desde, desde + 999);
+    if (error) { console.error(error); break; }
+    data.push(...(pagina || []));
+    if (!pagina || pagina.length < 1000) break;
+    desde += 1000;
   }
 
   const bounds = [];
@@ -1572,32 +1588,71 @@ async function cargarMapa() {
     });
 
     marker.addTo(capaMarcadores);
-    marcadoresPorCedula[r.cedula] = { marker, colorBase, marcado, lat: r.latitud, lng: r.longitud };
+    marcadoresPorCedula[r.cedula] = { marker, colorBase, marcado, lat: r.latitud, lng: r.longitud, siglas: r.partido_siglas || null };
     aplicarEstiloRuta(r.cedula);
     bounds.push([r.latitud, r.longitud]);
   });
 
   actualizarLeyendaPartidos(data);
+  refiltrarMarcadores();
 
   if (areaActiva && areaRingsActual) {
-    filtrarMarcadoresArea(areaRingsActual);
     pintarOverlay();
   } else if (bounds.length > 0) {
     leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
   }
 }
 
-// Reconstruye la leyenda del mapa con los partidos que realmente aparecen en los pines.
+// Partidos ocultos en el mapa (por clic en la leyenda). Clave: siglas o "__sin".
+let partidosOcultos = new Set();
+
+// ¿Este marcador debe verse? Compone el filtro de área + los partidos ocultos.
+function marcadorVisible(info) {
+  if (areaRingsActual && !puntoEnArea(info.lat, info.lng, areaRingsActual)) return false;
+  if (partidosOcultos.has(info.siglas || "__sin")) return false;
+  return true;
+}
+
+// Aplica área + partidos ocultos a todos los marcadores reales del mapa.
+function refiltrarMarcadores() {
+  if (!capaMarcadores) return;
+  Object.values(marcadoresPorCedula).forEach(info => {
+    const v = marcadorVisible(info);
+    if (v && !capaMarcadores.hasLayer(info.marker)) capaMarcadores.addLayer(info.marker);
+    if (!v && capaMarcadores.hasLayer(info.marker)) capaMarcadores.removeLayer(info.marker);
+  });
+  pintarOverlay();
+}
+
+// Reconstruye la leyenda del mapa; cada partido es un botón que muestra/oculta sus pines.
 function actualizarLeyendaPartidos(data) {
   const ley = document.getElementById("mapa-leyenda");
   if (!ley) return;
   const siglas = [...new Set(data.map(r => r.partido_siglas).filter(Boolean))].sort();
-  const chips = siglas.map(s =>
-    `<span><span class="dot" style="background:${colorPorPartido(s)}"></span> ${s}</span>`
-  ).join("");
-  ley.innerHTML = chips +
-    `<span><span class="dot dot-sinpartido"></span> Sin partido</span>` +
-    `<span><span class="dot dot-marcado"></span> Borde oscuro = fallecido / no vive aquí / cambio de residencia</span>`;
+  const haySinPartido = data.some(r => !r.partido_siglas);
+  ley.innerHTML = "";
+
+  const chip = (clave, etiqueta, color) => {
+    const b = document.createElement("button");
+    b.className = "ley-chip" + (partidosOcultos.has(clave) ? " apagado" : "");
+    b.innerHTML = `<span class="dot" style="background:${color}"></span>${escapeHtml(etiqueta)}`;
+    b.title = "Clic para mostrar u ocultar en el mapa";
+    b.addEventListener("click", () => {
+      if (partidosOcultos.has(clave)) partidosOcultos.delete(clave);
+      else partidosOcultos.add(clave);
+      b.classList.toggle("apagado");
+      refiltrarMarcadores();
+    });
+    ley.appendChild(b);
+  };
+
+  siglas.forEach(s => chip(s, s, colorPorPartido(s)));
+  if (haySinPartido) chip("__sin", "Sin partido", "#1a56c4");
+
+  const nota = document.createElement("span");
+  nota.className = "ley-nota";
+  nota.innerHTML = `<span class="dot dot-marcado"></span> Borde oscuro = fallecido / no vive aquí / cambio de residencia`;
+  ley.appendChild(nota);
 }
 
 const ESTADO_LABEL = {
@@ -1773,14 +1828,6 @@ function puntoEnArea(lat, lng, rings) {
   return rings.some(r => puntoEnAnillo(lat, lng, r));
 }
 
-// Con área activa: solo se muestran los pines reales que caen dentro del área.
-function filtrarMarcadoresArea(rings) {
-  Object.values(marcadoresPorCedula).forEach(info => {
-    const visible = !rings || puntoEnArea(info.lat, info.lng, rings);
-    if (visible && !capaMarcadores.hasLayer(info.marker)) capaMarcadores.addLayer(info.marker);
-    if (!visible && capaMarcadores.hasLayer(info.marker)) capaMarcadores.removeLayer(info.marker);
-  });
-}
 
 
 // Ajusta el tamaño de la caja del mapa a la forma (proporción) del área
@@ -1895,7 +1942,7 @@ function limpiarArea() {
   leafletMap.setMaxBounds(null);
   leafletMap.setMinZoom(MIN_ZOOM_DEFAULT);
   if (!leafletMap.hasLayer(capaMarcadores)) capaMarcadores.addTo(leafletMap);
-  filtrarMarcadoresArea(null);
+  refiltrarMarcadores();
   statsAreaActual = null;
   pintarOverlay();
   ajustarCajaMapa(null);
@@ -1913,7 +1960,7 @@ function pintarArea(geo, titulo, subtitulo, tipo, slug, valor) {
 
   // solo se muestran los pines reales (clickeables) que caen dentro del área
   if (!leafletMap.hasLayer(capaMarcadores)) capaMarcadores.addTo(leafletMap);
-  filtrarMarcadoresArea(areaRingsActual);
+  refiltrarMarcadores();
 
   try { ajustarCajaMapa(boundsDeRings(areaRingsActual)); } catch (e) { console.error(e); }
   pintarOverlay();

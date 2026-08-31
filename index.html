@@ -330,6 +330,8 @@
     border-radius: 10px;
     border: 1px solid var(--borde);
     margin-bottom: 14px;
+    position: relative;
+    z-index: 0;               /* contiene los z-index internos de Leaflet bajo la barra superior */
   }
   .mapa-leyenda {
     display: flex; gap: 14px; flex-wrap: wrap;
@@ -348,7 +350,8 @@
   }
   .mapa-herramientas input[type=text], .mapa-herramientas select {
     padding: 8px 10px; border: 1px solid var(--borde); border-radius: 7px;
-    font-size: 0.88rem; background: white; color: var(--texto); min-width: 200px;
+    font-size: 0.88rem; background: white; color: var(--texto);
+    min-width: 170px; max-width: 230px;
   }
   .mapa-herramientas button {
     padding: 8px 14px; border: 1px solid var(--azul-claro); background: var(--azul);
@@ -639,6 +642,14 @@
         <div class="campo">
           <label>Circuito electoral</label>
           <select id="mapa-circuito"><option value="">— Ninguno —</option></select>
+        </div>
+        <div class="campo">
+          <label>Distrito</label>
+          <select id="mapa-distrito"><option value="">— Ninguno —</option></select>
+        </div>
+        <div class="campo">
+          <label>Corregimiento</label>
+          <select id="mapa-corregimiento" disabled><option value="">— Elige un distrito —</option></select>
         </div>
         <div class="campo">
           <button id="mapa-pdf-btn" class="sec">🧾 Exportar PDF</button>
@@ -1490,30 +1501,62 @@ document.getElementById("btn-ordenar-ruta").addEventListener("click", () => {
 });
 
 // ============================================================
-// ============  MAPA: buscar lugar / circuito / PDF  ==========
+// ====  MAPA: buscar lugar / circuito-distrito-corregimiento / PDF  ====
 // ============================================================
 let marcadorBusqueda = null;
-let capaCircuito = null;
-let circuitoActivo = null;      // { codigo, provincia, descripcion, diputados_a_elegir, poblacion_electores_2022 }
-const circuitoGeoCache = {};
+let capaArea = null;
+let areaActiva = null;          // { tipo, titulo, subtitulo, slug }
+const areaGeoCache = {};
+let distritosIndex = null;      // [{id, provincia, distrito, corregimientos:[...]}]
+let distritoGeoActual = null;   // FeatureCollection del distrito seleccionado
+let distritoMetaActual = null;  // {id, provincia, distrito, ...}
 let mapaHerramientasInit = false;
+
+const AREA_STYLE = { color: "#0b3d91", weight: 2, fillColor: "#1a56c4", fillOpacity: 0.08 };
 
 async function initMapaHerramientas() {
   if (mapaHerramientasInit) return;
   mapaHerramientasInit = true;
 
+  const selC = document.getElementById("mapa-circuito");
+  const selD = document.getElementById("mapa-distrito");
+  const selCorr = document.getElementById("mapa-corregimiento");
+
   // ---- selector de circuito ----
-  const sel = document.getElementById("mapa-circuito");
   try {
     const idx = await fetch("circuitos/index.json").then(r => r.json());
     idx.forEach(c => {
       const o = document.createElement("option");
       o.value = c.codigo;
       o.textContent = `${c.codigo} · ${c.provincia} — ${c.descripcion}`;
-      sel.appendChild(o);
+      selC.appendChild(o);
     });
   } catch (e) { console.error("index de circuitos", e); }
-  sel.addEventListener("change", () => mostrarCircuito(sel.value));
+  selC.addEventListener("change", () => {
+    if (selC.value) { selD.value = ""; resetCorregimientoSel(); }
+    mostrarCircuito(selC.value);
+  });
+
+  // ---- selector de distrito ----
+  try {
+    distritosIndex = await fetch("distritos/index.json").then(r => r.json());
+    distritosIndex
+      .slice()
+      .sort((a, b) => (a.provincia + a.distrito).localeCompare(b.provincia + b.distrito, "es"))
+      .forEach(d => {
+        const o = document.createElement("option");
+        o.value = d.id;
+        o.textContent = `${d.provincia} — ${d.distrito}`;
+        selD.appendChild(o);
+      });
+  } catch (e) { console.error("index de distritos", e); }
+  selD.addEventListener("change", () => {
+    if (selD.value) selC.value = "";
+    mostrarDistrito(selD.value);
+  });
+
+  // ---- selector de corregimiento ----
+  selCorr.addEventListener("change", () => mostrarCorregimiento(selCorr.value));
 
   // ---- buscar lugar ----
   document.getElementById("mapa-buscar-btn").addEventListener("click", buscarLugar);
@@ -1525,33 +1568,96 @@ async function initMapaHerramientas() {
   document.getElementById("mapa-pdf-btn").addEventListener("click", exportarMapaPDF);
 }
 
-async function mostrarCircuito(codigo) {
-  const info = document.getElementById("circuito-info");
-  if (capaCircuito) { leafletMap.removeLayer(capaCircuito); capaCircuito = null; }
-  circuitoActivo = null;
-  if (!codigo) { info.classList.add("hidden"); return; }
+function resetCorregimientoSel() {
+  const s = document.getElementById("mapa-corregimiento");
+  s.innerHTML = '<option value="">— Elige un distrito —</option>';
+  s.disabled = true;
+  distritoGeoActual = null;
+  distritoMetaActual = null;
+}
 
+function limpiarArea() {
+  if (capaArea) { leafletMap.removeLayer(capaArea); capaArea = null; }
+  areaActiva = null;
+  document.getElementById("circuito-info").classList.add("hidden");
+}
+
+function pintarArea(geo, titulo, subtitulo, tipo, slug) {
+  if (capaArea) { leafletMap.removeLayer(capaArea); capaArea = null; }
+  capaArea = L.geoJSON(geo, { style: AREA_STYLE }).addTo(leafletMap);
+  try { leafletMap.fitBounds(capaArea.getBounds(), { padding: [20, 20] }); } catch (e) {}
+  areaActiva = { tipo, titulo, subtitulo, slug };
+  const info = document.getElementById("circuito-info");
+  info.textContent = subtitulo ? `${titulo} · ${subtitulo}` : titulo;
+  info.classList.remove("hidden");
+}
+
+async function mostrarCircuito(codigo) {
+  limpiarArea();
+  if (!codigo) return;
   try {
-    let geo = circuitoGeoCache[codigo];
-    if (!geo) {
-      geo = await fetch(`circuitos/${codigo}.geojson`).then(r => r.json());
-      circuitoGeoCache[codigo] = geo;
-    }
-    circuitoActivo = geo.features[0].properties;
-    capaCircuito = L.geoJSON(geo, {
-      style: { color: "#0b3d91", weight: 2, fillColor: "#1a56c4", fillOpacity: 0.08 },
-    }).addTo(leafletMap);
-    leafletMap.fitBounds(capaCircuito.getBounds(), { padding: [20, 20] });
-    const p = circuitoActivo;
-    info.textContent = `Circuito ${p.codigo} · ${p.descripcion} · ` +
-      `${p.diputados_a_elegir} ${p.diputados_a_elegir === 1 ? "diputado" : "diputados"} · ` +
+    const key = "c:" + codigo;
+    let geo = areaGeoCache[key];
+    if (!geo) { geo = await fetch(`circuitos/${codigo}.geojson`).then(r => r.json()); areaGeoCache[key] = geo; }
+    const p = geo.features[0].properties;
+    const sub = `${p.descripcion} · ${p.diputados_a_elegir} ` +
+      `${p.diputados_a_elegir === 1 ? "diputado" : "diputados"} · ` +
       `${Number(p.poblacion_electores_2022).toLocaleString("es-PA")} electores (2022)`;
-    info.classList.remove("hidden");
-  } catch (e) {
-    info.textContent = "No se pudo cargar el área del circuito.";
-    info.classList.remove("hidden");
-    console.error(e);
+    pintarArea(geo, `Circuito electoral ${p.codigo}`, sub, "circuito", p.codigo);
+  } catch (e) { areaError(e); }
+}
+
+async function mostrarDistrito(id) {
+  limpiarArea();
+  resetCorregimientoSel();
+  if (!id) return;
+  try {
+    const key = "d:" + id;
+    let geo = areaGeoCache[key];
+    if (!geo) { geo = await fetch(`distritos/${id}.geojson`).then(r => r.json()); areaGeoCache[key] = geo; }
+    distritoGeoActual = geo;
+    const meta = (distritosIndex || []).find(d => d.id === id) || {};
+    distritoMetaActual = meta;
+    // poblar corregimientos
+    const selCorr = document.getElementById("mapa-corregimiento");
+    selCorr.innerHTML = '<option value="">— Todo el distrito —</option>';
+    geo.features
+      .map(f => f.properties.corregimiento)
+      .sort((a, b) => a.localeCompare(b, "es"))
+      .forEach(nombre => {
+        const o = document.createElement("option");
+        o.value = nombre; o.textContent = nombre;
+        selCorr.appendChild(o);
+      });
+    selCorr.disabled = false;
+    pintarArea(geo, `Distrito de ${meta.distrito || ""}`,
+      `${meta.provincia || ""} · ${geo.features.length} corregimientos`, "distrito",
+      "dist-" + id);
+  } catch (e) { areaError(e); }
+}
+
+function mostrarCorregimiento(nombre) {
+  if (!distritoGeoActual) return;
+  if (!nombre) {
+    const m = distritoMetaActual || {};
+    pintarArea(distritoGeoActual, `Distrito de ${m.distrito || ""}`,
+      `${m.provincia || ""} · ${distritoGeoActual.features.length} corregimientos`, "distrito",
+      "dist-" + (m.id || ""));
+    return;
   }
+  const feat = distritoGeoActual.features.find(f => f.properties.corregimiento === nombre);
+  if (!feat) return;
+  const p = feat.properties;
+  pintarArea({ type: "FeatureCollection", features: [feat] },
+    `Corregimiento ${p.corregimiento}`, `Distrito de ${p.distrito} · ${p.provincia}`,
+    "corregimiento", "corr-" + p.corregimiento.replace(/\s+/g, "_"));
+}
+
+function areaError(e) {
+  const info = document.getElementById("circuito-info");
+  info.textContent = "No se pudo cargar el área.";
+  info.classList.remove("hidden");
+  console.error(e);
 }
 
 async function buscarLugar() {
@@ -1612,17 +1718,10 @@ async function exportarMapaPDF() {
 
       // encabezado
       pdf.setFontSize(15); pdf.setTextColor(11, 61, 145);
-      const titulo = circuitoActivo
-        ? `Circuito electoral ${circuitoActivo.codigo} — ${circuitoActivo.provincia}`
-        : "Mapa de recorrido — Padrón Gualaca";
+      const titulo = areaActiva ? areaActiva.titulo : "Mapa de recorrido — Padrón Gualaca";
       pdf.text(titulo, margin, margin + 4);
       pdf.setFontSize(9); pdf.setTextColor(90, 100, 114);
-      let sub = "";
-      if (circuitoActivo) {
-        sub = `${circuitoActivo.descripcion} · ${circuitoActivo.diputados_a_elegir} ` +
-          `${circuitoActivo.diputados_a_elegir === 1 ? "diputado" : "diputados"} · ` +
-          `${Number(circuitoActivo.poblacion_electores_2022).toLocaleString("es-PA")} electores (2022)`;
-      }
+      let sub = areaActiva && areaActiva.subtitulo ? areaActiva.subtitulo : "";
       const q = document.getElementById("mapa-buscar").value.trim();
       if (q) sub += (sub ? "  ·  " : "") + `Búsqueda: ${q}`;
       if (sub) pdf.text(sub, margin, margin + 10);
@@ -1659,9 +1758,9 @@ async function exportarMapaPDF() {
       pdf.text(`Generado ${new Date().toLocaleString("es-PA")}  ·  Mapa © OpenStreetMap`,
         margin, ph - 6);
 
-      const nombre = "mapa-" + (circuitoActivo ? circuitoActivo.codigo : "gualaca") +
-        "-" + new Date().toISOString().slice(0, 10) + ".pdf";
-      pdf.save(nombre);
+      const slug = (areaActiva && areaActiva.slug ? areaActiva.slug : "gualaca")
+        .replace(/[^\w-]+/g, "").slice(0, 40);
+      pdf.save("mapa-" + slug + "-" + new Date().toISOString().slice(0, 10) + ".pdf");
     }
   } catch (e) {
     alert("No se pudo generar el PDF: " + (e.message || e));

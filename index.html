@@ -810,9 +810,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script><script>
 const SUPABASE_URL = "https://ydedoolppdjyzxweqcex.supabase.co";
 const SUPABASE_KEY = "sb_publishable_pDxqUEcWzzOw6VGtDCddRg_g2ChE45Y";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1302,55 +1300,121 @@ const COLOR_RUTA = "#f5b700"; // resalte dorado para pines agregados a la ruta
 const GUALACA_CENTRO = [8.5333, -82.2986]; // centro aproximado del distrito de Gualaca, Chiriquí
 
 const MIN_ZOOM_DEFAULT = 6;
-let mascaraCanvas = null;
+const TILE_SUBS = ["a", "b", "c"];
+const TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+let overlayMapa = null;   // canvas propio sobre el mapa: recorte + contorno + puntos
 
 function inicializarMapa() {
   if (leafletMap) { leafletMap.invalidateSize(); return; }
-  // preferCanvas: los vectores (pines, contorno) se dibujan en <canvas>
-  // para que html2canvas los capture bien al exportar el PDF.
-  leafletMap = L.map("mapa", { minZoom: MIN_ZOOM_DEFAULT, preferCanvas: true }).setView(GUALACA_CENTRO, 12);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    crossOrigin: true,           // necesario para exportar el mapa a imagen/PDF
+  leafletMap = L.map("mapa", { minZoom: MIN_ZOOM_DEFAULT }).setView(GUALACA_CENTRO, 12);
+  L.tileLayer(TILE_URL, {
+    maxZoom: 19, subdomains: "abc",
+    crossOrigin: "anonymous",
     attribution: "&copy; OpenStreetMap",
   }).addTo(leafletMap);
 
-  // Canvas de máscara: cubre el contenedor con gris y "recorta" el área activa.
-  mascaraCanvas = document.createElement("canvas");
-  Object.assign(mascaraCanvas.style, {
-    position: "absolute", left: "0", top: "0", zIndex: "300", pointerEvents: "none",
+  // Canvas propio por encima del mapa (recorte del área + contorno + puntos).
+  overlayMapa = document.createElement("canvas");
+  Object.assign(overlayMapa.style, {
+    position: "absolute", left: "0", top: "0", zIndex: "450", pointerEvents: "none",
   });
-  document.getElementById("mapa").appendChild(mascaraCanvas);
-  leafletMap.on("move zoom zoomend moveend resize viewreset", dibujarMascara);
+  document.getElementById("mapa").appendChild(overlayMapa);
+  leafletMap.on("move zoom moveend zoomend resize viewreset", pintarOverlay);
 
   capaMarcadores = L.featureGroup().addTo(leafletMap);
   initMapaHerramientas();
 }
 
-function dibujarMascara() {
-  if (!mascaraCanvas || !leafletMap) return;
-  const size = leafletMap.getSize();
-  if (mascaraCanvas.width !== size.x || mascaraCanvas.height !== size.y) {
-    mascaraCanvas.width = size.x; mascaraCanvas.height = size.y;
-    mascaraCanvas.style.width = size.x + "px";
-    mascaraCanvas.style.height = size.y + "px";
-  }
-  const ctx = mascaraCanvas.getContext("2d");
-  ctx.clearRect(0, 0, size.x, size.y);
+// Dibuja el recorte (gris por fuera + contorno + puntos) en cualquier contexto 2D.
+// `k` = factor de escala; `proj(latlng)` -> {x,y} en píxeles de contenedor (sin escalar).
+function dibujarRecorte(ctx, W, H, k, proj) {
   if (!areaRingsActual) return;
-  ctx.fillStyle = "#eef1f6";
-  ctx.fillRect(0, 0, size.x, size.y);
-  ctx.globalCompositeOperation = "destination-out";
-  ctx.beginPath();
-  areaRingsActual.forEach(ring => {
+  const trazar = () => areaRingsActual.forEach(ring => {
     ring.forEach((c, i) => {
-      const p = leafletMap.latLngToContainerPoint([c[0], c[1]]);
-      if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      const p = proj([c[0], c[1]]);
+      if (i === 0) ctx.moveTo(p.x * k, p.y * k); else ctx.lineTo(p.x * k, p.y * k);
     });
     ctx.closePath();
   });
-  ctx.fill();
-  ctx.globalCompositeOperation = "source-over";
+  ctx.save();
+  ctx.fillStyle = "#eef1f6";
+  ctx.beginPath(); ctx.rect(0, 0, W, H); trazar();
+  ctx.fill("evenodd");                       // gris en todo menos los agujeros del área
+  ctx.beginPath(); trazar();
+  ctx.strokeStyle = "#0b3d91"; ctx.lineWidth = Math.max(2, 2.5 * k); ctx.stroke();
+  Object.values(marcadoresPorCedula).forEach(info => {
+    if (!puntoEnArea(info.lat, info.lng, areaRingsActual)) return;
+    const p = proj([info.lat, info.lng]);
+    ctx.beginPath();
+    ctx.arc(p.x * k, p.y * k, (info.marcado ? 8 : 7) * k, 0, Math.PI * 2);
+    ctx.globalAlpha = 0.9; ctx.fillStyle = info.colorBase; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.lineWidth = (info.marcado ? 3 : 1.5) * k;
+    ctx.strokeStyle = info.marcado ? "#1c2333" : info.colorBase; ctx.stroke();
+  });
+  ctx.restore();
+}
+
+// Canvas propio sobre el mapa (en vivo).
+function pintarOverlay() {
+  if (!overlayMapa || !leafletMap) return;
+  const size = leafletMap.getSize();
+  if (overlayMapa.width !== size.x) { overlayMapa.width = size.x; overlayMapa.style.width = size.x + "px"; }
+  if (overlayMapa.height !== size.y) { overlayMapa.height = size.y; overlayMapa.style.height = size.y + "px"; }
+  const ctx = overlayMapa.getContext("2d");
+  ctx.clearRect(0, 0, size.x, size.y);
+  dibujarRecorte(ctx, size.x, size.y, 1, (ll) => leafletMap.latLngToContainerPoint(ll));
+}
+
+// Dibuja todos los pines de personas (para el PDF sin área seleccionada).
+function dibujarPines(ctx, k, proj) {
+  Object.values(marcadoresPorCedula).forEach(info => {
+    const p = proj([info.lat, info.lng]);
+    ctx.beginPath();
+    ctx.arc(p.x * k, p.y * k, (info.marcado ? 8 : 7) * k, 0, Math.PI * 2);
+    ctx.globalAlpha = 0.9; ctx.fillStyle = info.colorBase; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.lineWidth = (info.marcado ? 3 : 1.5) * k;
+    ctx.strokeStyle = info.marcado ? "#1c2333" : info.colorBase; ctx.stroke();
+  });
+}
+
+// Reconstruye la vista actual del mapa en un <canvas> descargando los tiles (html2canvas
+// no rasteriza bien los tiles ni el canvas propio). `escala` = multiplicador de resolución.
+async function capturarMapaCanvas(escala) {
+  const size = leafletMap.getSize();
+  const cnv = document.createElement("canvas");
+  cnv.width = Math.round(size.x * escala);
+  cnv.height = Math.round(size.y * escala);
+  const ctx = cnv.getContext("2d");
+  ctx.fillStyle = "#eef1f6";
+  ctx.fillRect(0, 0, cnv.width, cnv.height);
+
+  const zoom = leafletMap.getZoom();
+  const T = 256;
+  const pb = leafletMap.getPixelBounds();
+  const x0 = Math.floor(pb.min.x / T), x1 = Math.floor(pb.max.x / T);
+  const y0 = Math.floor(pb.min.y / T), y1 = Math.floor(pb.max.y / T);
+  const nCols = Math.pow(2, zoom);
+  const tareas = [];
+  for (let tx = x0; tx <= x1; tx++) {
+    for (let ty = y0; ty <= y1; ty++) {
+      if (ty < 0 || ty >= nCols) continue;
+      const wx = ((tx % nCols) + nCols) % nCols;
+      const url = TILE_URL
+        .replace("{s}", TILE_SUBS[Math.abs(tx + ty) % TILE_SUBS.length])
+        .replace("{z}", zoom).replace("{x}", wx).replace("{y}", ty);
+      const dx = (tx * T - pb.min.x) * escala;
+      const dy = (ty * T - pb.min.y) * escala;
+      tareas.push(new Promise(res => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => { try { ctx.drawImage(img, dx, dy, T * escala, T * escala); } catch (e) {} res(); };
+        img.onerror = () => res();
+        img.src = url;
+      }));
+    }
+  }
+  await Promise.all(tareas);
+  return cnv;
 }
 
 function colorPorPartido(siglas) {
@@ -1412,7 +1476,8 @@ async function cargarMapa() {
   });
 
   if (areaActiva && areaRingsActual) {
-    filtrarMarcadoresArea(areaRingsActual);
+    if (leafletMap.hasLayer(capaMarcadores)) leafletMap.removeLayer(capaMarcadores);
+    pintarOverlay();
   } else if (bounds.length > 0) {
     leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
   }
@@ -1548,7 +1613,6 @@ document.getElementById("btn-ordenar-ruta").addEventListener("click", () => {
 // ====  MAPA: buscar lugar / circuito-distrito-corregimiento / PDF  ====
 // ============================================================
 let marcadorBusqueda = null;
-let capaArea = null;
 let areaActiva = null;          // { tipo, titulo, subtitulo, slug }
 let areaRingsActual = null;     // anillos exteriores [lat,lng] del área activa (para filtrar pines)
 const areaGeoCache = {};
@@ -1557,8 +1621,11 @@ let distritoGeoActual = null;   // FeatureCollection del distrito seleccionado
 let distritoMetaActual = null;  // {id, provincia, distrito, ...}
 let mapaHerramientasInit = false;
 
-const AREA_STYLE = { color: "#0b3d91", weight: 2.5, fill: false };
-let cajaTimer = null;
+function boundsDeRings(rings) {
+  const b = L.latLngBounds([]);
+  rings.forEach(r => r.forEach(c => b.extend([c[0], c[1]])));
+  return b;
+}
 
 // GeoJSON -> anillos exteriores en [lat,lng]
 function ringsLatLng(geo) {
@@ -1585,50 +1652,49 @@ function puntoEnArea(lat, lng, rings) {
   return rings.some(r => puntoEnAnillo(lat, lng, r));
 }
 
-function filtrarMarcadoresArea(rings) {
-  Object.values(marcadoresPorCedula).forEach(info => {
-    const visible = !rings || puntoEnArea(info.lat, info.lng, rings);
-    if (visible && !capaMarcadores.hasLayer(info.marker)) capaMarcadores.addLayer(info.marker);
-    if (!visible && capaMarcadores.hasLayer(info.marker)) capaMarcadores.removeLayer(info.marker);
-  });
-}
 
 // Ajusta el tamaño de la caja del mapa a la forma (proporción) del área
 function ajustarCajaMapa(bounds) {
   const el = document.getElementById("mapa");
+
+  const reencuadrar = () => {
+    if (!leafletMap) return;
+    leafletMap.stop();
+    leafletMap.setMinZoom(MIN_ZOOM_DEFAULT);
+    leafletMap.setMaxBounds(null);
+    leafletMap.invalidateSize({ animate: false });
+    if (bounds) {
+      leafletMap.fitBounds(bounds, { padding: [26, 26], animate: false });
+      leafletMap.setMaxBounds(bounds.pad(0.4));
+      leafletMap.setMinZoom(Math.max(MIN_ZOOM_DEFAULT, leafletMap.getZoom() - 1));
+    }
+    pintarOverlay();
+  };
+
   if (!bounds) {
     el.style.width = ""; el.style.height = ""; el.style.margin = "";
-    clearTimeout(cajaTimer);
-    cajaTimer = setTimeout(() => {
-      if (leafletMap) { leafletMap.invalidateSize({ animate: false }); dibujarMascara(); }
-    }, 40);
+    void el.offsetWidth;
+    setTimeout(reencuadrar, 50);
     return;
   }
+
   const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
   const midLat = (sw.lat + ne.lat) / 2;
   const w = Math.abs(ne.lng - sw.lng) * Math.cos(midLat * Math.PI / 180);
   const h = Math.abs(ne.lat - sw.lat) || 0.0001;
   const ratio = Math.max(0.62, Math.min(2.4, w / h));   // ancho/alto encuadrado
   const topbarH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h")) || 140;
-  const maxW = Math.min(1150, (el.parentElement.clientWidth || 1150));
+  const maxW = Math.min(1120, (el.parentElement.clientWidth || 1120));
   const maxH = Math.max(420, window.innerHeight - topbarH - 200);
   let width = maxW, height = width / ratio;
-  if (height > maxH) { height = maxH; width = Math.max(500, Math.round(height * ratio)); }
+  if (height > maxH) { height = maxH; width = Math.max(520, Math.round(height * ratio)); }
   width = Math.min(width, maxW);
   el.style.width = Math.round(width) + "px";
   el.style.height = Math.round(height) + "px";
   el.style.margin = "0 auto 14px";
-  clearTimeout(cajaTimer);
-  cajaTimer = setTimeout(() => {
-    leafletMap.stop();
-    leafletMap.setMinZoom(MIN_ZOOM_DEFAULT);
-    leafletMap.setMaxBounds(null);
-    leafletMap.invalidateSize({ animate: false });
-    leafletMap.fitBounds(bounds, { padding: [24, 24], animate: false });
-    leafletMap.setMaxBounds(bounds.pad(0.4));
-    leafletMap.setMinZoom(Math.max(MIN_ZOOM_DEFAULT, leafletMap.getZoom() - 1));
-    dibujarMascara();
-  }, 80);
+  void el.offsetWidth;                     // fuerza el reflow con el nuevo tamaño
+  setTimeout(reencuadrar, 60);
+  setTimeout(reencuadrar, 260);            // segundo pase por si el layout aún no había asentado
 }
 
 async function initMapaHerramientas() {
@@ -1694,32 +1760,29 @@ function resetCorregimientoSel() {
 }
 
 function limpiarArea() {
-  if (capaArea) { leafletMap.removeLayer(capaArea); capaArea = null; }
   areaActiva = null;
   areaRingsActual = null;
-  dibujarMascara();
   leafletMap.setMaxBounds(null);
   leafletMap.setMinZoom(MIN_ZOOM_DEFAULT);
-  filtrarMarcadoresArea(null);
+  if (!leafletMap.hasLayer(capaMarcadores)) capaMarcadores.addTo(leafletMap);
+  pintarOverlay();
   ajustarCajaMapa(null);
   document.getElementById("circuito-info").classList.add("hidden");
 }
 
 function pintarArea(geo, titulo, subtitulo, tipo, slug) {
-  if (capaArea) { leafletMap.removeLayer(capaArea); capaArea = null; }
-
   areaRingsActual = ringsLatLng(geo);
-  // contorno del área
-  capaArea = L.geoJSON(geo, { style: AREA_STYLE }).addTo(leafletMap);
-
   areaActiva = { tipo, titulo, subtitulo, slug };
+
   const info = document.getElementById("circuito-info");
   info.textContent = subtitulo ? `${titulo} · ${subtitulo}` : titulo;
   info.classList.remove("hidden");
 
-  filtrarMarcadoresArea(areaRingsActual);
-  try { ajustarCajaMapa(capaArea.getBounds()); } catch (e) { console.error(e); }
-  dibujarMascara();
+  // los pines "reales" de Leaflet se ocultan; se dibujan como puntos en el canvas propio
+  if (leafletMap.hasLayer(capaMarcadores)) leafletMap.removeLayer(capaMarcadores);
+
+  try { ajustarCajaMapa(boundsDeRings(areaRingsActual)); } catch (e) { console.error(e); }
+  pintarOverlay();
 }
 
 async function mostrarCircuito(codigo) {
@@ -1832,37 +1895,13 @@ async function exportarMapaPDF() {
   const btn = document.getElementById("mapa-pdf-btn");
   btn.disabled = true; btn.textContent = "Generando…";
   try {
-    // esperar a que carguen los tiles visibles
-    await new Promise(r => setTimeout(r, 600));
-    const canvas = await html2canvas(document.getElementById("mapa"), {
-      useCORS: true, allowTaint: false, backgroundColor: "#eef1f6",
-      logging: false, scale: 2,
-      ignoreElements: (el) => el.classList && el.classList.contains("leaflet-control-container"),
-    });
-
-    // html2canvas no captura el canvas de máscara -> se pinta aquí con la misma proyección
+    const ESC = 2;
+    const canvas = await capturarMapaCanvas(ESC);
+    const proj = (ll) => leafletMap.latLngToContainerPoint(ll);
     if (areaRingsActual) {
-      const cx = canvas.getContext("2d");
-      const esc = canvas.width / leafletMap.getSize().x;
-      const trazarAnillos = () => areaRingsActual.forEach(ring => {
-        ring.forEach((c, i) => {
-          const p = leafletMap.latLngToContainerPoint([c[0], c[1]]);
-          if (i === 0) cx.moveTo(p.x * esc, p.y * esc); else cx.lineTo(p.x * esc, p.y * esc);
-        });
-        cx.closePath();
-      });
-      cx.save();
-      cx.fillStyle = "#eef1f6";
-      cx.beginPath();
-      cx.rect(0, 0, canvas.width, canvas.height);
-      trazarAnillos();
-      cx.fill("evenodd");
-      cx.beginPath();
-      trazarAnillos();
-      cx.strokeStyle = "#0b3d91";
-      cx.lineWidth = Math.max(2, 2.5 * esc);
-      cx.stroke();
-      cx.restore();
+      dibujarRecorte(canvas.getContext("2d"), canvas.width, canvas.height, ESC, proj);
+    } else {
+      dibujarPines(canvas.getContext("2d"), ESC, proj);
     }
     {
       const { jsPDF } = window.jspdf;

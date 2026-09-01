@@ -778,6 +778,43 @@
   .badge-cap-programada { background: #eaf1fd; color: #1a56c4; }
   .badge-cap-pendiente { background: #f0f1f6; color: var(--texto-suave); }
 
+  /* ---- Día E — war room ---- */
+  #vista-diae { max-width: 1080px; }
+  .diae-panel {
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .diae-panel h4 { margin: 0 0 10px; font-size: 0.95rem; color: var(--azul); }
+  .inc-card {
+    display: flex; gap: 12px; align-items: flex-start; border-left: 4px solid var(--borde);
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 9px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .inc-card.sev-critica { border-left-color: #b91c1c; }
+  .inc-card.sev-alta    { border-left-color: #ea580c; }
+  .inc-card.sev-media   { border-left-color: #1a56c4; }
+  .inc-card.sev-baja    { border-left-color: #94a3b8; }
+  .inc-card.resuelta { opacity: 0.55; }
+  .inc-main { flex: 1; min-width: 0; }
+  .inc-main .d { font-size: 0.9rem; }
+  .inc-main .m { font-size: 0.78rem; color: var(--texto-suave); margin-top: 3px; }
+  .badge-sev-critica { background: #fdecea; color: #b91c1c; }
+  .badge-sev-alta    { background: #fff4e5; color: #ea580c; }
+  .badge-sev-media   { background: #eaf1fd; color: #1a56c4; }
+  .badge-sev-baja    { background: #f0f1f6; color: var(--texto-suave); }
+  .badge-est-abierta    { background: #fdecea; color: #b91c1c; }
+  .badge-est-en_proceso { background: #fff4e5; color: #a15c00; }
+  .badge-est-resuelta   { background: #e9f7ee; color: #1a7f37; }
+  .em-fila {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 9px;
+    padding: 9px 12px; margin-bottom: 7px; font-size: 0.86rem;
+  }
+  .em-fila .mn { font-weight: 600; min-width: 120px; }
+  .em-fila input[type=text] { padding: 6px 8px; border: 1px solid var(--borde); border-radius: 6px; font-size: 0.85rem; }
+  .em-fila .abierta { color: #1a7f37; font-weight: 600; }
+  .em-fila .cerrada { color: var(--error); font-weight: 600; }
+
   /* ---- Calendario electoral + veda ---- */
   .veda-banner {
     background: repeating-linear-gradient(45deg, #b91c1c, #b91c1c 12px, #a31313 12px, #a31313 24px);
@@ -989,6 +1026,7 @@
       <button class="tab-btn" id="tab-organizacion-btn">🧭 Organización</button>
       <button class="tab-btn" id="tab-reportes-btn">📋 Reportes</button>
       <button class="tab-btn" id="tab-recursos-btn">💰 Recursos</button>
+      <button class="tab-btn" id="tab-diae-btn">🚨 Día E</button>
       <button class="tab-btn" id="tab-calendario-btn">📅 Calendario</button>
     </div>
 
@@ -1520,6 +1558,141 @@
         </div>
 
         <div id="apo-lista"></div>
+      </div>
+    </div>
+
+    <!-- ===== VISTA: DÍA E — WAR ROOM ===== -->
+    <div id="vista-diae" class="hidden">
+      <div id="diae-demo-aviso" class="demo-aviso hidden">
+        <b>Modo demo.</b> El tablero, las incidencias, el transporte y los insumos son datos ficticios.
+      </div>
+
+      <div class="org-filtros">
+        <select id="diae-nivel">
+          <option value="">Elige un ámbito…</option>
+          <option value="nacional">Nacional</option>
+          <option value="circuito">Por circuito</option>
+          <option value="distrito">Por distrito</option>
+          <option value="corregimiento">Por corregimiento</option>
+        </select>
+        <select id="diae-area" style="display:none;"><option value="">—</option></select>
+        <button class="btn-primary" id="diae-ver" style="width:auto;padding:9px 16px;">Ver tablero</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;color:var(--texto-suave);">
+          <input type="checkbox" id="diae-auto" /> Auto-refresco (45 s)
+        </label>
+        <span id="diae-refresh-info" class="stats" style="margin:0;"></span>
+      </div>
+
+      <div class="org-subtabs">
+        <button class="org-subtab activo" id="diae-sub-tablero">📊 Tablero</button>
+        <button class="org-subtab" id="diae-sub-incidencias">📣 Incidencias</button>
+        <button class="org-subtab" id="diae-sub-mesas">🗳️ Estado de mesas</button>
+        <button class="org-subtab" id="diae-sub-transporte">🚐 Transporte</button>
+        <button class="org-subtab" id="diae-sub-insumos">📦 Insumos</button>
+      </div>
+
+      <!-- Tablero -->
+      <div id="diae-vista-tablero">
+        <div id="diae-tablero"></div>
+      </div>
+
+      <!-- Incidencias -->
+      <div id="diae-vista-incidencias" class="hidden">
+        <div class="admin-card">
+          <h3>Reportar incidencia</h3>
+          <div class="admin-grid">
+            <div class="admin-field"><label>Tipo</label>
+              <select id="inc-tipo">
+                <option value="logistica">Logística</option><option value="legal">Legal</option>
+                <option value="seguridad">Seguridad</option><option value="reclamo">Reclamo</option>
+                <option value="padron">Padrón</option><option value="transporte">Transporte</option>
+                <option value="otro" selected>Otro</option>
+              </select>
+            </div>
+            <div class="admin-field"><label>Severidad</label>
+              <select id="inc-severidad">
+                <option value="baja">Baja</option><option value="media" selected>Media</option>
+                <option value="alta">Alta</option><option value="critica">Crítica</option>
+              </select>
+            </div>
+            <div class="admin-field"><label>Mesa (opcional)</label><select id="inc-mesa"><option value="">— Sin mesa específica —</option></select></div>
+            <div class="admin-field"><label>Corregimiento</label><select id="inc-corregimiento"><option value="">—</option></select></div>
+          </div>
+          <div class="admin-field" style="margin-top:10px;"><label>Descripción</label><textarea id="inc-descripcion" rows="2" placeholder="Qué está pasando"></textarea></div>
+          <div class="admin-actions">
+            <button class="btn-primary" id="inc-guardar">Registrar</button>
+            <span class="admin-msg" id="inc-msg"></span>
+          </div>
+        </div>
+        <div class="org-filtros">
+          <select id="inc-filtro-estado">
+            <option value="">Todas</option><option value="abierta">Abiertas</option>
+            <option value="en_proceso">En proceso</option><option value="resuelta">Resueltas</option>
+          </select>
+        </div>
+        <div id="inc-lista"></div>
+      </div>
+
+      <!-- Estado de mesas -->
+      <div id="diae-vista-mesas" class="hidden">
+        <p class="hint">Marca la apertura y el cierre de cada mesa y anota el reporte del día.</p>
+        <div id="em-lista"></div>
+      </div>
+
+      <!-- Transporte -->
+      <div id="diae-vista-transporte" class="hidden">
+        <div class="admin-card" id="tra-form-card">
+          <h3 id="tra-form-titulo">Agregar vehículo / ruta</h3>
+          <div class="admin-grid">
+            <div class="admin-field"><label>Vehículo</label><input type="text" id="tra-desc" placeholder="Ej: Buseta blanca" /></div>
+            <div class="admin-field"><label>Placa</label><input type="text" id="tra-placa" /></div>
+            <div class="admin-field"><label>Capacidad</label><input type="number" id="tra-cap" min="0" /></div>
+            <div class="admin-field"><label>Conductor</label><input type="text" id="tra-cond" /></div>
+            <div class="admin-field"><label>Teléfono conductor</label><input type="tel" id="tra-cond-tel" /></div>
+            <div class="admin-field"><label>Punto de encuentro</label><input type="text" id="tra-punto" /></div>
+            <div class="admin-field"><label>Mesa (opcional)</label><select id="tra-mesa"><option value="">—</option></select></div>
+            <div class="admin-field"><label>Corregimiento</label><select id="tra-corregimiento"><option value="">—</option></select></div>
+            <div class="admin-field"><label>Hora</label><input type="text" id="tra-hora" placeholder="Ej: 6:00 am" /></div>
+            <div class="admin-field"><label>Pasajeros estimados</label><input type="number" id="tra-pax" min="0" /></div>
+            <div class="admin-field"><label>Estado</label>
+              <select id="tra-estado"><option value="planificado">Planificado</option><option value="en_ruta">En ruta</option><option value="completado">Completado</option></select>
+            </div>
+            <div class="admin-field"><label>Responsable</label><input type="text" id="tra-resp" /></div>
+          </div>
+          <div class="admin-actions">
+            <button class="btn-primary" id="tra-guardar">Guardar</button>
+            <button class="btn-secundario" id="tra-cancelar" style="display:none;">Cancelar</button>
+            <span class="admin-msg" id="tra-msg"></span>
+          </div>
+        </div>
+        <div id="tra-lista"></div>
+      </div>
+
+      <!-- Insumos -->
+      <div id="diae-vista-insumos" class="hidden">
+        <div class="admin-card" id="ins-form-card">
+          <h3 id="ins-form-titulo">Agregar insumo a un punto</h3>
+          <div class="admin-grid">
+            <div class="admin-field"><label>Item</label>
+              <select id="ins-item">
+                <option value="comida">Comida</option><option value="agua">Agua</option>
+                <option value="hidratacion">Hidratación</option><option value="materiales">Materiales</option>
+                <option value="otro" selected>Otro</option>
+              </select>
+            </div>
+            <div class="admin-field"><label>Descripción</label><input type="text" id="ins-desc" /></div>
+            <div class="admin-field"><label>Cantidad</label><input type="number" id="ins-cant" min="0" /></div>
+            <div class="admin-field"><label>Mesa (opcional)</label><select id="ins-mesa"><option value="">—</option></select></div>
+            <div class="admin-field"><label>Corregimiento</label><select id="ins-corregimiento"><option value="">—</option></select></div>
+            <div class="admin-field"><label>Responsable</label><input type="text" id="ins-resp" /></div>
+          </div>
+          <div class="admin-actions">
+            <button class="btn-primary" id="ins-guardar">Guardar</button>
+            <button class="btn-secundario" id="ins-cancelar" style="display:none;">Cancelar</button>
+            <span class="admin-msg" id="ins-msg"></span>
+          </div>
+        </div>
+        <div id="ins-lista"></div>
       </div>
     </div>
 
@@ -2071,6 +2244,10 @@ sb.auth.onAuthStateChange((_event, session) => {
     INV_CACHE = []; GAS_CACHE = []; EVE_CACHE = [];
     invEditId = null; gasEditId = null; eveEditId = null; recSubActual = "inventario";
     APO_CACHE = []; apoEditId = null; apoAmbito = null;
+    INC_CACHE = []; TRA_CACHE = []; INS_CACHE = []; EM_CACHE = []; DIAE_MESAS = [];
+    traEditId = null; insEditId = null; diaeAmbito = null; diaeSubActual = "tablero";
+    clearTimeout(diaeAutoTimer);
+    const da = document.getElementById("diae-auto"); if (da) da.checked = false;
     const selCorr = document.getElementById("filtro-corregimiento");
     if (selCorr) selCorr.innerHTML = '<option value="">Todos los corregimientos</option>';
     const selPar = document.getElementById("filtro-partido");
@@ -2173,6 +2350,7 @@ async function inicializarApp() {
   document.getElementById("tab-organizacion-btn").addEventListener("click", () => cambiarTab("organizacion"));
   document.getElementById("tab-reportes-btn").addEventListener("click", () => cambiarTab("reportes"));
   document.getElementById("tab-recursos-btn").addEventListener("click", () => cambiarTab("recursos"));
+  document.getElementById("tab-diae-btn").addEventListener("click", () => cambiarTab("diae"));
   document.getElementById("tab-calendario-btn").addEventListener("click", () => cambiarTab("calendario"));
   document.getElementById("tab-admin-btn").addEventListener("click", () => cambiarTab("admin"));
   initAdmin();
@@ -2181,6 +2359,7 @@ async function inicializarApp() {
   initCalendario();
   initReportes();
   initRecursos();
+  initDiae();
 }
 
 // ---------- TABS ----------
@@ -2188,12 +2367,12 @@ function cambiarTab(tab) {
   const vistas = {
     buscar: "vista-buscar", mapa: "vista-mapa", admin: "vista-admin",
     candidatos: "vista-candidatos", organizacion: "vista-organizacion",
-    reportes: "vista-reportes", recursos: "vista-recursos",
+    reportes: "vista-reportes", recursos: "vista-recursos", diae: "vista-diae",
     calendario: "vista-calendario", activista: "vista-activista",
   };
   const botones = { buscar: "tab-buscar-btn", mapa: "tab-mapa-btn", candidatos: "tab-candidatos-btn",
     organizacion: "tab-organizacion-btn", reportes: "tab-reportes-btn", recursos: "tab-recursos-btn",
-    calendario: "tab-calendario-btn", admin: "tab-admin-btn" };
+    diae: "tab-diae-btn", calendario: "tab-calendario-btn", admin: "tab-admin-btn" };
   Object.entries(vistas).forEach(([k, id]) => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle("hidden", k !== tab);
@@ -2218,6 +2397,8 @@ function cambiarTab(tab) {
     cargarPanelReportes();
   } else if (tab === "recursos") {
     cambiarRecSub(recSubActual);
+  } else if (tab === "diae") {
+    cambiarDiaeSub(diaeSubActual);
   }
 }
 
@@ -2237,6 +2418,8 @@ function aplicarPermisosUI() {
   if (btnRep) btnRep.classList.toggle("hidden", ES_ACTIVISTA);
   const btnRec = document.getElementById("tab-recursos-btn");
   if (btnRec) btnRec.classList.toggle("hidden", ES_ACTIVISTA);
+  const btnDiae = document.getElementById("tab-diae-btn");
+  if (btnDiae) btnDiae.classList.toggle("hidden", ES_ACTIVISTA);
   document.querySelectorAll("#dir-form-card, #mesa-form-card").forEach(el => {
     if (el) el.classList.toggle("hidden", !esAdmin);
   });
@@ -4331,6 +4514,19 @@ async function cargarMesas() {
   return MESAS_CACHE;
 }
 
+// Filtra el catálogo de mesas (M1) a un ámbito nivel/valor. Compartido por M3 y M4.
+async function filtrarMesasPorAmbito(nivel, valor) {
+  const todas = await cargarMesas();
+  if (nivel === "nacional" || !nivel) return todas.slice();
+  const mn = (s) => normUbicJS(s || "");
+  const ubic = await cargarUbicaciones();
+  return todas.filter(m => {
+    if (nivel === "circuito") return m.circuito_codigo === valor;
+    if (nivel === "distrito") return ubic.some(u => mn(u.distrito) === mn(valor) && u.corregimiento_norm === m.corregimiento_norm);
+    return m.corregimiento_norm === mn(valor);
+  });
+}
+
 function poblarReportaSelect() {
   const sel = document.getElementById("dir-reporta");
   const previo = sel.value;
@@ -4576,15 +4772,7 @@ async function cargarApoderados() {
   cob.innerHTML = `<p class="cand-sin">Calculando cobertura…</p>`;
 
   // mesas del ámbito (del catálogo M1)
-  const todasMesas = await cargarMesas();
-  const mn = (s) => normUbicJS(s || "");
-  const ubic = await cargarUbicaciones();
-  const mesas = todasMesas.filter(m => {
-    if (nivel === "nacional") return true;
-    if (nivel === "circuito") return m.circuito_codigo === valor;
-    if (nivel === "distrito") return mn(m.corregimiento) && ubic.some(u => mn(u.distrito) === mn(valor) && u.corregimiento_norm === m.corregimiento_norm);
-    return m.corregimiento_norm === mn(valor);
-  });
+  const mesas = await filtrarMesasPorAmbito(nivel, valor);
   const mesaIds = mesas.map(m => m.id);
 
   // poblar el select de mesa del formulario
@@ -4751,6 +4939,413 @@ async function eliminarApoderado(a) {
   const { error } = await sb.from("apoderados_mesa").delete().eq("id", a.id);
   if (error) { alert(error.message); return; }
   cargarApoderados();
+}
+
+// ============================================================
+// ============  DÍA E — WAR ROOM  =============================
+// ============================================================
+let diaeInit = false, diaeSubActual = "tablero", diaeAmbito = null, diaeAutoTimer = null;
+let INC_CACHE = [], TRA_CACHE = [], INS_CACHE = [], EM_CACHE = [], DIAE_MESAS = [];
+let traEditId = null, insEditId = null;
+
+const INC_TIPO_LABEL = { logistica: "Logística", legal: "Legal", seguridad: "Seguridad", reclamo: "Reclamo", padron: "Padrón", transporte: "Transporte", otro: "Otro" };
+const INC_SEV_LABEL = { baja: "Baja", media: "Media", alta: "Alta", critica: "Crítica" };
+const INC_EST_LABEL = { abierta: "Abierta", en_proceso: "En proceso", resuelta: "Resuelta" };
+const TRA_EST_LABEL = { planificado: "Planificado", en_ruta: "En ruta", completado: "Completado" };
+const INS_ITEM_LABEL = { comida: "Comida", agua: "Agua", hidratacion: "Hidratación", materiales: "Materiales", otro: "Otro" };
+
+function initDiae() {
+  if (diaeInit) return;
+  diaeInit = true;
+  ["tablero", "incidencias", "mesas", "transporte", "insumos"].forEach(k =>
+    document.getElementById("diae-sub-" + k).addEventListener("click", () => cambiarDiaeSub(k)));
+  document.getElementById("diae-nivel").addEventListener("change", async () =>
+    construirSelectorAreaGen("diae", document.getElementById("diae-nivel").value));
+  document.getElementById("diae-ver").addEventListener("click", () => { diaeAmbito = leerAmbitoDiae(); cargarDiae(); });
+  document.getElementById("diae-auto").addEventListener("change", (e) => {
+    if (e.target.checked) programarAutoRefresco(); else { clearTimeout(diaeAutoTimer); document.getElementById("diae-refresh-info").textContent = ""; }
+  });
+  document.getElementById("inc-guardar").addEventListener("click", guardarIncidencia);
+  document.getElementById("inc-filtro-estado").addEventListener("change", renderIncidencias);
+  document.getElementById("tra-guardar").addEventListener("click", guardarTransporte);
+  document.getElementById("tra-cancelar").addEventListener("click", resetFormTra);
+  document.getElementById("ins-guardar").addEventListener("click", guardarInsumo);
+  document.getElementById("ins-cancelar").addEventListener("click", resetFormIns);
+}
+
+// Selector de área genérico reutilizable por prefijo (comparte lógica con recursos).
+async function construirSelectorAreaGen(p, nivel) {
+  const sel = document.getElementById(p + "-area");
+  if (!sel) return;
+  if (!nivel || nivel === "nacional") { sel.style.display = "none"; sel.innerHTML = '<option value="">—</option>'; return; }
+  sel.style.display = "";
+  sel.innerHTML = '<option value="">Elige…</option>';
+  if (nivel === "circuito") (await cargarCircuitos()).forEach(c => sel.insertAdjacentHTML("beforeend",
+    `<option value="${escapeHtml(c.codigo)}">${escapeHtml(c.codigo)} · ${escapeHtml(c.provincia)}</option>`));
+  else if (nivel === "distrito") [...new Map((await cargarUbicaciones()).map(u => [u.provincia + "|" + u.distrito, u])).values()].forEach(u =>
+    sel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(u.distrito)}">${escapeHtml(u.provincia)} — ${escapeHtml(u.distrito)}</option>`));
+  else (await cargarUbicaciones()).forEach(u => sel.insertAdjacentHTML("beforeend",
+    `<option value="${escapeHtml(u.corregimiento)}">${escapeHtml(u.corregimiento)} — ${escapeHtml(u.distrito)}</option>`));
+}
+
+function leerAmbitoDiae() {
+  const nivel = document.getElementById("diae-nivel").value;
+  const valor = document.getElementById("diae-area").value;
+  if (!nivel) return null;
+  if (nivel !== "nacional" && !valor) return null;
+  return { nivel, valor: valor || null };
+}
+
+function cambiarDiaeSub(sub) {
+  diaeSubActual = sub;
+  ["tablero", "incidencias", "mesas", "transporte", "insumos"].forEach(k => {
+    document.getElementById("diae-vista-" + k).classList.toggle("hidden", k !== sub);
+    document.getElementById("diae-sub-" + k).classList.toggle("activo", k === sub);
+  });
+  cargarDiae();
+}
+
+async function cargarDiae() {
+  const avisoD = document.getElementById("diae-demo-aviso");
+  if (avisoD) avisoD.classList.toggle("hidden", !ES_DEMO);
+  if (!diaeAmbito) {
+    document.getElementById("diae-tablero").innerHTML = `<p class="cand-sin">Elige un ámbito y presiona "Ver tablero".</p>`;
+    return;
+  }
+  // mesas del ámbito + poblar selects de mesa/corregimiento de los formularios
+  DIAE_MESAS = await filtrarMesasPorAmbito(diaeAmbito.nivel, diaeAmbito.valor);
+  const optMesas = '<option value="">—</option>' + DIAE_MESAS
+    .slice().sort((a, b) => (a.numero || "").localeCompare(b.numero || "", "es", { numeric: true }))
+    .map(m => `<option value="${m.id}">Mesa ${escapeHtml(m.numero)} · ${escapeHtml(m.corregimiento || "")}</option>`).join("");
+  ["inc-mesa", "tra-mesa", "ins-mesa"].forEach(id => { const s = document.getElementById(id); if (s) s.innerHTML = optMesas; });
+  const corrs = [...new Set(DIAE_MESAS.map(m => m.corregimiento).filter(Boolean))].sort();
+  const optCorr = '<option value="">—</option>' + corrs.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  ["inc-corregimiento", "tra-corregimiento", "ins-corregimiento"].forEach(id => { const s = document.getElementById(id); if (s) s.innerHTML = optCorr; });
+
+  if (diaeSubActual === "tablero") cargarTablero();
+  else if (diaeSubActual === "incidencias") cargarIncidencias();
+  else if (diaeSubActual === "mesas") cargarEstadoMesas();
+  else if (diaeSubActual === "transporte") cargarTransporte();
+  else cargarInsumos();
+}
+
+function programarAutoRefresco() {
+  clearTimeout(diaeAutoTimer);
+  diaeAutoTimer = setTimeout(() => {
+    if (document.getElementById("diae-auto").checked &&
+        !document.getElementById("vista-diae").classList.contains("hidden")) {
+      cargarDiae();
+      document.getElementById("diae-refresh-info").textContent = "actualizado " + new Date().toLocaleTimeString("es-PA");
+      programarAutoRefresco();
+    }
+  }, 45000);
+}
+
+function idsAmbito() {
+  return DIAE_MESAS.map(m => m.id);
+}
+
+async function cargarTablero() {
+  const cont = document.getElementById("diae-tablero");
+  cont.innerHTML = `<p class="cand-sin">Cargando tablero…</p>`;
+  const { data, error } = await sb.rpc("tablero_diae",
+    { nivel: diaeAmbito.nivel, valores: diaeAmbito.nivel === "nacional" ? [] : [String(diaeAmbito.valor)] });
+  if (error) {
+    cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br><small>¿Ya se aplicó la migración del Módulo 4?</small></p>`;
+    return;
+  }
+  const d = data || {}, M = d.mesas || {}, I = d.incidencias || {}, T = d.transporte || {}, S = d.insumos || {};
+  const kpi = (n, l, cls) => `<div class="rep-kpi"><div class="n ${cls || ""}">${n}</div><div class="l">${l}</div></div>`;
+  let html = `<div class="diae-panel"><h4>🗳️ Mesas (${M.total || 0})</h4><div class="rep-totales">
+    ${kpi(M.abiertas || 0, "Abiertas", (M.abiertas ? "sem-ok" : ""))}
+    ${kpi(M.cerradas || 0, "Cerradas")}
+    ${kpi((M.total || 0) - (M.abiertas || 0) - (M.cerradas || 0), "Sin abrir", "sem-warn")}
+    ${kpi(M.con_reporte || 0, "Con reporte")}
+  </div></div>`;
+  html += `<div class="diae-panel"><h4>📣 Incidencias</h4><div class="rep-totales">
+    ${kpi(I.abiertas || 0, "Abiertas", (I.abiertas ? "sem-bad" : "sem-ok"))}
+    ${kpi(I.en_proceso || 0, "En proceso", "sem-warn")}
+    ${kpi(I.resueltas || 0, "Resueltas", "sem-ok")}
+  </div>`;
+  const cr = I.criticas_abiertas || [];
+  if (cr.length) html += `<div style="margin-top:10px;">` + cr.map(x =>
+    `<div class="inc-card sev-${x.severidad}"><div class="inc-main"><div class="d">${escapeHtml(x.descripcion)}</div>` +
+    `<div class="m"><span class="badge badge-sev-${x.severidad}">${INC_SEV_LABEL[x.severidad]}</span> ${escapeHtml(x.corregimiento || "")} · ${new Date(x.creado_en).toLocaleTimeString("es-PA")}</div></div></div>`
+  ).join("") + `</div>`;
+  html += `</div>`;
+  html += `<div class="diae-panel"><h4>🚐 Transporte (${T.total || 0})</h4><div class="rep-totales">
+    ${kpi(T.planificado || 0, "Planificado")}${kpi(T.en_ruta || 0, "En ruta", "sem-warn")}${kpi(T.completado || 0, "Completado", "sem-ok")}
+  </div></div>`;
+  html += `<div class="diae-panel"><h4>📦 Insumos</h4><div class="rep-totales">
+    ${kpi(S.entregados || 0, "Entregados", "sem-ok")}${kpi(S.pendientes || 0, "Pendientes", (S.pendientes ? "sem-warn" : ""))}
+  </div></div>`;
+  cont.innerHTML = html;
+}
+
+// ---------- Incidencias ----------
+async function cargarIncidencias() {
+  const cont = document.getElementById("inc-lista");
+  cont.innerHTML = `<p class="cand-sin">Cargando…</p>`;
+  const ids = idsAmbito();
+  let q = sb.from("incidencias").select("*, mesas(numero)").order("creado_en", { ascending: false });
+  const { data, error } = await q;
+  if (error) { cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br><small>¿Ya se aplicó la migración del Módulo 4?</small></p>`; return; }
+  INC_CACHE = data || [];
+  renderIncidencias();
+}
+function renderIncidencias() {
+  const cont = document.getElementById("inc-lista");
+  const f = document.getElementById("inc-filtro-estado").value;
+  let filas = INC_CACHE.slice();
+  if (f) filas = filas.filter(i => i.estado === f);
+  if (!filas.length) { cont.innerHTML = `<p class="cand-sin">Sin incidencias para ese filtro.</p>`; return; }
+  cont.innerHTML = filas.map(i => {
+    const mesa = i.mesas ? `Mesa ${escapeHtml(i.mesas.numero)}` : (i.corregimiento ? escapeHtml(i.corregimiento) : "");
+    const acc = i.estado === "resuelta"
+      ? `<button class="mini-btn" data-r="${i.id}" data-e="abierta">Reabrir</button>`
+      : `<button class="mini-btn" data-r="${i.id}" data-e="${i.estado === "abierta" ? "en_proceso" : "resuelta"}">${i.estado === "abierta" ? "Tomar" : "Resolver"}</button>`;
+    return `<div class="inc-card sev-${i.severidad} ${i.estado === "resuelta" ? "resuelta" : ""}">
+      <div class="inc-main">
+        <div class="d">${escapeHtml(i.descripcion)}</div>
+        <div class="m">
+          <span class="badge badge-sev-${i.severidad}">${INC_SEV_LABEL[i.severidad]}</span>
+          <span class="badge badge-est-${i.estado}">${INC_EST_LABEL[i.estado]}</span>
+          ${escapeHtml(INC_TIPO_LABEL[i.tipo] || i.tipo)}${mesa ? " · " + mesa : ""} · ${new Date(i.creado_en).toLocaleString("es-PA")}${i.reportado_por ? " · " + escapeHtml(i.reportado_por) : ""}
+        </div>
+      </div>
+      <div class="rec-acc">${acc}<button class="mini-btn mini-btn-peligro" data-d="${i.id}">×</button></div>
+    </div>`;
+  }).join("");
+  cont.querySelectorAll("[data-r]").forEach(b => b.addEventListener("click", () => cambiarEstadoIncidencia(b.dataset.r, b.dataset.e)));
+  cont.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("¿Eliminar la incidencia?")) return;
+    await sb.from("incidencias").delete().eq("id", b.dataset.d); cargarIncidencias();
+  }));
+}
+async function cambiarEstadoIncidencia(id, nuevo) {
+  const patch = { estado: nuevo, actualizado_en: new Date().toISOString() };
+  if (nuevo === "resuelta") patch.resuelto_en = new Date().toISOString();
+  const { error } = await sb.from("incidencias").update(patch).eq("id", id);
+  if (error) { alert(error.message); return; }
+  cargarIncidencias();
+  if (diaeSubActual === "tablero") cargarTablero();
+}
+async function guardarIncidencia() {
+  const desc = document.getElementById("inc-descripcion").value.trim();
+  const msg = document.getElementById("inc-msg"); msg.textContent = "";
+  if (!desc) { msg.innerHTML = `<span class="val-error">Escribe la descripción.</span>`; return; }
+  const mesaId = document.getElementById("inc-mesa").value || null;
+  const payload = {
+    tipo: document.getElementById("inc-tipo").value,
+    severidad: document.getElementById("inc-severidad").value,
+    descripcion: desc,
+    mesa_id: mesaId ? Number(mesaId) : null,
+    corregimiento: document.getElementById("inc-corregimiento").value || null,
+    nivel: mesaId ? null : diaeAmbito.nivel,
+    area_valor: mesaId ? null : diaeAmbito.valor,
+    reportado_por: currentUserEmail,
+    es_demo: ES_DEMO,
+  };
+  const btn = document.getElementById("inc-guardar"); btn.disabled = true; btn.textContent = "Registrando…";
+  const { error } = await sb.from("incidencias").insert(payload);
+  btn.disabled = false; btn.textContent = "Registrar";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  document.getElementById("inc-descripcion").value = "";
+  msg.innerHTML = `<span style="color:var(--exito)">Incidencia registrada.</span>`;
+  cargarIncidencias();
+}
+
+// ---------- Estado de mesas ----------
+async function cargarEstadoMesas() {
+  const cont = document.getElementById("em-lista");
+  cont.innerHTML = `<p class="cand-sin">Cargando…</p>`;
+  const { data } = await sb.from("estado_mesa").select("*");
+  EM_CACHE = data || [];
+  renderEstadoMesas();
+}
+function renderEstadoMesas() {
+  const cont = document.getElementById("em-lista");
+  if (!DIAE_MESAS.length) { cont.innerHTML = `<p class="cand-sin">No hay mesas en este ámbito.</p>`; return; }
+  const byId = {}; EM_CACHE.forEach(e => byId[e.mesa_id] = e);
+  cont.innerHTML = "";
+  DIAE_MESAS.slice().sort((a, b) => (a.numero || "").localeCompare(b.numero || "", "es", { numeric: true })).forEach(m => {
+    const e = byId[m.id] || {};
+    const div = document.createElement("div");
+    div.className = "em-fila";
+    div.innerHTML = `<span class="mn">Mesa ${escapeHtml(m.numero)}</span>
+      <span>${e.apertura_hora ? (e.cierre_hora ? `<span class="cerrada">cerró ${escapeHtml(e.cierre_hora)}</span>` : `<span class="abierta">abrió ${escapeHtml(e.apertura_hora)}</span>`) : '<span style="color:var(--texto-suave)">sin abrir</span>'}</span>
+      <button class="mini-btn" data-abrir="${m.id}">${e.apertura_hora ? "Reabrir hora" : "Marcar apertura"}</button>
+      <button class="mini-btn" data-cerrar="${m.id}">Marcar cierre</button>
+      <input type="text" data-nota="${m.id}" placeholder="Reporte…" value="${escapeHtml(e.reporte_texto || "")}" style="flex:1;min-width:140px;" />
+      <button class="mini-btn" data-nota-save="${m.id}">Guardar</button>`;
+    cont.appendChild(div);
+  });
+  const horaAhora = () => new Date().toLocaleTimeString("es-PA", { hour: "2-digit", minute: "2-digit" });
+  cont.querySelectorAll("[data-abrir]").forEach(b => b.addEventListener("click", () => guardarEstadoMesa(b.dataset.abrir, { apertura_hora: horaAhora(), cierre_hora: null })));
+  cont.querySelectorAll("[data-cerrar]").forEach(b => b.addEventListener("click", () => guardarEstadoMesa(b.dataset.cerrar, { cierre_hora: horaAhora() })));
+  cont.querySelectorAll("[data-nota-save]").forEach(b => b.addEventListener("click", () => {
+    const v = cont.querySelector(`[data-nota="${b.dataset.notaSave}"]`).value.trim();
+    guardarEstadoMesa(b.dataset.notaSave, { reporte_texto: v || null });
+  }));
+}
+async function guardarEstadoMesa(mesaId, patch) {
+  const existente = EM_CACHE.find(e => e.mesa_id == mesaId);
+  const base = { mesa_id: Number(mesaId), es_demo: ES_DEMO, actualizado_por: currentUserEmail, actualizado_en: new Date().toISOString() };
+  const { error } = existente
+    ? await sb.from("estado_mesa").update({ ...patch, ...base }).eq("id", existente.id)
+    : await sb.from("estado_mesa").insert({ ...base, ...patch });
+  if (error) { alert(error.message); return; }
+  cargarEstadoMesas();
+}
+
+// ---------- Transporte ----------
+async function cargarTransporte() {
+  const cont = document.getElementById("tra-lista");
+  cont.innerHTML = `<p class="cand-sin">Cargando…</p>`;
+  const { data, error } = await sb.from("transporte_diae").select("*, mesas(numero)").order("creado_en", { ascending: false });
+  if (error) { cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}</p>`; return; }
+  TRA_CACHE = data || [];
+  renderTransporte();
+}
+function renderTransporte() {
+  const cont = document.getElementById("tra-lista");
+  if (!TRA_CACHE.length) { cont.innerHTML = `<p class="cand-sin">Sin vehículos registrados.</p>`; return; }
+  cont.innerHTML = TRA_CACHE.map(t => {
+    const dest = t.mesas ? `Mesa ${escapeHtml(t.mesas.numero)}` : (t.corregimiento ? escapeHtml(t.corregimiento) : "");
+    const wa = t.conductor_telefono ? ` <a href="${waLink(t.conductor_telefono)}" target="_blank" rel="noopener">💬</a>` : "";
+    const next = t.estado === "planificado" ? "en_ruta" : t.estado === "en_ruta" ? "completado" : null;
+    return `<div class="rec-card"><div class="rec-main">
+      <div class="rec-t">${escapeHtml(t.descripcion)}${t.placa ? " · " + escapeHtml(t.placa) : ""} <span class="badge badge-est-${t.estado === "completado" ? "resuelta" : t.estado === "en_ruta" ? "en_proceso" : "abierta"}">${TRA_EST_LABEL[t.estado]}</span></div>
+      <div class="rec-meta">${t.conductor_nombre ? "Conductor: " + escapeHtml(t.conductor_nombre) + wa : ""}${t.capacidad ? " · cap. " + t.capacidad : ""}${t.hora ? " · " + escapeHtml(t.hora) : ""}</div>
+      <div class="rec-meta">${t.punto_encuentro ? "📍 " + escapeHtml(t.punto_encuentro) : ""}${dest ? " → " + dest : ""}${t.pasajeros_estimados ? " · " + t.pasajeros_estimados + " pax" : ""}</div>
+    </div><div class="rec-acc">
+      ${next ? `<button class="mini-btn" data-n="${t.id}" data-e="${next}">${next === "en_ruta" ? "En ruta" : "Completar"}</button>` : ""}
+      <button class="mini-btn" data-e2="${t.id}">Editar</button>
+      <button class="mini-btn mini-btn-peligro" data-d="${t.id}">×</button>
+    </div></div>`;
+  }).join("");
+  cont.querySelectorAll("[data-n]").forEach(b => b.addEventListener("click", async () => {
+    await sb.from("transporte_diae").update({ estado: b.dataset.e, actualizado_en: new Date().toISOString() }).eq("id", b.dataset.n);
+    cargarTransporte();
+  }));
+  cont.querySelectorAll("[data-e2]").forEach(b => b.addEventListener("click", () => editarTransporte(TRA_CACHE.find(x => x.id == b.dataset.e2))));
+  cont.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("¿Eliminar el vehículo?")) return;
+    await sb.from("transporte_diae").delete().eq("id", b.dataset.d); cargarTransporte();
+  }));
+}
+async function guardarTransporte() {
+  const desc = document.getElementById("tra-desc").value.trim();
+  const msg = document.getElementById("tra-msg"); msg.textContent = "";
+  if (!desc) { msg.innerHTML = `<span class="val-error">Escribe el vehículo.</span>`; return; }
+  const mesaId = document.getElementById("tra-mesa").value || null;
+  const num = (id) => { const v = document.getElementById(id).value; return v === "" ? null : (parseInt(v, 10) || 0); };
+  const payload = {
+    descripcion: desc, placa: document.getElementById("tra-placa").value.trim() || null,
+    capacidad: num("tra-cap"),
+    conductor_nombre: document.getElementById("tra-cond").value.trim() || null,
+    conductor_telefono: document.getElementById("tra-cond-tel").value.trim() || null,
+    punto_encuentro: document.getElementById("tra-punto").value.trim() || null,
+    mesa_id: mesaId ? Number(mesaId) : null,
+    corregimiento: document.getElementById("tra-corregimiento").value || null,
+    nivel: mesaId ? null : diaeAmbito.nivel, area_valor: mesaId ? null : diaeAmbito.valor,
+    hora: document.getElementById("tra-hora").value.trim() || null,
+    pasajeros_estimados: num("tra-pax"),
+    estado: document.getElementById("tra-estado").value,
+    responsable: document.getElementById("tra-resp").value.trim() || null,
+    es_demo: ES_DEMO,
+  };
+  const btn = document.getElementById("tra-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
+  let error;
+  if (traEditId) { payload.actualizado_en = new Date().toISOString(); ({ error } = await sb.from("transporte_diae").update(payload).eq("id", traEditId)); }
+  else ({ error } = await sb.from("transporte_diae").insert(payload));
+  btn.disabled = false; btn.textContent = "Guardar";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  resetFormTra(); cargarTransporte();
+}
+function editarTransporte(t) {
+  traEditId = t.id;
+  document.getElementById("tra-form-titulo").textContent = "Editar vehículo / ruta";
+  document.getElementById("tra-cancelar").style.display = "";
+  const s = (id, v) => document.getElementById(id).value = v ?? "";
+  s("tra-desc", t.descripcion); s("tra-placa", t.placa); s("tra-cap", t.capacidad);
+  s("tra-cond", t.conductor_nombre); s("tra-cond-tel", t.conductor_telefono); s("tra-punto", t.punto_encuentro);
+  s("tra-mesa", t.mesa_id ? String(t.mesa_id) : ""); s("tra-corregimiento", t.corregimiento || "");
+  s("tra-hora", t.hora); s("tra-pax", t.pasajeros_estimados); s("tra-estado", t.estado); s("tra-resp", t.responsable);
+  document.getElementById("tra-msg").textContent = "";
+  document.getElementById("tra-form-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function resetFormTra() {
+  traEditId = null;
+  document.getElementById("tra-form-titulo").textContent = "Agregar vehículo / ruta";
+  document.getElementById("tra-cancelar").style.display = "none";
+  ["tra-desc", "tra-placa", "tra-cap", "tra-cond", "tra-cond-tel", "tra-punto", "tra-hora", "tra-pax", "tra-resp"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("tra-mesa").value = ""; document.getElementById("tra-corregimiento").value = "";
+  document.getElementById("tra-estado").value = "planificado"; document.getElementById("tra-msg").textContent = "";
+}
+
+// ---------- Insumos ----------
+async function cargarInsumos() {
+  const cont = document.getElementById("ins-lista");
+  cont.innerHTML = `<p class="cand-sin">Cargando…</p>`;
+  const { data, error } = await sb.from("insumos_punto").select("*, mesas(numero)").order("creado_en", { ascending: false });
+  if (error) { cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}</p>`; return; }
+  INS_CACHE = data || [];
+  renderInsumos();
+}
+function renderInsumos() {
+  const cont = document.getElementById("ins-lista");
+  if (!INS_CACHE.length) { cont.innerHTML = `<p class="cand-sin">Sin insumos registrados.</p>`; return; }
+  cont.innerHTML = INS_CACHE.map(s => {
+    const dest = s.mesas ? `Mesa ${escapeHtml(s.mesas.numero)}` : (s.corregimiento ? escapeHtml(s.corregimiento) : "");
+    return `<div class="rec-card"><div class="rec-main">
+      <div class="rec-t">${escapeHtml(INS_ITEM_LABEL[s.item] || s.item)}${s.descripcion ? " · " + escapeHtml(s.descripcion) : ""}${s.cantidad ? " (" + s.cantidad + ")" : ""}
+        <span class="badge ${s.entregado ? "badge-conciliado" : "badge-pendiente"}">${s.entregado ? "Entregado" : "Pendiente"}</span></div>
+      <div class="rec-meta">${dest}${s.responsable ? " · " + escapeHtml(s.responsable) : ""}</div>
+    </div><div class="rec-acc">
+      <button class="mini-btn ${s.entregado ? "mini-btn-activo" : ""}" data-t="${s.id}">${s.entregado ? "✓ Entregado" : "Marcar entregado"}</button>
+      <button class="mini-btn mini-btn-peligro" data-d="${s.id}">×</button>
+    </div></div>`;
+  }).join("");
+  cont.querySelectorAll("[data-t]").forEach(b => b.addEventListener("click", async () => {
+    const s = INS_CACHE.find(x => x.id == b.dataset.t);
+    await sb.from("insumos_punto").update({ entregado: !s.entregado, actualizado_en: new Date().toISOString() }).eq("id", s.id);
+    cargarInsumos(); if (diaeSubActual === "tablero") cargarTablero();
+  }));
+  cont.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("¿Eliminar el insumo?")) return;
+    await sb.from("insumos_punto").delete().eq("id", b.dataset.d); cargarInsumos();
+  }));
+}
+async function guardarInsumo() {
+  const msg = document.getElementById("ins-msg"); msg.textContent = "";
+  const mesaId = document.getElementById("ins-mesa").value || null;
+  const corr = document.getElementById("ins-corregimiento").value || null;
+  if (!mesaId && !corr) { msg.innerHTML = `<span class="val-error">Elige una mesa o un corregimiento.</span>`; return; }
+  const v = document.getElementById("ins-cant").value;
+  const payload = {
+    item: document.getElementById("ins-item").value,
+    descripcion: document.getElementById("ins-desc").value.trim() || null,
+    cantidad: v === "" ? null : (parseInt(v, 10) || 0),
+    mesa_id: mesaId ? Number(mesaId) : null, corregimiento: corr,
+    nivel: mesaId ? null : diaeAmbito.nivel, area_valor: mesaId ? null : diaeAmbito.valor,
+    responsable: document.getElementById("ins-resp").value.trim() || null,
+    es_demo: ES_DEMO,
+  };
+  const btn = document.getElementById("ins-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
+  const { error } = await sb.from("insumos_punto").insert(payload);
+  btn.disabled = false; btn.textContent = "Guardar";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  ["ins-desc", "ins-cant", "ins-resp"].forEach(id => document.getElementById(id).value = "");
+  msg.innerHTML = `<span style="color:var(--exito)">Insumo agregado.</span>`;
+  cargarInsumos();
+}
+function resetFormIns() {
+  insEditId = null;
+  ["ins-desc", "ins-cant", "ins-resp"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("ins-item").value = "otro";
+  document.getElementById("ins-mesa").value = ""; document.getElementById("ins-corregimiento").value = "";
+  document.getElementById("ins-msg").textContent = "";
 }
 
 // ============================================================

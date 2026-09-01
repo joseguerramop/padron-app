@@ -258,6 +258,19 @@
     background: #eaf1fd;
     color: #1a56c4;
   }
+  .badge-militante     { background: #e9f7ee; color: #1a7f37; }
+  .badge-simpatizante  { background: #eaf1fd; color: #1a56c4; }
+  .badge-indeciso      { background: #fff4e5; color: #a15c00; }
+  .badge-opositor      { background: #fdecea; color: var(--error); }
+  .badge-no_contactado { background: #f0f1f6; color: var(--texto-suave); }
+  .evid-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .evid-item { position: relative; width: 74px; height: 74px; border-radius: 8px; overflow: hidden; border: 1px solid var(--borde); background: #eef1f6; }
+  .evid-item img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+  .evid-item .evid-del {
+    position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; line-height: 16px;
+    border: none; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; cursor: pointer; font-size: 0.7rem; padding: 0;
+  }
+  .evid-vacio { font-size: 0.78rem; color: var(--texto-suave); }
   .fila-fallecido .cedula-cell,
   .fila-fallecido td:nth-child(2) {
     text-decoration: line-through;
@@ -898,6 +911,18 @@
             <option value="cambio_residencia">Cambio de residencia</option>
           </select>
         </div>
+        <div class="campo">
+          <label>Clasificación</label>
+          <select id="filtro-clasificacion">
+            <option value="">Todas las clasificaciones</option>
+            <option value="SIN">Sin clasificar</option>
+            <option value="militante">Militante</option>
+            <option value="simpatizante">Simpatizante</option>
+            <option value="indeciso">Indeciso</option>
+            <option value="opositor">Opositor</option>
+            <option value="no_contactado">No contactado</option>
+          </select>
+        </div>
         <div class="campo campo-exportar hidden" id="exportar-campo">
           <label>Exportar resultados</label>
           <div class="exportar-btns">
@@ -1033,6 +1058,33 @@
           </table>
         </div>
         <div class="admin-msg" id="admin-users-msg"></div>
+      </div>
+
+      <div class="admin-card">
+        <h3>Cruce de padrón vs. afiliación</h3>
+        <p class="hint">Compara los electores del padrón con las afiliaciones registradas, por área. Los "afiliados sin padrón" son cédulas de listas de partido que no aparecen en el padrón cargado (posible error de digitación o registro en otro distrito).</p>
+        <div class="admin-grid">
+          <div class="admin-field">
+            <label>Nivel</label>
+            <select id="cruce-nivel">
+              <option value="">Elige…</option>
+              <option value="nacional">Nacional (todo)</option>
+              <option value="circuito">Por circuito</option>
+              <option value="distrito">Por distrito</option>
+              <option value="corregimiento">Por corregimiento</option>
+            </select>
+          </div>
+          <div class="admin-field" id="cruce-area-wrap" style="display:none;">
+            <label id="cruce-area-label">Área</label>
+            <select id="cruce-area"><option value="">—</option></select>
+          </div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn-primary" id="cruce-calcular">Calcular</button>
+          <button class="btn-secundario" id="cruce-exportar" style="display:none;">⬇️ Afiliados sin padrón (Excel)</button>
+          <span class="admin-msg" id="cruce-msg"></span>
+        </div>
+        <div id="cruce-resultado" style="margin-top:12px;"></div>
       </div>
 
       <div class="admin-card">
@@ -1333,6 +1385,28 @@
       </select>
     </div>
     <div class="field">
+      <label>Clasificación política</label>
+      <select id="modal-clasificacion">
+        <option value="">— Sin clasificar —</option>
+        <option value="militante">Militante</option>
+        <option value="simpatizante">Simpatizante</option>
+        <option value="indeciso">Indeciso</option>
+        <option value="opositor">Opositor</option>
+        <option value="no_contactado">No contactado</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Nivel de compromiso</label>
+      <select id="modal-compromiso">
+        <option value="">— Sin evaluar —</option>
+        <option value="1">1 · Muy bajo</option>
+        <option value="2">2 · Bajo</option>
+        <option value="3">3 · Medio</option>
+        <option value="4">4 · Alto</option>
+        <option value="5">5 · Muy alto</option>
+      </select>
+    </div>
+    <div class="field">
       <label>Partido / afiliación</label>
       <select id="modal-partido">
         <option value="">— Sin afiliación registrada —</option>
@@ -1359,6 +1433,12 @@
         <p class="mini-mapa-ayuda">Toca el mapa donde vive la persona. Puedes arrastrar el pin para ajustarlo.</p>
         <div id="modal-mini-mapa"></div>
       </div>
+    </div>
+    <div class="field">
+      <label>Evidencia (fotos)</label>
+      <div id="modal-evidencias" class="evid-grid"></div>
+      <input type="file" id="modal-evidencia-file" accept="image/*" capture="environment" />
+      <div class="gps-estado" id="modal-evidencia-estado"></div>
     </div>
     <div id="modal-info" class="modal-info"></div>
     <div id="modal-msg"></div>
@@ -1483,6 +1563,22 @@ const ROL_LABEL = {
   activista: "Activista",
 };
 
+const CLASIF_LABEL = {
+  militante: "Militante",
+  simpatizante: "Simpatizante",
+  indeciso: "Indeciso",
+  opositor: "Opositor",
+  no_contactado: "No contactado",
+};
+
+// Enlace para ESCRIBIR MENSAJE por WhatsApp (no llamada). Asume Panamá (+507) si son 7-8 dígitos.
+function waLink(tel) {
+  const d = String(tel || "").replace(/\D/g, "");
+  if (!d) return null;
+  const intl = (d.length >= 7 && d.length <= 8) ? "507" + d : d;
+  return "https://wa.me/" + intl;
+}
+
 sb.auth.onAuthStateChange((_event, session) => {
   if (session) {
     authScreen.classList.add("hidden");
@@ -1597,6 +1693,7 @@ async function inicializarApp() {
   document.getElementById("filtro-mesa").addEventListener("change", () => { paginaActual = 0; buscar(); });
   document.getElementById("filtro-partido").addEventListener("change", () => { paginaActual = 0; buscar(); });
   document.getElementById("filtro-estado").addEventListener("change", () => { paginaActual = 0; buscar(); });
+  document.getElementById("filtro-clasificacion").addEventListener("change", () => { paginaActual = 0; buscar(); });
   document.getElementById("btn-exportar-excel").addEventListener("click", () => exportar("excel"));
   document.getElementById("btn-exportar-pdf").addEventListener("click", () => exportar("pdf"));
 
@@ -1748,6 +1845,7 @@ function filtrosBusquedaActuales() {
     mesa: document.getElementById("filtro-mesa").value,
     partido: document.getElementById("filtro-partido").value,
     estado: document.getElementById("filtro-estado").value,
+    clasificacion: document.getElementById("filtro-clasificacion").value,
   };
 }
 
@@ -1763,6 +1861,8 @@ function aplicarFiltrosElectores(query, f) {
   else if (f.partido) query = query.eq("partido_siglas", f.partido);
   if (f.estado === "ACTIVO") query = query.is("estado_nota", null);
   else if (f.estado) query = query.eq("estado_nota", f.estado);
+  if (f.clasificacion === "SIN") query = query.is("clasificacion", null);
+  else if (f.clasificacion) query = query.eq("clasificacion", f.clasificacion);
   return query;
 }
 
@@ -1775,7 +1875,7 @@ async function buscar() {
   stats.textContent = "Buscando…";
 
   let query = sb.from("electores_con_partido").select(
-    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha",
+    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha, clasificacion, compromiso",
     { count: "exact" }
   );
   query = aplicarFiltrosElectores(query, f);
@@ -1815,11 +1915,14 @@ async function buscar() {
       ? `<span class="badge badge-partido">${escapeHtml(r.partido_siglas)}</span>`
       : `<span style="color: var(--texto-suave); font-size: 0.8rem;">—</span>`;
 
-    const estadoCell = r.estado_nota
-      ? `<span class="badge badge-${r.estado_nota}">${ESTADO_LABEL[r.estado_nota] || r.estado_nota}</span>`
+    const badgesEstado = [];
+    if (r.estado_nota) badgesEstado.push(`<span class="badge badge-${r.estado_nota}">${ESTADO_LABEL[r.estado_nota] || r.estado_nota}</span>`);
+    if (r.clasificacion) badgesEstado.push(`<span class="badge badge-${r.clasificacion}">${CLASIF_LABEL[r.clasificacion] || r.clasificacion}</span>`);
+    const estadoCell = badgesEstado.length
+      ? badgesEstado.join(" ")
       : `<span style="color: var(--texto-suave); font-size: 0.8rem;">—</span>`;
 
-    const tieneNota = r.estado_nota || r.telefono || r.nota_texto || r.latitud;
+    const tieneNota = r.estado_nota || r.telefono || r.nota_texto || r.latitud || r.clasificacion || r.compromiso;
     const btnLabel = tieneNota ? "Editar" : "Marcar";
     const btnClase = tieneNota ? "btn-marcar tiene-nota" : "btn-marcar";
 
@@ -1883,7 +1986,7 @@ const EXPORT_ESTADO_LABEL = {
   cambio_residencia: "Cambio de residencia",
 };
 const EXPORT_HEADERS = ["Cédula", "Nombre completo", "Corregimiento", "Mesa",
-  "Centro de votación", "Partido", "Estado", "Teléfono", "Nota"];
+  "Centro de votación", "Partido", "Estado", "Clasificación", "Compromiso", "Teléfono", "Nota"];
 let exportando = false;
 
 function filaExport(r) {
@@ -1895,6 +1998,8 @@ function filaExport(r) {
     "Centro de votación": r.centro_votacion || "",
     "Partido": r.partido_siglas || "",
     "Estado": r.estado_nota ? (EXPORT_ESTADO_LABEL[r.estado_nota] || r.estado_nota) : "",
+    "Clasificación": r.clasificacion ? (CLASIF_LABEL[r.clasificacion] || r.clasificacion) : "",
+    "Compromiso": r.compromiso || "",
     "Teléfono": r.telefono || "",
     "Nota": r.nota_texto || "",
   };
@@ -1920,7 +2025,7 @@ function nombreArchivoExport(ext) {
 async function traerFilasExport(msgEl) {
   const f = filtrosBusquedaActuales();
   const cols = "cedula, nombre_completo, corregimiento, mesa, centro_votacion, " +
-    "partido_siglas, estado_nota, telefono, nota_texto";
+    "partido_siglas, estado_nota, clasificacion, compromiso, telefono, nota_texto";
   const filas = [];
   const LOTE = 1000;
   for (let desde = 0; desde < EXPORT_CAP; desde += LOTE) {
@@ -1961,7 +2066,7 @@ async function exportar(tipo) {
 function exportarExcel(filas) {
   const ws = XLSX.utils.json_to_sheet(filas.map(filaExport), { header: EXPORT_HEADERS });
   ws["!cols"] = [{ wch: 14 }, { wch: 30 }, { wch: 18 }, { wch: 6 }, { wch: 40 },
-    { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 44 }];
+    { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 11 }, { wch: 14 }, { wch: 44 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Padrón");
   XLSX.writeFile(wb, nombreArchivoExport("xlsx"));
@@ -1974,8 +2079,8 @@ function exportarPDF(filas, f, tope) {
   const H = doc.internal.pageSize.getHeight();
   const M = 10;
   const cols = [
-    ["Cédula", 22], ["Nombre completo", 52], ["Corregimiento", 30], ["Mesa", 11],
-    ["Centro de votación", 60], ["Partido", 18], ["Estado", 28], ["Teléfono", 22],
+    ["Cédula", 22], ["Nombre completo", 48], ["Corregimiento", 28], ["Mesa", 10],
+    ["Centro de votación", 50], ["Partido", 16], ["Estado", 24], ["Clasificación", 24], ["Teléfono", 22],
   ];
   const totalW = cols.reduce((s, c) => s + c[1], 0);
   let y = 0;
@@ -2016,7 +2121,7 @@ function exportarPDF(filas, f, tope) {
     if (y + alto > H - M) { doc.addPage(); encabezado(false); }
     let x = M;
     [[rec["Cédula"], 0], [nombre, 1], [rec["Corregimiento"], 2], [rec["Mesa"], 3],
-     [centro, 4], [rec["Partido"], 5], [rec["Estado"], 6], [rec["Teléfono"], 7]]
+     [centro, 4], [rec["Partido"], 5], [rec["Estado"], 6], [rec["Clasificación"], 7], [rec["Teléfono"], 8]]
       .forEach(([val, i]) => { doc.text(Array.isArray(val) ? val : String(val), x + 1, y); x += cols[i][1]; });
     y += nLineas * 3.2;
     if (nota.length) {
@@ -2067,7 +2172,10 @@ function abrirModal(registro) {
   modalEstado.value = registro.estado_nota || "";
   modalTelefono.value = registro.telefono || "";
   modalNota.value = registro.nota_texto || "";
+  document.getElementById("modal-clasificacion").value = registro.clasificacion || "";
+  document.getElementById("modal-compromiso").value = registro.compromiso ? String(registro.compromiso) : "";
   modalMsg.innerHTML = "";
+  cargarEvidenciasModal("elector", registro.cedula);
 
   // ----- Partido / afiliación -----
   origenPartidoId = registro.partido_id || null;
@@ -2198,12 +2306,15 @@ document.getElementById("modal-guardar").addEventListener("click", async () => {
   const estado = modalEstado.value;
   const telefono = modalTelefono.value.trim();
   const nota = modalNota.value.trim();
+  const clasificacion = document.getElementById("modal-clasificacion").value || null;
+  const compromiso = document.getElementById("modal-compromiso").value
+    ? Number(document.getElementById("modal-compromiso").value) : null;
   const btn = document.getElementById("modal-guardar");
   btn.disabled = true;
   btn.textContent = "Guardando…";
   modalMsg.innerHTML = "";
 
-  const sinDatos = !estado && !telefono && !nota && !gpsLat;
+  const sinDatos = !estado && !telefono && !nota && !gpsLat && !clasificacion && !compromiso;
 
   try {
     if (sinDatos) {
@@ -2216,6 +2327,8 @@ document.getElementById("modal-guardar").addEventListener("click", async () => {
         estado: estado || null,
         telefono: telefono || null,
         nota: nota || null,
+        clasificacion,
+        compromiso,
         actualizado_por: currentUserEmail,
         fecha_actualizacion: new Date().toISOString(),
         latitud: gpsLat || null,
@@ -2266,6 +2379,72 @@ document.getElementById("modal-guardar").addEventListener("click", async () => {
     btn.disabled = false;
     btn.textContent = "Guardar";
   }
+});
+
+// ---------- EVIDENCIAS (fotos) en el modal ----------
+let evidModalTipo = null, evidModalRef = null;
+
+async function cargarEvidenciasModal(tipo, ref) {
+  evidModalTipo = tipo; evidModalRef = String(ref);
+  const cont = document.getElementById("modal-evidencias");
+  const est = document.getElementById("modal-evidencia-estado");
+  est.textContent = ""; est.classList.remove("ok");
+  document.getElementById("modal-evidencia-file").value = "";
+  cont.innerHTML = `<span class="evid-vacio">Cargando…</span>`;
+  const { data, error } = await sb.from("evidencias")
+    .select("id, storage_path, subido_por, creado_en")
+    .eq("entidad_tipo", tipo).eq("entidad_ref", String(ref))
+    .order("creado_en", { ascending: false });
+  if (error) { cont.innerHTML = `<span class="evid-vacio">${escapeHtml(error.message)}</span>`; return; }
+  if (!data || !data.length) { cont.innerHTML = `<span class="evid-vacio">Sin fotos. Agrega una con el botón de abajo.</span>`; return; }
+  cont.innerHTML = "";
+  for (const ev of data) {
+    const { data: signed } = await sb.storage.from("evidencias").createSignedUrl(ev.storage_path, 3600);
+    const div = document.createElement("div");
+    div.className = "evid-item";
+    div.innerHTML = `<img src="${signed ? signed.signedUrl : ""}" alt="evidencia" title="${escapeHtml(ev.subido_por || "")}" />
+      <button class="evid-del" title="Eliminar">×</button>`;
+    div.querySelector("img").addEventListener("click", () => { if (signed) window.open(signed.signedUrl, "_blank"); });
+    div.querySelector(".evid-del").addEventListener("click", () => borrarEvidenciaModal(ev));
+    cont.appendChild(div);
+  }
+}
+
+async function borrarEvidenciaModal(ev) {
+  if (!confirm("¿Eliminar esta foto?")) return;
+  const { error: e1 } = await sb.from("evidencias").delete().eq("id", ev.id);
+  if (e1) { alert(e1.message); return; }
+  await sb.storage.from("evidencias").remove([ev.storage_path]);
+  cargarEvidenciasModal(evidModalTipo, evidModalRef);
+}
+
+document.getElementById("modal-evidencia-file").addEventListener("change", async (e) => {
+  const files = [...e.target.files];
+  if (!files.length || !evidModalRef) return;
+  const est = document.getElementById("modal-evidencia-estado");
+  const particion = ES_DEMO ? "demo" : "real";
+  for (const file of files) {
+    est.textContent = `Subiendo ${file.name}…`; est.classList.remove("ok");
+    try {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const rand = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+      const path = `${particion}/${evidModalTipo}/${evidModalRef}/${rand}.${ext}`;
+      const { error: eUp } = await sb.storage.from("evidencias").upload(path, file, {
+        contentType: file.type || "image/jpeg", upsert: false,
+      });
+      if (eUp) throw eUp;
+      const { error: eIns } = await sb.from("evidencias").insert({
+        entidad_tipo: evidModalTipo, entidad_ref: evidModalRef, storage_path: path,
+        titulo: file.name, subido_por: currentUserEmail, es_demo: ES_DEMO,
+      });
+      if (eIns) { await sb.storage.from("evidencias").remove([path]); throw eIns; }
+    } catch (err) {
+      est.textContent = "Error al subir: " + (err.message || err);
+      return;
+    }
+  }
+  est.textContent = "Foto(s) subida(s)."; est.classList.add("ok");
+  cargarEvidenciasModal(evidModalTipo, evidModalRef);
 });
 
 // ---------- MAPA ----------
@@ -2437,7 +2616,7 @@ async function cargarMapa() {
   while (true) {
     const { data: pagina, error } = await sb
       .from("electores_con_partido")
-      .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, partido_id, partido_agregado_por, nota_fecha, nota_actualizado_por")
+      .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, partido_id, partido_agregado_por, nota_fecha, nota_actualizado_por, clasificacion, compromiso")
       .not("latitud", "is", null)
       .not("longitud", "is", null)
       .order("cedula", { ascending: true })
@@ -2552,6 +2731,8 @@ const ESTADO_LABEL = {
 function construirPopupHtml(r) {
   const partidoTxt = r.partido_siglas ? `Partido: ${escapeHtml(r.partido_siglas)}` : "Sin partido registrado";
   const estadoTxt = r.estado_nota ? `<br>${ESTADO_LABEL[r.estado_nota] || r.estado_nota}` : "";
+  const clasifTxt = r.clasificacion
+    ? `<br>🏷️ ${CLASIF_LABEL[r.clasificacion] || r.clasificacion}${r.compromiso ? ` · compromiso ${r.compromiso}/5` : ""}` : "";
   const telTxt = r.telefono ? `<br>📞 ${escapeHtml(r.telefono)}` : "";
   const notaTxt = r.nota_texto ? `<br><em>${escapeHtml(r.nota_texto)}</em>` : "";
   const fechaTxt = r.nota_fecha ? `<br><small>Visitado: ${new Date(r.nota_fecha).toLocaleDateString("es-PA")}</small>` : "";
@@ -2560,7 +2741,7 @@ function construirPopupHtml(r) {
     <div class="popup-marcador">
       <b>${escapeHtml(r.nombre_completo)}</b>
       ${escapeHtml(r.cedula)} — ${escapeHtml(r.corregimiento)}, Mesa ${escapeHtml(r.mesa)}<br>
-      ${partidoTxt}${estadoTxt}${telTxt}${notaTxt}${fechaTxt}
+      ${partidoTxt}${estadoTxt}${clasifTxt}${telTxt}${notaTxt}${fechaTxt}
       <br><button class="btn-ruta ${yaEnRuta ? "en-ruta" : ""}" data-cedula="${escapeHtml(r.cedula)}">
         ${yaEnRuta ? "✓ Quitar de la ruta" : "Agregar a ruta"}
       </button>
@@ -2888,7 +3069,7 @@ async function cargarStatsArea(titulo, tipo, valor) {
 function renderStatsArea(cont, titulo, obj) {
   const total = Number(obj.total || 0);
   if (total === 0) {
-    statsAreaActual = { total: 0, partidos: [], campo: [] };
+    statsAreaActual = { total: 0, partidos: [], campo: [], clasificacion: [] };
     cont.innerHTML = `<h4>${escapeHtml(titulo)}</h4>` +
       `<div class="stat-vacio">Aún no hay electores cargados en esta área.</div>`;
     return;
@@ -2924,7 +3105,20 @@ function renderStatsArea(cont, titulo, obj) {
     .filter(([, , n], i) => i < 3 || Number(n) > 0)   // los 3 primeros siempre; estados solo si hay
     .map(([etq, color, n]) => ({ etq, color, n: Number(n || 0), pct: pctN(Number(n || 0)) }));
 
-  statsAreaActual = { total, partidos, campo };
+  // ---- por clasificación política ----
+  const cl = obj.clasificacion || {};
+  const clasifDefs = [
+    ["Militante", "#1a7f37", cl.militante],
+    ["Simpatizante", "#1a56c4", cl.simpatizante],
+    ["Indeciso", "#a15c00", cl.indeciso],
+    ["Opositor", "#c0392b", cl.opositor],
+    ["No contactado", "#5b6472", cl.no_contactado],
+  ];
+  const clasificacion = clasifDefs
+    .filter(([, , n]) => Number(n || 0) > 0)
+    .map(([etq, color, n]) => ({ etq, color, n: Number(n || 0), pct: pctN(Number(n || 0)) }));
+
+  statsAreaActual = { total, partidos, campo, clasificacion };
 
   const filaHtml = (it) => `<div class="stat-fila">
       <span class="etq"><span class="dot" style="background:${it.color}"></span>${escapeHtml(it.etq)}</span>
@@ -2938,6 +3132,10 @@ function renderStatsArea(cont, titulo, obj) {
   partidos.forEach(it => { html += filaHtml(it); });
   html += `<div class="stat-sub">Trabajo de campo</div>`;
   campo.forEach(it => { html += filaHtml(it); });
+  if (clasificacion.length) {
+    html += `<div class="stat-sub">Clasificación política</div>`;
+    clasificacion.forEach(it => { html += filaHtml(it); });
+  }
   cont.innerHTML = html;
 }
 
@@ -3086,7 +3284,8 @@ async function exportarMapaPDF() {
 
       const hayStats = statsAreaActual && statsAreaActual.total > 0;
       const nFilasStats = hayStats
-        ? statsAreaActual.partidos.length + statsAreaActual.campo.length : 0;
+        ? statsAreaActual.partidos.length + statsAreaActual.campo.length
+          + (statsAreaActual.clasificacion ? statsAreaActual.clasificacion.length : 0) : 0;
 
       // imagen del mapa (deja espacio abajo para leyenda + estadísticas + pie)
       const imgY = margin + 14;
@@ -3147,6 +3346,8 @@ async function exportarMapaPDF() {
         };
         seccion("Por partido", statsAreaActual.partidos);
         seccion("Trabajo de campo", statsAreaActual.campo);
+        if (statsAreaActual.clasificacion && statsAreaActual.clasificacion.length)
+          seccion("Clasificación política", statsAreaActual.clasificacion);
       }
 
       // pie
@@ -3283,14 +3484,17 @@ function tarjetaCandidato(c, nombrePorU, siglasPorId, esAdmin) {
   const sig = c.partido_id ? (siglasPorId[c.partido_id] || "") : "";
   const partidoBadge = sig ? ` <span class="badge badge-partido">${escapeHtml(sig)}</span>` : "";
   const areaTxt = c.nivel === "presidente" ? "Nacional" : (c.area_valor || "—");
-  const contacto = [c.telefono ? "📞 " + c.telefono : "", c.correo ? "✉️ " + c.correo : ""].filter(Boolean).join("  ·  ");
+  const contacto = [
+    c.telefono ? `<a href="${waLink(c.telefono)}" target="_blank" rel="noopener">💬 ${escapeHtml(c.telefono)}</a>` : "",
+    c.correo ? `<a href="mailto:${escapeHtml(c.correo)}">✉️ ${escapeHtml(c.correo)}</a>` : "",
+  ].filter(Boolean).join("&nbsp;&nbsp;·&nbsp;&nbsp;");
   const cuenta = c.user_id ? (nombrePorU[c.user_id] || (c.user_id.slice(0, 8) + "…")) : "sin cuenta vinculada";
   card.innerHTML = `
     ${foto}
     <div class="cand-info">
       <div class="cand-nombre">${escapeHtml(c.nombre)}${partidoBadge}</div>
       <div class="cand-meta">${escapeHtml(ROL_LABEL[c.nivel] || c.nivel)} · ${escapeHtml(areaTxt)}</div>
-      ${contacto ? `<div class="cand-meta">${escapeHtml(contacto)}</div>` : ""}
+      ${contacto ? `<div class="cand-meta">${contacto}</div>` : ""}
       <div class="cand-meta">Cuenta: ${escapeHtml(cuenta)}</div>
       ${c.notas ? `<div class="cand-meta">${escapeHtml(c.notas)}</div>` : ""}
       <span class="cand-estado cand-estado-${escapeHtml(c.estado)}">${escapeHtml(c.estado)}</span>
@@ -3503,9 +3707,9 @@ function tarjetaDirigente(d, esAdmin) {
     : d.mesas ? `Mesa ${d.mesas.numero} · ${d.mesas.corregimiento}`
     : (d.area_valor || "—");
   const jefe = d.reporta_a_id ? (DIRIGENTES_CACHE.find(x => x.id === d.reporta_a_id) || {}).nombre : null;
-  const tel = d.telefono ? d.telefono.replace(/\s+/g, "") : "";
+  const wa = waLink(d.telefono);
   const contacto = [
-    d.telefono ? `<a href="tel:${escapeHtml(tel)}">📞 ${escapeHtml(d.telefono)}</a>` : "",
+    d.telefono ? `<a href="${wa}" target="_blank" rel="noopener">💬 ${escapeHtml(d.telefono)}</a>` : "",
     d.correo ? `<a href="mailto:${escapeHtml(d.correo)}">✉️ ${escapeHtml(d.correo)}</a>` : "",
   ].filter(Boolean).join("&nbsp;&nbsp;·&nbsp;&nbsp;");
   card.innerHTML = `
@@ -3885,7 +4089,7 @@ async function buscarActivista() {
   stats.textContent = "Buscando…";
 
   let q = sb.from("electores_con_partido").select(
-    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha",
+    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha, clasificacion, compromiso",
     { count: "exact" }
   );
   if (termino) {
@@ -3914,6 +4118,7 @@ async function buscarActivista() {
     const badges = [];
     if (r.partido_siglas) badges.push(`<span class="badge badge-partido">${escapeHtml(r.partido_siglas)}</span>`);
     if (r.estado_nota) badges.push(`<span class="badge badge-${r.estado_nota}">${ESTADO_LABEL[r.estado_nota] || r.estado_nota}</span>`);
+    if (r.clasificacion) badges.push(`<span class="badge badge-${r.clasificacion}">${CLASIF_LABEL[r.clasificacion] || r.clasificacion}</span>`);
     if (r.telefono) badges.push(`<span class="badge">📞</span>`);
     if (r.latitud) badges.push(`<span class="badge">📍</span>`);
     card.innerHTML = `
@@ -4129,6 +4334,100 @@ function initAdmin() {
   });
   document.getElementById("imp-file").addEventListener("change", manejarArchivoImport);
   document.getElementById("imp-subir").addEventListener("click", subirImport);
+
+  document.getElementById("cruce-nivel").addEventListener("change", construirSelectorAreaCruce);
+  document.getElementById("cruce-calcular").addEventListener("click", calcularCruce);
+  document.getElementById("cruce-exportar").addEventListener("click", exportarAfiliadosSinPadron);
+}
+
+async function construirSelectorAreaCruce() {
+  const nivel = document.getElementById("cruce-nivel").value;
+  const wrap = document.getElementById("cruce-area-wrap");
+  const sel = document.getElementById("cruce-area");
+  const label = document.getElementById("cruce-area-label");
+  document.getElementById("cruce-resultado").innerHTML = "";
+  document.getElementById("cruce-exportar").style.display = "none";
+  if (!nivel || nivel === "nacional") { wrap.style.display = "none"; sel.innerHTML = '<option value="">—</option>'; return; }
+  wrap.style.display = "block";
+  sel.innerHTML = '<option value="">Elige…</option>';
+  if (nivel === "circuito") {
+    label.textContent = "Circuito";
+    (await cargarCircuitos()).forEach(c => sel.insertAdjacentHTML("beforeend",
+      `<option value="${escapeHtml(c.codigo)}">${escapeHtml(c.codigo)} · ${escapeHtml(c.provincia)}</option>`));
+  } else if (nivel === "distrito") {
+    label.textContent = "Distrito";
+    const ubic = await cargarUbicaciones();
+    [...new Map(ubic.map(u => [u.provincia + "|" + u.distrito, u])).values()].forEach(u =>
+      sel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(u.distrito)}">${escapeHtml(u.provincia)} — ${escapeHtml(u.distrito)}</option>`));
+  } else {
+    label.textContent = "Corregimiento";
+    (await cargarUbicaciones()).forEach(u =>
+      sel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(u.corregimiento)}">${escapeHtml(u.corregimiento)} — ${escapeHtml(u.distrito)}</option>`));
+  }
+}
+
+async function calcularCruce() {
+  const nivel = document.getElementById("cruce-nivel").value;
+  const area = document.getElementById("cruce-area").value;
+  const msg = document.getElementById("cruce-msg");
+  const cont = document.getElementById("cruce-resultado");
+  msg.textContent = ""; cont.innerHTML = "";
+  if (!nivel) { msg.innerHTML = `<span class="val-error">Elige un nivel.</span>`; return; }
+  if (nivel !== "nacional" && !area) { msg.innerHTML = `<span class="val-error">Elige el área.</span>`; return; }
+  const btn = document.getElementById("cruce-calcular");
+  btn.disabled = true; btn.textContent = "Calculando…";
+  const { data, error } = await sb.rpc("cruce_afiliaciones",
+    { nivel, valores: nivel === "nacional" ? [] : [String(area)] });
+  btn.disabled = false; btn.textContent = "Calcular";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  const o = data || {};
+  const total = Number(o.total || 0);
+  const con = Number(o.con_afiliacion || 0);
+  const sin = Number(o.sin_afiliacion || 0);
+  const pct = (n) => total ? (n / total * 100).toFixed(1).replace(".0", "") + "%" : "—";
+  let html = `<div class="stat-fila"><span class="etq">Electores en el área</span><span class="barra"></span><span class="num"><b>${total.toLocaleString("es-PA")}</b></span></div>`;
+  html += `<div class="stat-fila"><span class="etq"><span class="dot" style="background:#1a7f37"></span>Con afiliación</span><span class="barra"><div style="width:${total ? con/total*100 : 0}%;background:#1a7f37"></div></span><span class="num"><b>${con.toLocaleString("es-PA")}</b> · ${pct(con)}</span></div>`;
+  html += `<div class="stat-fila"><span class="etq"><span class="dot" style="background:#c0392b"></span>Sin afiliación</span><span class="barra"><div style="width:${total ? sin/total*100 : 0}%;background:#c0392b"></div></span><span class="num"><b>${sin.toLocaleString("es-PA")}</b> · ${pct(sin)}</span></div>`;
+  const pp = (o.por_partido || []).filter(x => x.siglas);
+  if (pp.length) {
+    html += `<div class="stat-sub">Afiliados por partido en el área</div>`;
+    pp.forEach(x => {
+      const n = Number(x.n);
+      html += `<div class="stat-fila"><span class="etq">${escapeHtml(x.siglas)}</span><span class="barra"><div style="width:${con ? n/con*100 : 0}%;background:#1a56c4"></div></span><span class="num"><b>${n.toLocaleString("es-PA")}</b></span></div>`;
+    });
+  }
+  const huer = Number(o.huerfanos || 0);
+  html += `<div class="cred-box" style="margin-top:12px;background:${huer ? "#fff4e5" : "#e9f7ee"};border-color:${huer ? "#f0c68a" : "#b7e0c4"}">` +
+    `<b>${huer.toLocaleString("es-PA")}</b> afiliado(s) sin padrón` +
+    (huer ? ` — cédulas en listas de partido que no están en el padrón cargado.` : ` — todas las afiliaciones cruzan con el padrón.`) +
+    `</div>`;
+  cont.innerHTML = html;
+  document.getElementById("cruce-exportar").style.display = huer ? "" : "none";
+}
+
+async function exportarAfiliadosSinPadron() {
+  const msg = document.getElementById("cruce-msg");
+  msg.textContent = "Preparando…";
+  const filas = [];
+  const LOTE = 1000;
+  for (let desde = 0; desde < 20000; desde += LOTE) {
+    const { data, error } = await sb.from("afiliados_sin_padron")
+      .select("cedula, siglas, partido_nombre, nombre_completo_partido, corregimiento_partido, fecha_inscripcion, agregado_por")
+      .order("cedula").range(desde, desde + LOTE - 1);
+    if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+    filas.push(...(data || []));
+    if (!data || data.length < LOTE) break;
+  }
+  if (!filas.length) { msg.textContent = "No hay filas."; return; }
+  const ws = XLSX.utils.json_to_sheet(filas.map(r => ({
+    "Cédula": r.cedula || "", "Partido": r.siglas || "", "Nombre del partido": r.partido_nombre || "",
+    "Nombre (lista partido)": r.nombre_completo_partido || "", "Corregimiento (partido)": r.corregimiento_partido || "",
+    "Fecha inscripción": r.fecha_inscripcion || "", "Registrado por": r.agregado_por || "",
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Afiliados sin padrón");
+  XLSX.writeFile(wb, `${ES_DEMO ? "demo_" : ""}afiliados_sin_padron_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  msg.textContent = `Listo: ${filas.length.toLocaleString("es-PA")} fila(s).`;
 }
 
 async function construirSelectorArea(rol) {

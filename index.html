@@ -832,6 +832,13 @@
       </select>
     </div>
     <div class="field">
+      <label>Partido / afiliación</label>
+      <select id="modal-partido">
+        <option value="">— Sin afiliación registrada —</option>
+      </select>
+      <div id="modal-partido-info" class="modal-info" style="margin-top:6px;"></div>
+    </div>
+    <div class="field">
       <label>Teléfono (opcional)</label>
       <input type="tel" id="modal-telefono" placeholder="Ej: 6123-4567" />
     </div>
@@ -874,6 +881,7 @@ let paginaActual = 0;
 let perfilActual = null; // { rol, nombre, es_demo }
 let ES_DEMO = false;     // sesión de cuenta demo → datos ficticios
 let debounceTimer = null;
+let PARTIDOS_CACHE = []; // [{ id, siglas, nombre }] del catálogo visible (según es_demo)
 
 // ---------- AUTH ----------
 const authScreen = document.getElementById("auth-screen");
@@ -936,6 +944,7 @@ sb.auth.onAuthStateChange((_event, session) => {
       '<option value="">Todos (inscritos y no inscritos)</option>' +
       '<option value="NINGUNO">Sin partido registrado</option>';
     ubicacionesCache = null; circuitosCache = null;
+    PARTIDOS_CACHE = [];
     document.body.classList.remove("demo");
     cambiarTab("buscar");
     authScreen.classList.remove("hidden");
@@ -1046,8 +1055,9 @@ async function cargarFiltros() {
 
 async function cargarFiltroPartidos() {
   const sel = document.getElementById("filtro-partido");
-  const { data, error } = await sb.from("partidos").select("siglas, nombre").order("siglas");
+  const { data, error } = await sb.from("partidos").select("id, siglas, nombre").order("siglas");
   if (error || !data) return;
+  PARTIDOS_CACHE = data;
   // limpia opciones dinámicas previas (deja "Todos" y "NINGUNO")
   [...sel.options].forEach(o => { if (o.value && o.value !== "NINGUNO") o.remove(); });
   const ninguno = sel.querySelector('option[value="NINGUNO"]');
@@ -1057,6 +1067,20 @@ async function cargarFiltroPartidos() {
     opt.textContent = "Inscritos en " + p.siglas;
     if (p.nombre && p.nombre !== p.siglas) opt.title = p.nombre;
     sel.insertBefore(opt, ninguno);
+  });
+  poblarSelectPartidoModal();
+}
+
+// Llena el <select> de partido del modal con el catálogo visible.
+function poblarSelectPartidoModal() {
+  const sel = document.getElementById("modal-partido");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Sin afiliación registrada —</option>';
+  PARTIDOS_CACHE.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = String(p.id);
+    opt.textContent = (p.nombre && p.nombre !== p.siglas) ? `${p.siglas} — ${p.nombre}` : p.siglas;
+    sel.appendChild(opt);
   });
 }
 
@@ -1097,7 +1121,7 @@ async function buscar() {
   stats.textContent = "Buscando…";
 
   let query = sb.from("electores_con_partido").select(
-    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha",
+    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha",
     { count: "exact" }
   );
 
@@ -1213,6 +1237,8 @@ function escapeHtml(str) {
 let cedulaEnEdicion = null;
 let gpsLat = null;
 let gpsLng = null;
+let origenPartidoId = null;      // afiliación con la que se abrió el modal
+let puedeEditarPartido = false;  // solo admin
 
 const modalOverlay = document.getElementById("modal-overlay");
 const modalNombre = document.getElementById("modal-nombre");
@@ -1230,6 +1256,22 @@ function abrirModal(registro) {
   modalTelefono.value = registro.telefono || "";
   modalNota.value = registro.nota_texto || "";
   modalMsg.innerHTML = "";
+
+  // ----- Partido / afiliación -----
+  origenPartidoId = registro.partido_id || null;
+  puedeEditarPartido = !!(perfilActual && perfilActual.rol === "admin");
+  poblarSelectPartidoModal();
+  const selPart = document.getElementById("modal-partido");
+  selPart.value = origenPartidoId ? String(origenPartidoId) : "";
+  selPart.disabled = !puedeEditarPartido;
+  const infoPart = document.getElementById("modal-partido-info");
+  if (!puedeEditarPartido) {
+    infoPart.textContent = "Solo un administrador puede cambiar la afiliación de partido.";
+  } else if (registro.partido_agregado_por) {
+    infoPart.textContent = "Afiliación registrada en el sistema por " + registro.partido_agregado_por + ".";
+  } else {
+    infoPart.textContent = "";
+  }
   gpsLat = registro.latitud || null;
   gpsLng = registro.longitud || null;
   gpsEstado.textContent = gpsLat
@@ -1250,6 +1292,7 @@ function cerrarModal() {
   cedulaEnEdicion = null;
   gpsLat = null;
   gpsLng = null;
+  origenPartidoId = null;
 }
 
 document.getElementById("modal-cancelar").addEventListener("click", cerrarModal);
@@ -1369,6 +1412,33 @@ document.getElementById("modal-guardar").addEventListener("click", async () => {
       const { error } = await sb.from("notas_electores").upsert(payload, { onConflict: "cedula" });
       if (error) throw error;
     }
+
+    // ----- Afiliación de partido (solo admin) -----
+    if (puedeEditarPartido) {
+      const sel = document.getElementById("modal-partido");
+      const nuevoPartidoId = sel.value ? Number(sel.value) : null;
+      if (nuevoPartidoId !== origenPartidoId) {
+        if (nuevoPartidoId === null) {
+          const { error } = await sb.from("afiliaciones").delete().eq("cedula", cedulaEnEdicion);
+          if (error) throw error;
+        } else {
+          const { error } = await sb.from("afiliaciones").upsert({
+            cedula: cedulaEnEdicion,
+            partido_id: nuevoPartidoId,
+            nombre_completo_partido: null,
+            sexo: null,
+            fecha_inscripcion: null,
+            corregimiento_partido: null,
+            agregado_por: currentUserEmail,
+            fecha_carga: new Date().toISOString(),
+            es_demo: ES_DEMO,
+          }, { onConflict: "cedula" });
+          if (error) throw error;
+        }
+        origenPartidoId = nuevoPartidoId;
+      }
+    }
+
     cerrarModal();
     buscar();
     if (leafletMap && !document.getElementById("vista-mapa").classList.contains("hidden")) cargarMapa();
@@ -1549,7 +1619,7 @@ async function cargarMapa() {
   while (true) {
     const { data: pagina, error } = await sb
       .from("electores_con_partido")
-      .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, nota_fecha, nota_actualizado_por")
+      .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, partido_id, partido_agregado_por, nota_fecha, nota_actualizado_por")
       .not("latitud", "is", null)
       .not("longitud", "is", null)
       .order("cedula", { ascending: true })

@@ -2,8 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Control de Campaña</title>
+<meta name="description" content="Control de Campaña — trabajo territorial electoral: consulta del padrón, seguimiento de campo y mapas de circuitos." />
+<meta name="theme-color" content="#0b3d91" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Campaña" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   :root {
@@ -30,6 +39,9 @@
     background: linear-gradient(135deg, var(--azul), var(--azul-claro));
     color: white;
     padding: 14px 24px;
+    padding-top: calc(14px + env(safe-area-inset-top));
+    padding-left: calc(24px + env(safe-area-inset-left));
+    padding-right: calc(24px + env(safe-area-inset-right));
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -73,40 +85,50 @@
   /* ---- Auth screen ---- */
   #auth-screen {
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: calc(20px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right))
+             calc(20px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+    background: linear-gradient(160deg, var(--azul) 0%, var(--azul-claro) 45%, var(--fondo) 45%);
   }
   .auth-card {
     background: var(--tarjeta);
-    border-radius: 12px;
-    padding: 32px;
+    border-radius: 16px;
+    padding: 28px 26px 24px;
     width: 100%;
     max-width: 380px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    box-shadow: 0 12px 40px rgba(11,61,145,0.28);
     border: 1px solid var(--borde);
   }
-  .auth-card h2 { margin-top: 0; color: var(--azul); }
-  .auth-card p.desc { color: var(--texto-suave); font-size: 0.88rem; margin-top: -8px; }
+  .auth-brand {
+    display: flex; align-items: center; gap: 13px; margin-bottom: 20px;
+  }
+  .auth-logo {
+    width: 52px; height: 52px; border-radius: 13px; flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(11,61,145,0.30);
+  }
+  .auth-brand h2 { margin: 0; color: var(--azul); font-size: 1.2rem; line-height: 1.15; }
+  .auth-card p.desc { color: var(--texto-suave); font-size: 0.82rem; margin: 2px 0 0; }
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 0.82rem; margin-bottom: 5px; color: var(--texto-suave); }
   .field input {
     width: 100%;
-    padding: 10px 12px;
+    padding: 13px 14px;
     border: 1px solid var(--borde);
-    border-radius: 7px;
-    font-size: 0.95rem;
+    border-radius: 10px;
+    font-size: 16px;
   }
   .field input:focus { outline: 2px solid var(--azul-claro); border-color: transparent; }
   .btn-primary {
     width: 100%;
-    padding: 11px;
+    padding: 14px;
     background: var(--azul);
     color: white;
     border: none;
-    border-radius: 7px;
-    font-size: 0.95rem;
+    border-radius: 10px;
+    font-size: 1rem;
     cursor: pointer;
     font-weight: 600;
   }
@@ -118,6 +140,27 @@
     font-size: 0.85rem;
   }
   .toggle-mode a { color: var(--azul-claro); cursor: pointer; text-decoration: underline; }
+
+  /* ---- Instalar como app ---- */
+  .install-cta {
+    margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--borde);
+    text-align: center;
+  }
+  .btn-instalar {
+    width: 100%; padding: 13px 14px; border-radius: 10px; cursor: pointer;
+    background: #eaf1fd; color: var(--azul); border: 1px solid #c9dcfa;
+    font-size: 0.95rem; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-instalar:hover { background: #dfeafc; }
+  .install-hint { color: var(--texto-suave); font-size: 0.78rem; margin: 8px 2px 0; line-height: 1.4; }
+  .ios-steps { margin: 4px 0 0; padding-left: 18px; font-size: 0.9rem; color: var(--texto); line-height: 1.6; }
+  .ios-steps li { margin-bottom: 4px; }
+  .ios-key {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 22px; padding: 0 5px; border-radius: 5px;
+    background: #eef1f8; border: 1px solid var(--borde); font-weight: 700; vertical-align: -4px;
+  }
   .msg { font-size: 0.85rem; padding: 9px 12px; border-radius: 6px; margin-bottom: 12px; }
   .msg.error { background: #fdecea; color: var(--error); }
   .msg.success { background: #e9f7ee; color: var(--exito); }
@@ -156,6 +199,16 @@
   }
   .panel-filtros input:focus,
   .panel-filtros select:focus { outline: 2px solid var(--azul-claro); border-color: transparent; }
+  .campo-exportar { border-top: 1px solid var(--borde); padding-top: 12px; margin-top: 12px; }
+  .exportar-btns { display: flex; gap: 8px; }
+  .exportar-btns button {
+    flex: 1; padding: 9px 6px; border: 1px solid #c9dcfa; background: #eaf1fd; color: var(--azul);
+    border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  }
+  .exportar-btns button:hover { background: #dfeafc; }
+  .exportar-btns button:disabled { opacity: 0.55; cursor: progress; }
+  body.demo .exportar-btns button { border-color: #f0d9b5; background: #fff4e5; color: #a15c00; }
+  .exportar-msg { font-size: 0.75rem; color: var(--texto-suave); margin-top: 6px; min-height: 1em; }
   .panel-resultados { min-width: 0; }
   .stats { font-size: 0.82rem; color: var(--texto-suave); margin: 2px 2px 10px; }
   @media (max-width: 900px) {
@@ -578,6 +631,8 @@
   .mini-btn:hover { background: #f0f1f6; }
   .mini-btn-peligro { border-color: #e7b7b1; color: var(--error); }
   .mini-btn-peligro:hover { background: #fdecea; }
+  .mini-btn-activo { border-color: #1a7f37; color: var(--exito); background: #e9f7ee; }
+  .mini-btn-activo:hover { background: #dcefe1; }
   .import-preview {
     margin-top: 12px; max-height: 260px; overflow: auto;
     border: 1px solid var(--borde); border-radius: 8px;
@@ -623,12 +678,33 @@
   /* ---- Modo activista (app móvil de campo) ---- */
   body.activista .tabs { display: none; }
   body.activista #tab-admin-btn { display: none !important; }
-  body.activista main { max-width: 560px; padding-bottom: 90px; }
+  body.activista main {
+    max-width: 560px;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+    padding-left: calc(16px + env(safe-area-inset-left));
+    padding-right: calc(16px + env(safe-area-inset-right));
+  }
   .act-barra {
     position: sticky; top: var(--header-h); z-index: 20; background: var(--fondo);
     padding: 12px 0 10px; display: flex; flex-direction: column; gap: 8px;
     border-bottom: 1px solid var(--borde); margin-bottom: 12px;
   }
+  .act-instalar-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: #eaf1fd; border: 1px solid #c9dcfa; color: var(--azul);
+    border-radius: 12px; padding: 10px 12px; margin: 10px 0 4px; font-size: 0.85rem;
+  }
+  body.demo .act-instalar-bar { background: #fff4e5; border-color: #f0d9b5; color: #a15c00; }
+  .act-instalar-bar button {
+    border: none; background: var(--azul); color: white; font-weight: 600;
+    padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.82rem; white-space: nowrap;
+  }
+  body.demo .act-instalar-bar button { background: #b45309; }
+  .act-instalar-bar .cerrar {
+    background: transparent; color: inherit; font-size: 1.3rem; line-height: 1;
+    padding: 0 2px; opacity: 0.75; flex-shrink: 0;
+  }
+  .act-instalar-bar .cerrar:hover { opacity: 1; }
   .act-barra input[type=search], .act-barra select {
     width: 100%; padding: 12px 14px; border: 1px solid var(--borde); border-radius: 10px;
     font-size: 1rem; background: white; color: var(--texto);
@@ -647,7 +723,8 @@
   .act-card .badge { margin-right: 4px; margin-top: 5px; }
   .act-card-flecha { color: var(--azul-claro); font-size: 1.3rem; flex-shrink: 0; }
   .act-fab {
-    position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 30;
+    position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
+    bottom: calc(18px + env(safe-area-inset-bottom));
     background: var(--azul); color: white; border: none; border-radius: 100px;
     padding: 14px 22px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
     box-shadow: 0 6px 20px rgba(11,61,145,0.35); max-width: calc(100% - 32px);
@@ -667,13 +744,18 @@
 <!-- ===== PANTALLA DE LOGIN ===== -->
 <div id="auth-screen">
   <div class="auth-card">
-    <h2 id="auth-title">Iniciar Sesión</h2>
-    <p class="desc">Control de Campaña · Trabajo territorial electoral</p>
+    <div class="auth-brand">
+      <img src="icon-192.png" alt="" class="auth-logo" width="52" height="52" />
+      <div>
+        <h2 id="auth-title">Control de Campaña</h2>
+        <p class="desc">Trabajo territorial electoral</p>
+      </div>
+    </div>
     <div id="auth-msg"></div>
     <form id="auth-form">
       <div class="field">
         <label>Correo electrónico</label>
-        <input type="email" id="auth-email" required autocomplete="username" />
+        <input type="email" id="auth-email" required autocomplete="username" inputmode="email" autocapitalize="none" />
       </div>
       <div class="field">
         <label>Contraseña</label>
@@ -683,6 +765,16 @@
     </form>
     <div class="toggle-mode" style="color: var(--texto-suave); font-size: 0.8rem;">
       Acceso solo por invitación. Si necesitas una cuenta, contacta al administrador.
+    </div>
+
+    <div id="install-cta" class="install-cta hidden">
+      <button type="button" id="btn-instalar" class="btn-instalar">📲 Instalar app en el teléfono</button>
+      <p class="install-hint">Se agrega a tu pantalla de inicio y se abre a pantalla completa, como una app — sin barra del navegador.</p>
+      <ol id="ios-steps" class="ios-steps hidden">
+        <li>Toca <span class="ios-key">&#x2191;</span> <b>Compartir</b> en la barra de Safari.</li>
+        <li>Elige <b>Agregar a pantalla de inicio</b>.</li>
+        <li>Toca <b>Agregar</b>. La app queda como un icono más.</li>
+      </ol>
     </div>
   </div>
 </div>
@@ -740,6 +832,14 @@
             <option value="no_vive_aqui">No vive en el lugar</option>
             <option value="cambio_residencia">Cambio de residencia</option>
           </select>
+        </div>
+        <div class="campo campo-exportar hidden" id="exportar-campo">
+          <label>Exportar resultados</label>
+          <div class="exportar-btns">
+            <button type="button" id="btn-exportar-excel">⬇️ Excel</button>
+            <button type="button" id="btn-exportar-pdf">🧾 PDF</button>
+          </div>
+          <div class="exportar-msg" id="exportar-msg"></div>
         </div>
       </aside>
 
@@ -863,7 +963,7 @@
         <p class="hint">Cuentas con acceso al sistema y el área que cada una puede consultar.</p>
         <div style="overflow:auto;">
           <table class="admin-users">
-            <thead><tr><th>Nombre</th><th>Correo</th><th>Nivel</th><th>Área</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Correo</th><th>Nivel</th><th>Área</th><th>Estado</th><th>Exportar</th><th></th></tr></thead>
             <tbody id="admin-users-body"></tbody>
           </table>
         </div>
@@ -989,6 +1089,11 @@
 
     <!-- ===== VISTA: ACTIVISTA (app móvil de captura) ===== -->
     <div id="vista-activista" class="hidden">
+      <div id="act-instalar" class="act-instalar-bar hidden">
+        <span id="act-instalar-txt">Instala esta herramienta como app en tu teléfono.</span>
+        <button type="button" id="act-instalar-btn">Instalar</button>
+        <button type="button" class="cerrar" id="act-instalar-cerrar" aria-label="Cerrar">&times;</button>
+      </div>
       <div class="act-barra">
         <input type="search" id="act-buscar" placeholder="Cédula, nombre o apellido…" autocomplete="off" />
         <select id="act-corregimiento"><option value="">Todos mis corregimientos</option></select>
@@ -1126,6 +1231,7 @@ let paginaActual = 0;
 let perfilActual = null; // { rol, nombre, es_demo }
 let ES_DEMO = false;     // sesión de cuenta demo → datos ficticios
 let ES_ACTIVISTA = false; // rol activista → app móvil restringida de captura
+let PUEDE_EXPORTAR = false; // admin o colaborador habilitado por un admin → botones de exportar
 let debounceTimer = null;
 let PARTIDOS_CACHE = []; // [{ id, siglas, nombre }] del catálogo visible (según es_demo)
 
@@ -1184,6 +1290,7 @@ sb.auth.onAuthStateChange((_event, session) => {
     perfilActual = null;
     ES_DEMO = false;
     ES_ACTIVISTA = false;
+    PUEDE_EXPORTAR = false;
     document.body.classList.remove("activista");
     activistaInit = false;
     candidatosInit = false;
@@ -1205,9 +1312,10 @@ sb.auth.onAuthStateChange((_event, session) => {
 
 async function cargarPerfil(uid) {
   perfilActual = null;
+  // select("*") para no romper si la migración de "puede_exportar" aún no se aplicó.
   const { data, error } = await sb
     .from("perfiles_usuario")
-    .select("rol, nombre, activo, es_demo")
+    .select("*")
     .eq("user_id", uid)
     .maybeSingle();
   const badge = document.getElementById("rol-badge");
@@ -1216,12 +1324,14 @@ async function cargarPerfil(uid) {
     perfilActual = data;
     ES_DEMO = !!data.es_demo;
     ES_ACTIVISTA = data.rol === "activista";
+    PUEDE_EXPORTAR = data.rol === "admin" || !!data.puede_exportar;
     badge.textContent = ROL_LABEL[data.rol] || data.rol;
     badge.classList.remove("hidden");
     btnAdmin.classList.toggle("hidden", data.rol !== "admin");
   } else {
     ES_DEMO = false;
     ES_ACTIVISTA = false;
+    PUEDE_EXPORTAR = false;
     badge.classList.add("hidden");
     btnAdmin.classList.add("hidden");
   }
@@ -1276,6 +1386,8 @@ async function inicializarApp() {
   document.getElementById("filtro-mesa").addEventListener("change", () => { paginaActual = 0; buscar(); });
   document.getElementById("filtro-partido").addEventListener("change", () => { paginaActual = 0; buscar(); });
   document.getElementById("filtro-estado").addEventListener("change", () => { paginaActual = 0; buscar(); });
+  document.getElementById("btn-exportar-excel").addEventListener("click", () => exportar("excel"));
+  document.getElementById("btn-exportar-pdf").addEventListener("click", () => exportar("pdf"));
 
   document.getElementById("tab-buscar-btn").addEventListener("click", () => cambiarTab("buscar"));
   document.getElementById("tab-mapa-btn").addEventListener("click", () => cambiarTab("mapa"));
@@ -1321,6 +1433,8 @@ function aplicarPermisosUI() {
   if (formCand) formCand.classList.toggle("hidden", !esAdmin);
   const btnAdmin = document.getElementById("tab-admin-btn");
   if (btnAdmin) btnAdmin.classList.toggle("hidden", !esAdmin);
+  const expCampo = document.getElementById("exportar-campo");
+  if (expCampo) expCampo.classList.toggle("hidden", !(PUEDE_EXPORTAR && !ES_ACTIVISTA));
 }
 
 async function cargarFiltros() {
@@ -1405,12 +1519,34 @@ function normalizar(txt) {
   return txt.trim().toLowerCase();
 }
 
+// Lee los filtros activos de la pestaña Buscar.
+function filtrosBusquedaActuales() {
+  return {
+    termino: normalizar(document.getElementById("buscar").value),
+    corregimiento: document.getElementById("filtro-corregimiento").value,
+    mesa: document.getElementById("filtro-mesa").value,
+    partido: document.getElementById("filtro-partido").value,
+    estado: document.getElementById("filtro-estado").value,
+  };
+}
+
+// Aplica esos filtros a una consulta de electores_con_partido.
+function aplicarFiltrosElectores(query, f) {
+  if (f.termino) {
+    const t = f.termino.replace(/[%_]/g, "");
+    query = query.or(`cedula.ilike.%${t}%,nombre_completo.ilike.%${t}%`);
+  }
+  if (f.corregimiento) query = query.eq("corregimiento", f.corregimiento);
+  if (f.mesa) query = query.eq("mesa", f.mesa);
+  if (f.partido === "NINGUNO") query = query.is("partido_siglas", null);
+  else if (f.partido) query = query.eq("partido_siglas", f.partido);
+  if (f.estado === "ACTIVO") query = query.is("estado_nota", null);
+  else if (f.estado) query = query.eq("estado_nota", f.estado);
+  return query;
+}
+
 async function buscar() {
-  const termino = normalizar(document.getElementById("buscar").value);
-  const corregimiento = document.getElementById("filtro-corregimiento").value;
-  const mesa = document.getElementById("filtro-mesa").value;
-  const partido = document.getElementById("filtro-partido").value;
-  const estado = document.getElementById("filtro-estado").value;
+  const f = filtrosBusquedaActuales();
   const stats = document.getElementById("stats");
   const tbody = document.getElementById("resultados");
   const empty = document.getElementById("empty");
@@ -1421,17 +1557,7 @@ async function buscar() {
     "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha",
     { count: "exact" }
   );
-
-  if (termino) {
-    const t = termino.replace(/[%_]/g, "");
-    query = query.or(`cedula.ilike.%${t}%,nombre_completo.ilike.%${t}%`);
-  }
-  if (corregimiento) query = query.eq("corregimiento", corregimiento);
-  if (mesa) query = query.eq("mesa", mesa);
-  if (partido === "NINGUNO") query = query.is("partido_siglas", null);
-  else if (partido) query = query.eq("partido_siglas", partido);
-  if (estado === "ACTIVO") query = query.is("estado_nota", null);
-  else if (estado) query = query.eq("estado_nota", estado);
+  query = aplicarFiltrosElectores(query, f);
 
   const desde = paginaActual * PAGE_SIZE;
   const hasta = desde + PAGE_SIZE - 1;
@@ -1521,6 +1647,174 @@ function renderPaginacion(totalPaginas) {
   nav.appendChild(btnPrev);
   nav.appendChild(info);
   nav.appendChild(btnNext);
+}
+
+// ============================================================
+// ==========  EXPORTAR PADRÓN (Excel / PDF)  ==================
+//  Solo visible para admin o colaborador habilitado por un admin
+//  (perfiles_usuario.puede_exportar). Exporta lo que el usuario
+//  ya puede ver: la RLS por área/es_demo se sigue aplicando.
+// ============================================================
+const EXPORT_CAP = 8000;   // tope de filas por exportación
+const EXPORT_ESTADO_LABEL = {
+  fallecido: "Fallecido",
+  no_vive_aqui: "No vive en el lugar",
+  cambio_residencia: "Cambio de residencia",
+};
+const EXPORT_HEADERS = ["Cédula", "Nombre completo", "Corregimiento", "Mesa",
+  "Centro de votación", "Partido", "Estado", "Teléfono", "Nota"];
+let exportando = false;
+
+function filaExport(r) {
+  return {
+    "Cédula": r.cedula || "",
+    "Nombre completo": r.nombre_completo || "",
+    "Corregimiento": r.corregimiento || "",
+    "Mesa": r.mesa || "",
+    "Centro de votación": r.centro_votacion || "",
+    "Partido": r.partido_siglas || "",
+    "Estado": r.estado_nota ? (EXPORT_ESTADO_LABEL[r.estado_nota] || r.estado_nota) : "",
+    "Teléfono": r.telefono || "",
+    "Nota": r.nota_texto || "",
+  };
+}
+
+function resumenFiltros(f) {
+  const p = [];
+  if (f.termino) p.push(`Búsqueda: "${f.termino}"`);
+  if (f.corregimiento) p.push(`Corregimiento: ${f.corregimiento}`);
+  if (f.mesa) p.push(`Mesa: ${f.mesa}`);
+  if (f.partido === "NINGUNO") p.push("Partido: sin partido registrado");
+  else if (f.partido) p.push(`Partido: ${f.partido}`);
+  if (f.estado === "ACTIVO") p.push("Estado: sin marcar");
+  else if (f.estado) p.push(`Estado: ${EXPORT_ESTADO_LABEL[f.estado] || f.estado}`);
+  return p.length ? p.join("   ·   ") : "Todos los electores del área asignada";
+}
+
+function nombreArchivoExport(ext) {
+  const d = new Date().toISOString().slice(0, 10);
+  return `${ES_DEMO ? "demo_" : ""}padron_${d}.${ext}`;
+}
+
+async function traerFilasExport(msgEl) {
+  const f = filtrosBusquedaActuales();
+  const cols = "cedula, nombre_completo, corregimiento, mesa, centro_votacion, " +
+    "partido_siglas, estado_nota, telefono, nota_texto";
+  const filas = [];
+  const LOTE = 1000;
+  for (let desde = 0; desde < EXPORT_CAP; desde += LOTE) {
+    let q = sb.from("electores_con_partido").select(cols);
+    q = aplicarFiltrosElectores(q, f);
+    q = q.order("nombre_completo", { ascending: true }).range(desde, desde + LOTE - 1);
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    filas.push(...(data || []));
+    if (msgEl) msgEl.textContent = `Preparando… ${filas.length.toLocaleString("es-PA")} fila(s)`;
+    if (!data || data.length < LOTE) break;
+  }
+  return { filas, f, tope: filas.length >= EXPORT_CAP };
+}
+
+async function exportar(tipo) {
+  if (exportando || !PUEDE_EXPORTAR) return;
+  const msgEl = document.getElementById("exportar-msg");
+  const btns = document.querySelectorAll(".exportar-btns button");
+  exportando = true;
+  btns.forEach(b => (b.disabled = true));
+  msgEl.textContent = "Preparando…";
+  try {
+    const { filas, f, tope } = await traerFilasExport(msgEl);
+    if (filas.length === 0) { msgEl.textContent = "No hay resultados para exportar."; return; }
+    if (tipo === "excel") exportarExcel(filas);
+    else exportarPDF(filas, f, tope);
+    msgEl.textContent = `Listo: ${filas.length.toLocaleString("es-PA")} fila(s)` +
+      (tope ? ` (tope de ${EXPORT_CAP.toLocaleString("es-PA")}; afina los filtros para el resto).` : ".");
+  } catch (err) {
+    msgEl.textContent = "Error al exportar: " + err.message;
+  } finally {
+    exportando = false;
+    btns.forEach(b => (b.disabled = false));
+  }
+}
+
+function exportarExcel(filas) {
+  const ws = XLSX.utils.json_to_sheet(filas.map(filaExport), { header: EXPORT_HEADERS });
+  ws["!cols"] = [{ wch: 14 }, { wch: 30 }, { wch: 18 }, { wch: 6 }, { wch: 40 },
+    { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 44 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Padrón");
+  XLSX.writeFile(wb, nombreArchivoExport("xlsx"));
+}
+
+function exportarPDF(filas, f, tope) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 10;
+  const cols = [
+    ["Cédula", 22], ["Nombre completo", 52], ["Corregimiento", 30], ["Mesa", 11],
+    ["Centro de votación", 60], ["Partido", 18], ["Estado", 28], ["Teléfono", 22],
+  ];
+  const totalW = cols.reduce((s, c) => s + c[1], 0);
+  let y = 0;
+
+  function encabezado(primera) {
+    y = M;
+    if (primera) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+      doc.text("Control de Campaña — Padrón" + (ES_DEMO ? "  (DEMO · datos ficticios)" : ""), M, y);
+      y += 5;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.text(resumenFiltros(f), M, y); y += 4;
+      doc.text(
+        `${filas.length.toLocaleString("es-PA")} registro(s)` +
+        (tope ? ` · limitado a ${EXPORT_CAP.toLocaleString("es-PA")}` : "") +
+        ` · ${new Date().toLocaleString("es-PA")}`, M, y);
+      y += 5;
+    }
+    doc.setFillColor(238, 241, 248);
+    doc.rect(M, y - 3.6, totalW, 6, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+    let x = M;
+    cols.forEach(([t, w]) => { doc.text(t, x + 1, y); x += w; });
+    y += 2.6;
+    doc.setDrawColor(190); doc.line(M, y, M + totalW, y); y += 3.6;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+  }
+
+  encabezado(true);
+
+  filas.forEach((r) => {
+    const rec = filaExport(r);
+    const nombre = doc.splitTextToSize(rec["Nombre completo"], cols[1][1] - 2);
+    const centro = doc.splitTextToSize(rec["Centro de votación"], cols[4][1] - 2);
+    const nota = rec["Nota"] ? doc.splitTextToSize("Nota: " + rec["Nota"], totalW - 4) : [];
+    const nLineas = Math.max(nombre.length, centro.length, 1);
+    const alto = nLineas * 3.2 + nota.length * 3 + 2;
+    if (y + alto > H - M) { doc.addPage(); encabezado(false); }
+    let x = M;
+    [[rec["Cédula"], 0], [nombre, 1], [rec["Corregimiento"], 2], [rec["Mesa"], 3],
+     [centro, 4], [rec["Partido"], 5], [rec["Estado"], 6], [rec["Teléfono"], 7]]
+      .forEach(([val, i]) => { doc.text(Array.isArray(val) ? val : String(val), x + 1, y); x += cols[i][1]; });
+    y += nLineas * 3.2;
+    if (nota.length) {
+      doc.setTextColor(120); doc.text(nota, M + 1, y); doc.setTextColor(0);
+      y += nota.length * 3;
+    }
+    y += 2;
+    doc.setDrawColor(233); doc.line(M, y - 1.2, M + totalW, y - 1.2);
+  });
+
+  const paginas = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= paginas; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7); doc.setTextColor(140);
+    doc.text(`Página ${i} de ${paginas}`, W - M - 20, H - 5);
+    doc.setTextColor(0);
+  }
+
+  doc.save(nombreArchivoExport("pdf"));
 }
 
 function escapeHtml(str) {
@@ -2922,6 +3216,7 @@ async function initActivista() {
 
   buscarActivista();
   cargarPersonasExtraActivista();
+  if (window.refrescarInstalarUI) window.refrescarInstalarUI();
 }
 
 async function buscarActivista() {
@@ -3307,7 +3602,7 @@ async function cargarListaUsuarios() {
   const msg = document.getElementById("admin-users-msg");
   body.innerHTML = ""; msg.textContent = "Cargando…";
   const [{ data: perfiles, error: e1 }, { data: areas, error: e2 }] = await Promise.all([
-    sb.from("perfiles_usuario").select("user_id,nombre,rol,activo,creado_en").order("creado_en"),
+    sb.from("perfiles_usuario").select("*").order("creado_en"),
     sb.from("usuario_areas").select("user_id,nivel,valor"),
   ]);
   if (e1) { msg.textContent = "Error: " + e1.message; return; }
@@ -3327,7 +3622,31 @@ async function cargarListaUsuarios() {
       <td>${escapeHtml(ROL_LABEL[p.rol] || p.rol)}</td>
       <td class="areas-cell">${escapeHtml(areaTxt)}</td>
       <td>${p.activo ? "Activo" : "Inactivo"}</td>
+      <td class="exportar-col"></td>
       <td></td>`;
+
+    // Columna "Exportar": los admin siempre pueden; al resto se les habilita/quita aquí.
+    const expCell = tr.children[5];
+    if (p.rol === "admin") {
+      expCell.innerHTML = '<span style="color: var(--texto-suave); font-size: 0.8rem;">Siempre</span>';
+    } else {
+      const btnExp = document.createElement("button");
+      btnExp.className = "mini-btn";
+      btnExp.textContent = p.puede_exportar ? "✓ Habilitada" : "Habilitar";
+      if (p.puede_exportar) btnExp.classList.add("mini-btn-activo");
+      btnExp.title = p.puede_exportar
+        ? "Puede exportar el padrón a Excel y PDF. Clic para quitar el permiso."
+        : "Clic para permitir que exporte el padrón a Excel y PDF.";
+      btnExp.addEventListener("click", async () => {
+        btnExp.disabled = true;
+        const { error } = await sb.from("perfiles_usuario")
+          .update({ puede_exportar: !p.puede_exportar }).eq("user_id", p.user_id);
+        if (error) alert(error.message);
+        cargarListaUsuarios();
+      });
+      expCell.appendChild(btnExp);
+    }
+
     const acc = tr.lastElementChild;
     const btnT = document.createElement("button");
     btnT.className = "mini-btn";
@@ -3602,6 +3921,111 @@ async function subirImport() {
   btn.disabled = true;
   importFilas = null;
 }
+
+// ============================================================
+// ============  PWA — instalar en pantalla de inicio  =========
+// ============================================================
+(function () {
+  const mm = (q) => { try { return window.matchMedia(q).matches; } catch (_) { return false; } };
+  const esStandalone = () =>
+    mm("(display-mode: standalone)") || mm("(display-mode: minimal-ui)") ||
+    mm("(display-mode: fullscreen)") || window.navigator.standalone === true;
+  const esIOS = () =>
+    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const ls = {
+    get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} },
+  };
+
+  let promptEvt = null;
+
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    promptEvt = e;
+    refrescarInstalarUI();
+  });
+  window.addEventListener("appinstalled", () => {
+    promptEvt = null;
+    ls.set("pwa_instalada", "1");
+    refrescarInstalarUI();
+  });
+
+  function puedeOfrecer() {
+    if (esStandalone()) return false;
+    if (ls.get("pwa_instalada") === "1") return false;
+    return !!promptEvt || esIOS();
+  }
+
+  function refrescarInstalarUI() {
+    const soloPasos = esIOS() && !promptEvt;   // iOS Safari: no hay prompt programático
+
+    // --- Tarjeta de login ---
+    const cta = document.getElementById("install-cta");
+    if (cta) {
+      const ofrecer = puedeOfrecer();
+      cta.classList.toggle("hidden", !ofrecer);
+      const btn = document.getElementById("btn-instalar");
+      const hint = cta.querySelector(".install-hint");
+      const pasos = document.getElementById("ios-steps");
+      if (btn) btn.classList.toggle("hidden", soloPasos);
+      if (hint) hint.classList.toggle("hidden", soloPasos);
+      if (pasos) pasos.classList.toggle("hidden", !(ofrecer && soloPasos));
+    }
+
+    // --- Barra dentro del modo activista ---
+    const bar = document.getElementById("act-instalar");
+    if (bar) {
+      const mostrar = (typeof ES_ACTIVISTA !== "undefined" && ES_ACTIVISTA) &&
+        puedeOfrecer() && ls.get("pwa_bar_cerrada") !== "1";
+      bar.classList.toggle("hidden", !mostrar);
+      const txt = document.getElementById("act-instalar-txt");
+      const abtn = document.getElementById("act-instalar-btn");
+      if (soloPasos) {
+        if (txt) txt.textContent = "Instálala como app: en Safari toca Compartir y luego “Agregar a pantalla de inicio”.";
+        if (abtn) abtn.classList.add("hidden");
+      } else {
+        if (txt) txt.textContent = "Instala esta herramienta como app en tu teléfono.";
+        if (abtn) abtn.classList.remove("hidden");
+      }
+    }
+  }
+  window.refrescarInstalarUI = refrescarInstalarUI;
+
+  async function lanzarInstalar() {
+    if (!promptEvt) {
+      const pasos = document.getElementById("ios-steps");
+      if (pasos) {
+        pasos.classList.remove("hidden");
+        pasos.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+      return;
+    }
+    promptEvt.prompt();
+    try { await promptEvt.userChoice; } catch (_) {}
+    promptEvt = null;
+    refrescarInstalarUI();
+  }
+
+  const bi = document.getElementById("btn-instalar");
+  if (bi) bi.addEventListener("click", lanzarInstalar);
+  const ai = document.getElementById("act-instalar-btn");
+  if (ai) ai.addEventListener("click", lanzarInstalar);
+  const ac = document.getElementById("act-instalar-cerrar");
+  if (ac) ac.addEventListener("click", () => {
+    ls.set("pwa_bar_cerrada", "1");
+    const bar = document.getElementById("act-instalar");
+    if (bar) bar.classList.add("hidden");
+  });
+
+  refrescarInstalarUI();
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch((err) => console.warn("SW:", err));
+    });
+  }
+})();
 </script>
 </body>
 </html>

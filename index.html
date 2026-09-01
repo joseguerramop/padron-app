@@ -59,6 +59,14 @@
     font-size: 0.85rem;
   }
   header button:hover { background: rgba(255,255,255,0.25); }
+  .header-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #tab-admin-btn.activo {
+    background: white;
+    color: var(--azul);
+    border-color: white;
+    font-weight: 600;
+  }
+  body.demo #tab-admin-btn.activo { color: #b45309; }
 
   main { max-width: 1680px; margin: 0 auto; padding: 0 24px 20px; }
 
@@ -568,6 +576,8 @@
     border-radius: 6px; font-size: 0.75rem; cursor: pointer; margin-right: 4px;
   }
   .mini-btn:hover { background: #f0f1f6; }
+  .mini-btn-peligro { border-color: #e7b7b1; color: var(--error); }
+  .mini-btn-peligro:hover { background: #fdecea; }
   .import-preview {
     margin-top: 12px; max-height: 260px; overflow: auto;
     border: 1px solid var(--borde); border-radius: 8px;
@@ -577,6 +587,79 @@
   .barra-progreso { height: 8px; background: #eef1f8; border-radius: 100px; overflow: hidden; margin-top: 10px; }
   .barra-progreso > div { height: 100%; background: var(--exito); width: 0; transition: width 0.2s; }
   .val-error { color: var(--error); font-size: 0.82rem; margin-top: 8px; white-space: pre-wrap; }
+
+  /* ---- Candidatos ---- */
+  #vista-candidatos { max-width: 1100px; }
+  .cand-grupo { margin-bottom: 22px; }
+  .cand-grupo h3 {
+    font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--texto-suave); margin: 0 0 10px; border-bottom: 1px solid var(--borde); padding-bottom: 6px;
+  }
+  .cand-card {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+    padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .cand-foto {
+    width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0;
+    background: #e6ebf5 center/cover no-repeat; color: var(--azul);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;
+  }
+  .cand-info { flex: 1; min-width: 0; }
+  .cand-info .cand-nombre { font-weight: 600; font-size: 0.98rem; }
+  .cand-meta { font-size: 0.8rem; color: var(--texto-suave); margin-top: 2px; }
+  .cand-estado {
+    display: inline-block; margin-top: 6px; padding: 2px 9px; border-radius: 100px;
+    font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .cand-estado-activo { background: #e9f7ee; color: var(--exito); }
+  .cand-estado-potencial { background: #eaf1fd; color: #1a56c4; }
+  .cand-estado-suplente { background: #f0f1f6; color: var(--texto-suave); }
+  .cand-estado-electo { background: #fff4e5; color: #a15c00; }
+  .cand-estado-descartado { background: #fdecea; color: var(--error); }
+  .cand-acciones { display: flex; flex-direction: column; gap: 6px; }
+  .cand-sin { color: var(--texto-suave); font-size: 0.88rem; padding: 20px 4px; }
+
+  /* ---- Modo activista (app móvil de campo) ---- */
+  body.activista .tabs { display: none; }
+  body.activista #tab-admin-btn { display: none !important; }
+  body.activista main { max-width: 560px; padding-bottom: 90px; }
+  .act-barra {
+    position: sticky; top: var(--header-h); z-index: 20; background: var(--fondo);
+    padding: 12px 0 10px; display: flex; flex-direction: column; gap: 8px;
+    border-bottom: 1px solid var(--borde); margin-bottom: 12px;
+  }
+  .act-barra input[type=search], .act-barra select {
+    width: 100%; padding: 12px 14px; border: 1px solid var(--borde); border-radius: 10px;
+    font-size: 1rem; background: white; color: var(--texto);
+  }
+  .act-stats { font-size: 0.82rem; color: var(--texto-suave); margin: 0 2px 10px; }
+  .act-lista { display: flex; flex-direction: column; gap: 8px; }
+  .act-card {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 12px;
+    padding: 13px 14px; cursor: pointer; font: inherit; color: var(--texto);
+  }
+  .act-card:active { background: #eef4ff; }
+  .act-card-main { flex: 1; min-width: 0; }
+  .act-card-nombre { font-weight: 600; font-size: 0.98rem; }
+  .act-card-sub { font-size: 0.8rem; color: var(--texto-suave); margin-top: 2px; }
+  .act-card .badge { margin-right: 4px; margin-top: 5px; }
+  .act-card-flecha { color: var(--azul-claro); font-size: 1.3rem; flex-shrink: 0; }
+  .act-fab {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 30;
+    background: var(--azul); color: white; border: none; border-radius: 100px;
+    padding: 14px 22px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(11,61,145,0.35); max-width: calc(100% - 32px);
+  }
+  body.demo .act-fab { background: #b45309; box-shadow: 0 6px 20px rgba(180,83,9,0.35); }
+  .act-extra-wrap { margin-top: 18px; border-top: 1px solid var(--borde); padding-top: 12px; }
+  .act-extra-wrap summary { cursor: pointer; font-size: 0.85rem; color: var(--texto-suave); font-weight: 600; }
+  .act-extra-item {
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+    padding: 10px 12px; margin-top: 8px; font-size: 0.85rem;
+  }
+  .act-extra-item .em { color: var(--texto-suave); font-size: 0.78rem; }
 </style>
 </head>
 <body>
@@ -611,13 +694,16 @@
       <h1>Control de Campaña<span id="demo-tag" class="demo-tag hidden">Modo demo · datos ficticios</span></h1>
       <div class="sub"><span id="user-email"></span><span id="rol-badge" class="rol-badge hidden"></span></div>
     </div>
-    <button id="logout-btn">Cerrar sesión</button>
+    <div class="header-acciones">
+      <button id="tab-admin-btn" class="hidden">⚙️ Administración</button>
+      <button id="logout-btn">Cerrar sesión</button>
+    </div>
   </header>
   <main>
     <div class="tabs">
       <button class="tab-btn activo" id="tab-buscar-btn">🔍 Buscar</button>
       <button class="tab-btn" id="tab-mapa-btn">🗺️ Mapa y ruta</button>
-      <button class="tab-btn hidden" id="tab-admin-btn">⚙️ Administración</button>
+      <button class="tab-btn" id="tab-candidatos-btn">🏛️ Candidatos</button>
     </div>
 
     <div id="vista-buscar">
@@ -755,6 +841,7 @@
               <option value="alcalde">3 · Alcalde (por distrito)</option>
               <option value="representante">4 · Representante (por corregimiento)</option>
               <option value="secretaria_organizacion">5 · Secretaría de organización (por corregimiento)</option>
+              <option value="activista">6 · Activista de campo (app móvil, por corregimiento)</option>
               <option value="admin">Administrador (acceso total + gestión)</option>
             </select>
           </div>
@@ -813,6 +900,110 @@
         <div class="barra-progreso hidden" id="imp-barra"><div></div></div>
       </div>
 
+      <div class="admin-card">
+        <h3>Personas registradas fuera del padrón</h3>
+        <p class="hint">Personas anotadas en campo que no aparecen en el padrón oficial del área (mudanzas, nuevos votantes, etc.).</p>
+        <div style="overflow:auto;">
+          <table class="admin-users">
+            <thead><tr><th>Nombre</th><th>Cédula</th><th>Corregimiento</th><th>Motivo</th><th>Teléfono</th><th>Registró</th><th></th></tr></thead>
+            <tbody id="admin-extra-body"></tbody>
+          </table>
+        </div>
+        <div class="admin-msg" id="admin-extra-msg"></div>
+      </div>
+
+    </div>
+
+    <!-- ===== VISTA: CANDIDATOS ===== -->
+    <div id="vista-candidatos" class="hidden">
+      <div id="cand-demo-aviso" class="demo-aviso hidden">
+        <b>Modo demo.</b> Los candidatos que veas o registres aquí son datos ficticios.
+      </div>
+
+      <div id="cand-form-card" class="admin-card hidden">
+        <h3 id="cand-form-titulo">Agregar candidato</h3>
+        <p class="hint">Registra a las personas candidatas de la campaña por nivel y área. Puedes vincular cada candidato con su cuenta de acceso si la tiene.</p>
+        <div class="admin-grid">
+          <div class="admin-field">
+            <label>Nombre y apellido</label>
+            <input type="text" id="cand-nombre" placeholder="Ej: Juan Pérez" />
+          </div>
+          <div class="admin-field">
+            <label>Nivel</label>
+            <select id="cand-nivel">
+              <option value="">Elige un nivel…</option>
+              <option value="presidente">Presidente (nacional)</option>
+              <option value="diputado">Diputado (circuito)</option>
+              <option value="alcalde">Alcalde (distrito)</option>
+              <option value="representante">Representante (corregimiento)</option>
+            </select>
+          </div>
+          <div class="admin-field" id="cand-area-wrap" style="display:none;">
+            <label id="cand-area-label">Área</label>
+            <select id="cand-area"><option value="">—</option></select>
+          </div>
+          <div class="admin-field">
+            <label>Partido</label>
+            <select id="cand-partido"><option value="">— Sin partido / libre postulación —</option></select>
+          </div>
+          <div class="admin-field">
+            <label>Teléfono</label>
+            <input type="tel" id="cand-telefono" placeholder="Ej: 6123-4567" />
+          </div>
+          <div class="admin-field">
+            <label>Correo</label>
+            <input type="email" id="cand-correo" placeholder="opcional" autocomplete="off" />
+          </div>
+          <div class="admin-field">
+            <label>Foto (URL)</label>
+            <input type="url" id="cand-foto" placeholder="https://…" autocomplete="off" />
+          </div>
+          <div class="admin-field">
+            <label>Estado</label>
+            <select id="cand-estado">
+              <option value="activo">Activo (candidato confirmado)</option>
+              <option value="potencial">Potencial</option>
+              <option value="suplente">Suplente</option>
+              <option value="electo">Electo</option>
+              <option value="descartado">Descartado</option>
+            </select>
+          </div>
+          <div class="admin-field">
+            <label>Cuenta de acceso vinculada</label>
+            <select id="cand-cuenta"><option value="">— Ninguna —</option></select>
+          </div>
+        </div>
+        <div class="admin-field" style="margin-top:10px;">
+          <label>Notas</label>
+          <textarea id="cand-notas" rows="2" placeholder="opcional"></textarea>
+        </div>
+        <div class="admin-actions">
+          <button class="btn-primary" id="cand-guardar">Guardar candidato</button>
+          <button class="btn-secundario" id="cand-cancelar" style="display:none;">Cancelar edición</button>
+          <span class="admin-msg" id="cand-msg"></span>
+        </div>
+      </div>
+
+      <div id="cand-lista"></div>
+    </div>
+
+    <!-- ===== VISTA: ACTIVISTA (app móvil de captura) ===== -->
+    <div id="vista-activista" class="hidden">
+      <div class="act-barra">
+        <input type="search" id="act-buscar" placeholder="Cédula, nombre o apellido…" autocomplete="off" />
+        <select id="act-corregimiento"><option value="">Todos mis corregimientos</option></select>
+      </div>
+      <div class="act-stats" id="act-stats"></div>
+      <div class="act-lista" id="act-resultados"></div>
+      <div id="act-empty" class="empty-state hidden">Sin resultados para tu búsqueda.</div>
+      <div class="pagina-nav" id="act-nav"></div>
+
+      <details class="act-extra-wrap">
+        <summary>Personas nuevas que registré (<span id="act-extra-count">0</span>)</summary>
+        <div id="act-extra-lista"></div>
+      </details>
+
+      <button id="act-nueva-persona" class="act-fab">＋ Registrar persona nueva</button>
     </div>
   </main>
 </div>
@@ -868,6 +1059,60 @@
   </div>
 </div>
 
+<!-- ===== MODAL: registrar persona fuera del padrón ===== -->
+<div id="modal-persona-overlay" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3>Registrar persona nueva</h3>
+    <p class="modal-nombre">Alguien que no aparece en el padrón oficial de tu área.</p>
+    <div class="field">
+      <label>Nombre completo</label>
+      <input type="text" id="pe-nombre" placeholder="Nombres y apellidos" />
+    </div>
+    <div class="field">
+      <label>Cédula (si la tiene)</label>
+      <input type="text" id="pe-cedula" placeholder="Opcional" />
+    </div>
+    <div class="field">
+      <label>Corregimiento</label>
+      <select id="pe-corregimiento"></select>
+    </div>
+    <div class="field">
+      <label>Motivo</label>
+      <select id="pe-motivo">
+        <option value="">— Sin especificar —</option>
+        <option value="mudanza">Se mudó al área</option>
+        <option value="nuevo_votante">Nuevo votante (cumple 18)</option>
+        <option value="no_aparece">Debería estar en el padrón y no aparece</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Partido / afiliación</label>
+      <select id="pe-partido"><option value="">— Sin afiliación registrada —</option></select>
+    </div>
+    <div class="field">
+      <label>Teléfono (opcional)</label>
+      <input type="tel" id="pe-telefono" placeholder="Ej: 6123-4567" />
+    </div>
+    <div class="field">
+      <label>Nota (opcional)</label>
+      <textarea id="pe-nota" rows="2" placeholder="Ej: vive frente a la escuela, llegó en 2025…"></textarea>
+    </div>
+    <div class="field">
+      <label>Ubicación</label>
+      <div class="fila-botones-ubicacion">
+        <button type="button" class="btn-gps" id="pe-gps">📍 Usar mi ubicación actual</button>
+      </div>
+      <div class="gps-estado" id="pe-gps-estado"></div>
+    </div>
+    <div id="pe-msg"></div>
+    <div class="modal-botones">
+      <button id="pe-cancelar" class="btn-secundario">Cancelar</button>
+      <button id="pe-guardar" class="btn-primary">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -880,6 +1125,7 @@ const PAGE_SIZE = 10;
 let paginaActual = 0;
 let perfilActual = null; // { rol, nombre, es_demo }
 let ES_DEMO = false;     // sesión de cuenta demo → datos ficticios
+let ES_ACTIVISTA = false; // rol activista → app móvil restringida de captura
 let debounceTimer = null;
 let PARTIDOS_CACHE = []; // [{ id, siglas, nombre }] del catálogo visible (según es_demo)
 
@@ -923,6 +1169,7 @@ const ROL_LABEL = {
   alcalde: "Alcalde",
   representante: "Representante",
   secretaria_organizacion: "Secretaría organización",
+  activista: "Activista",
 };
 
 sb.auth.onAuthStateChange((_event, session) => {
@@ -936,6 +1183,10 @@ sb.auth.onAuthStateChange((_event, session) => {
   } else {
     perfilActual = null;
     ES_DEMO = false;
+    ES_ACTIVISTA = false;
+    document.body.classList.remove("activista");
+    activistaInit = false;
+    candidatosInit = false;
     filtrosInicializados = false;
     const selCorr = document.getElementById("filtro-corregimiento");
     if (selCorr) selCorr.innerHTML = '<option value="">Todos los corregimientos</option>';
@@ -964,14 +1215,17 @@ async function cargarPerfil(uid) {
   if (!error && data) {
     perfilActual = data;
     ES_DEMO = !!data.es_demo;
+    ES_ACTIVISTA = data.rol === "activista";
     badge.textContent = ROL_LABEL[data.rol] || data.rol;
     badge.classList.remove("hidden");
     btnAdmin.classList.toggle("hidden", data.rol !== "admin");
   } else {
     ES_DEMO = false;
+    ES_ACTIVISTA = false;
     badge.classList.add("hidden");
     btnAdmin.classList.add("hidden");
   }
+  aplicarPermisosUI();
   document.body.classList.toggle("demo", ES_DEMO);
   document.getElementById("demo-tag").classList.toggle("hidden", !ES_DEMO);
   const avisoAdmin = document.getElementById("admin-demo-aviso");
@@ -986,9 +1240,10 @@ let filtrosInicializados = false;
 function medirTopbar() {
   const h = document.querySelector("header");
   const t = document.querySelector(".tabs");
-  if (!h || !t || !window.innerWidth) return;
+  if (!h || !window.innerWidth) return;
   const hh = Math.min(Math.max(h.offsetHeight, 48), 140);
-  const th = Math.min(Math.max(t.offsetHeight, 40), 90);
+  const tabsVisibles = t && t.offsetParent !== null;
+  const th = tabsVisibles ? Math.min(Math.max(t.offsetHeight, 40), 90) : 0;
   document.documentElement.style.setProperty("--header-h", hh + "px");
   document.documentElement.style.setProperty("--topbar-h", (hh + th) + "px");
 }
@@ -997,6 +1252,14 @@ window.addEventListener("resize", medirTopbar);
 async function inicializarApp() {
   medirTopbar();
   setTimeout(medirTopbar, 200);
+
+  // Modo activista: app móvil de captura, sin el resto de la interfaz.
+  if (ES_ACTIVISTA) {
+    await initActivista();
+    cambiarTab("activista");
+    return;
+  }
+
   if (filtrosInicializados) {
     buscar();
     return;
@@ -1016,26 +1279,48 @@ async function inicializarApp() {
 
   document.getElementById("tab-buscar-btn").addEventListener("click", () => cambiarTab("buscar"));
   document.getElementById("tab-mapa-btn").addEventListener("click", () => cambiarTab("mapa"));
+  document.getElementById("tab-candidatos-btn").addEventListener("click", () => cambiarTab("candidatos"));
   document.getElementById("tab-admin-btn").addEventListener("click", () => cambiarTab("admin"));
   initAdmin();
+  initCandidatos();
 }
 
 // ---------- TABS ----------
 function cambiarTab(tab) {
-  const vistas = { buscar: "vista-buscar", mapa: "vista-mapa", admin: "vista-admin" };
-  const botones = { buscar: "tab-buscar-btn", mapa: "tab-mapa-btn", admin: "tab-admin-btn" };
+  const vistas = {
+    buscar: "vista-buscar", mapa: "vista-mapa", admin: "vista-admin",
+    candidatos: "vista-candidatos", activista: "vista-activista",
+  };
+  const botones = { buscar: "tab-buscar-btn", mapa: "tab-mapa-btn", candidatos: "tab-candidatos-btn", admin: "tab-admin-btn" };
   Object.entries(vistas).forEach(([k, id]) => {
-    document.getElementById(id).classList.toggle("hidden", k !== tab);
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("hidden", k !== tab);
   });
   Object.entries(botones).forEach(([k, id]) => {
-    document.getElementById(id).classList.toggle("activo", k === tab);
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("activo", k === tab);
   });
   medirTopbar();
   if (tab === "mapa") {
     setTimeout(() => { inicializarMapa(); cargarMapa(); renderRutaPanel(); medirTopbar(); }, 0);
   } else if (tab === "admin") {
     cargarListaUsuarios();
+    cargarPersonasExtraAdmin();
+  } else if (tab === "candidatos") {
+    cargarCandidatos();
   }
+}
+
+// Muestra/oculta secciones según el rol del usuario.
+function aplicarPermisosUI() {
+  document.body.classList.toggle("activista", ES_ACTIVISTA);
+  const esAdmin = perfilActual && perfilActual.rol === "admin";
+  const btnCand = document.getElementById("tab-candidatos-btn");
+  if (btnCand) btnCand.classList.toggle("hidden", ES_ACTIVISTA);
+  const formCand = document.getElementById("cand-form-card");
+  if (formCand) formCand.classList.toggle("hidden", !esAdmin);
+  const btnAdmin = document.getElementById("tab-admin-btn");
+  if (btnAdmin) btnAdmin.classList.toggle("hidden", !esAdmin);
 }
 
 async function cargarFiltros() {
@@ -1068,20 +1353,32 @@ async function cargarFiltroPartidos() {
     if (p.nombre && p.nombre !== p.siglas) opt.title = p.nombre;
     sel.insertBefore(opt, ninguno);
   });
-  poblarSelectPartidoModal();
+  poblarSelectoresPartido();
 }
 
-// Llena el <select> de partido del modal con el catálogo visible.
-function poblarSelectPartidoModal() {
-  const sel = document.getElementById("modal-partido");
+// Llena un <select> con el catálogo de partidos visible (según es_demo).
+function opcionesPartidos(selId, placeholderHtml) {
+  const sel = document.getElementById(selId);
   if (!sel) return;
-  sel.innerHTML = '<option value="">— Sin afiliación registrada —</option>';
+  const previo = sel.value;
+  sel.innerHTML = placeholderHtml;
   PARTIDOS_CACHE.forEach(p => {
     const opt = document.createElement("option");
     opt.value = String(p.id);
     opt.textContent = (p.nombre && p.nombre !== p.siglas) ? `${p.siglas} — ${p.nombre}` : p.siglas;
     sel.appendChild(opt);
   });
+  if (previo) sel.value = previo;
+}
+
+function poblarSelectPartidoModal() {
+  opcionesPartidos("modal-partido", '<option value="">— Sin afiliación registrada —</option>');
+}
+
+function poblarSelectoresPartido() {
+  poblarSelectPartidoModal();
+  opcionesPartidos("pe-partido", '<option value="">— Sin afiliación registrada —</option>');
+  opcionesPartidos("cand-partido", '<option value="">— Sin partido / libre postulación —</option>');
 }
 
 async function cargarMesasPorCorregimiento(corregimiento) {
@@ -1259,7 +1556,7 @@ function abrirModal(registro) {
 
   // ----- Partido / afiliación -----
   origenPartidoId = registro.partido_id || null;
-  puedeEditarPartido = !!(perfilActual && perfilActual.rol === "admin");
+  puedeEditarPartido = !!(perfilActual && (perfilActual.rol === "admin" || perfilActual.rol === "activista"));
   poblarSelectPartidoModal();
   const selPart = document.getElementById("modal-partido");
   selPart.value = origenPartidoId ? String(origenPartidoId) : "";
@@ -1440,8 +1737,12 @@ document.getElementById("modal-guardar").addEventListener("click", async () => {
     }
 
     cerrarModal();
-    buscar();
-    if (leafletMap && !document.getElementById("vista-mapa").classList.contains("hidden")) cargarMapa();
+    if (ES_ACTIVISTA) {
+      buscarActivista();
+    } else {
+      buscar();
+      if (leafletMap && !document.getElementById("vista-mapa").classList.contains("hidden")) cargarMapa();
+    }
   } catch (err) {
     modalMsg.innerHTML = `<div class="msg error">${err.message}</div>`;
   } finally {
@@ -2349,9 +2650,471 @@ async function exportarMapaPDF() {
 }
 
 // ============================================================
+// =====================  CANDIDATOS  =========================
+// ============================================================
+let candidatosInit = false;
+let candEditId = null;
+
+function initCandidatos() {
+  if (candidatosInit) return;
+  candidatosInit = true;
+  const nivelSel = document.getElementById("cand-nivel");
+  nivelSel.addEventListener("change", () => construirSelectorAreaCandidato(nivelSel.value));
+  document.getElementById("cand-guardar").addEventListener("click", guardarCandidato);
+  document.getElementById("cand-cancelar").addEventListener("click", resetFormCandidato);
+  opcionesPartidos("cand-partido", '<option value="">— Sin partido / libre postulación —</option>');
+}
+
+async function construirSelectorAreaCandidato(nivel, valorActual) {
+  const wrap = document.getElementById("cand-area-wrap");
+  const sel = document.getElementById("cand-area");
+  const label = document.getElementById("cand-area-label");
+  if (!nivel || nivel === "presidente") {
+    wrap.style.display = "none";
+    sel.innerHTML = '<option value="">—</option>';
+    return;
+  }
+  wrap.style.display = "block";
+  sel.innerHTML = '<option value="">Elige…</option>';
+  if (nivel === "diputado") {
+    label.textContent = "Circuito electoral";
+    (await cargarCircuitos()).forEach(c => {
+      const o = document.createElement("option");
+      o.value = c.codigo; o.textContent = `${c.codigo} · ${c.provincia} — ${c.descripcion}`;
+      sel.appendChild(o);
+    });
+  } else if (nivel === "alcalde") {
+    label.textContent = "Distrito";
+    const ubic = await cargarUbicaciones();
+    [...new Map(ubic.map(u => [u.provincia + "|" + u.distrito, u])).values()].forEach(u => {
+      const o = document.createElement("option");
+      o.value = u.distrito; o.textContent = `${u.provincia} — ${u.distrito}`;
+      sel.appendChild(o);
+    });
+  } else {
+    label.textContent = "Corregimiento";
+    (await cargarUbicaciones()).forEach(u => {
+      const o = document.createElement("option");
+      o.value = u.corregimiento; o.textContent = `${u.corregimiento} — ${u.distrito}`;
+      sel.appendChild(o);
+    });
+  }
+  if (valorActual != null && valorActual !== "") sel.value = valorActual;
+}
+
+async function poblarCuentasCandidato(valorActual) {
+  const sel = document.getElementById("cand-cuenta");
+  sel.innerHTML = '<option value="">— Ninguna —</option>';
+  const { data } = await sb.from("perfiles_usuario").select("user_id, nombre, rol").order("nombre");
+  (data || []).forEach(p => {
+    const o = document.createElement("option");
+    o.value = p.user_id;
+    o.textContent = `${p.nombre || p.user_id.slice(0, 8)} · ${ROL_LABEL[p.rol] || p.rol}`;
+    sel.appendChild(o);
+  });
+  if (valorActual) sel.value = valorActual;
+}
+
+async function cargarCandidatos() {
+  const avisoD = document.getElementById("cand-demo-aviso");
+  if (avisoD) avisoD.classList.toggle("hidden", !ES_DEMO);
+  const cont = document.getElementById("cand-lista");
+  cont.innerHTML = `<p class="cand-sin">Cargando…</p>`;
+  const esAdmin = perfilActual && perfilActual.rol === "admin";
+  if (esAdmin) poblarCuentasCandidato();
+
+  const [{ data: cands, error }, { data: perfiles }] = await Promise.all([
+    sb.from("candidatos").select("*").order("nivel").order("area_valor"),
+    sb.from("perfiles_usuario").select("user_id, nombre"),
+  ]);
+  if (error) { cont.innerHTML = `<p class="cand-sin">Error: ${escapeHtml(error.message)}</p>`; return; }
+
+  const nombrePorU = {};
+  (perfiles || []).forEach(p => { nombrePorU[p.user_id] = p.nombre; });
+  const siglasPorId = {};
+  PARTIDOS_CACHE.forEach(p => { siglasPorId[p.id] = p.siglas; });
+
+  if (!cands || !cands.length) {
+    cont.innerHTML = `<p class="cand-sin">Aún no hay candidatos registrados.${esAdmin ? " Usa el formulario de arriba para agregar el primero." : ""}</p>`;
+    return;
+  }
+  const NIVEL_TIT = {
+    presidente: "Presidencia",
+    diputado: "Diputados (por circuito)",
+    alcalde: "Alcaldes (por distrito)",
+    representante: "Representantes (por corregimiento)",
+  };
+  cont.innerHTML = "";
+  ["presidente", "diputado", "alcalde", "representante"].forEach(niv => {
+    const grupo = cands.filter(c => c.nivel === niv);
+    if (!grupo.length) return;
+    const div = document.createElement("div");
+    div.className = "cand-grupo";
+    div.innerHTML = `<h3>${NIVEL_TIT[niv]}</h3>`;
+    grupo.forEach(c => div.appendChild(tarjetaCandidato(c, nombrePorU, siglasPorId, esAdmin)));
+    cont.appendChild(div);
+  });
+}
+
+function tarjetaCandidato(c, nombrePorU, siglasPorId, esAdmin) {
+  const card = document.createElement("div");
+  card.className = "cand-card";
+  const iniciales = (c.nombre || "?").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
+  const foto = c.foto_url
+    ? `<div class="cand-foto" style="background-image:url('${encodeURI(c.foto_url)}')"></div>`
+    : `<div class="cand-foto">${escapeHtml(iniciales || "?")}</div>`;
+  const sig = c.partido_id ? (siglasPorId[c.partido_id] || "") : "";
+  const partidoBadge = sig ? ` <span class="badge badge-partido">${escapeHtml(sig)}</span>` : "";
+  const areaTxt = c.nivel === "presidente" ? "Nacional" : (c.area_valor || "—");
+  const contacto = [c.telefono ? "📞 " + c.telefono : "", c.correo ? "✉️ " + c.correo : ""].filter(Boolean).join("  ·  ");
+  const cuenta = c.user_id ? (nombrePorU[c.user_id] || (c.user_id.slice(0, 8) + "…")) : "sin cuenta vinculada";
+  card.innerHTML = `
+    ${foto}
+    <div class="cand-info">
+      <div class="cand-nombre">${escapeHtml(c.nombre)}${partidoBadge}</div>
+      <div class="cand-meta">${escapeHtml(ROL_LABEL[c.nivel] || c.nivel)} · ${escapeHtml(areaTxt)}</div>
+      ${contacto ? `<div class="cand-meta">${escapeHtml(contacto)}</div>` : ""}
+      <div class="cand-meta">Cuenta: ${escapeHtml(cuenta)}</div>
+      ${c.notas ? `<div class="cand-meta">${escapeHtml(c.notas)}</div>` : ""}
+      <span class="cand-estado cand-estado-${escapeHtml(c.estado)}">${escapeHtml(c.estado)}</span>
+    </div>`;
+  if (esAdmin) {
+    const acc = document.createElement("div");
+    acc.className = "cand-acciones";
+    const be = document.createElement("button");
+    be.className = "mini-btn"; be.textContent = "Editar";
+    be.addEventListener("click", () => editarCandidato(c));
+    const bd = document.createElement("button");
+    bd.className = "mini-btn mini-btn-peligro"; bd.textContent = "Eliminar";
+    bd.addEventListener("click", () => eliminarCandidato(c));
+    acc.append(be, bd);
+    card.appendChild(acc);
+  }
+  return card;
+}
+
+async function editarCandidato(c) {
+  candEditId = c.id;
+  document.getElementById("cand-form-titulo").textContent = "Editar candidato";
+  document.getElementById("cand-cancelar").style.display = "";
+  document.getElementById("cand-nombre").value = c.nombre || "";
+  document.getElementById("cand-nivel").value = c.nivel;
+  await construirSelectorAreaCandidato(c.nivel, c.area_valor);
+  opcionesPartidos("cand-partido", '<option value="">— Sin partido / libre postulación —</option>');
+  document.getElementById("cand-partido").value = c.partido_id ? String(c.partido_id) : "";
+  document.getElementById("cand-telefono").value = c.telefono || "";
+  document.getElementById("cand-correo").value = c.correo || "";
+  document.getElementById("cand-foto").value = c.foto_url || "";
+  document.getElementById("cand-estado").value = c.estado || "activo";
+  await poblarCuentasCandidato(c.user_id || "");
+  document.getElementById("cand-notas").value = c.notas || "";
+  document.getElementById("cand-msg").textContent = "";
+  document.getElementById("cand-form-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetFormCandidato() {
+  candEditId = null;
+  document.getElementById("cand-form-titulo").textContent = "Agregar candidato";
+  document.getElementById("cand-cancelar").style.display = "none";
+  ["cand-nombre", "cand-telefono", "cand-correo", "cand-foto", "cand-notas"].forEach(id => { document.getElementById(id).value = ""; });
+  document.getElementById("cand-nivel").value = "";
+  document.getElementById("cand-estado").value = "activo";
+  document.getElementById("cand-cuenta").value = "";
+  document.getElementById("cand-area-wrap").style.display = "none";
+  document.getElementById("cand-msg").textContent = "";
+  opcionesPartidos("cand-partido", '<option value="">— Sin partido / libre postulación —</option>');
+}
+
+async function guardarCandidato() {
+  const nombre = document.getElementById("cand-nombre").value.trim();
+  const nivel = document.getElementById("cand-nivel").value;
+  const msg = document.getElementById("cand-msg");
+  msg.textContent = "";
+  if (!nombre || !nivel) { msg.innerHTML = `<span class="val-error">Completa nombre y nivel.</span>`; return; }
+  const areaValor = nivel === "presidente" ? null : (document.getElementById("cand-area").value || null);
+  if (nivel !== "presidente" && !areaValor) { msg.innerHTML = `<span class="val-error">Elige el área.</span>`; return; }
+  const partidoId = document.getElementById("cand-partido").value;
+  const cuenta = document.getElementById("cand-cuenta").value;
+  const payload = {
+    nombre, nivel, area_valor: areaValor,
+    partido_id: partidoId ? Number(partidoId) : null,
+    telefono: document.getElementById("cand-telefono").value.trim() || null,
+    correo: document.getElementById("cand-correo").value.trim() || null,
+    foto_url: document.getElementById("cand-foto").value.trim() || null,
+    estado: document.getElementById("cand-estado").value,
+    notas: document.getElementById("cand-notas").value.trim() || null,
+    user_id: cuenta || null,
+    es_demo: ES_DEMO,
+  };
+  const btn = document.getElementById("cand-guardar");
+  btn.disabled = true; btn.textContent = "Guardando…";
+  let error;
+  if (candEditId) {
+    payload.actualizado_en = new Date().toISOString();
+    ({ error } = await sb.from("candidatos").update(payload).eq("id", candEditId));
+  } else {
+    payload.creado_por = currentUserId;
+    ({ error } = await sb.from("candidatos").insert(payload));
+  }
+  btn.disabled = false; btn.textContent = "Guardar candidato";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  resetFormCandidato();
+  cargarCandidatos();
+}
+
+async function eliminarCandidato(c) {
+  if (!confirm(`¿Eliminar a ${c.nombre} de la lista de candidatos?`)) return;
+  const { error } = await sb.from("candidatos").delete().eq("id", c.id);
+  if (error) { alert(error.message); return; }
+  cargarCandidatos();
+}
+
+// ============================================================
+// ==============  MODO ACTIVISTA (app de campo)  =============
+// ============================================================
+let activistaInit = false;
+let actPagina = 0;
+const ACT_PAGE = 15;
+let actMisCorregimientos = [];
+let peGpsLat = null, peGpsLng = null;
+
+const MOTIVO_LABEL = {
+  mudanza: "Se mudó al área",
+  nuevo_votante: "Nuevo votante",
+  no_aparece: "No aparece en el padrón",
+  otro: "Otro",
+};
+
+async function initActivista() {
+  if (activistaInit) { buscarActivista(); return; }
+  activistaInit = true;
+
+  await cargarFiltroPartidos();  // llena PARTIDOS_CACHE + selects de partido (modal, persona nueva)
+
+  const { data: areas } = await sb.from("usuario_areas")
+    .select("nivel, valor").eq("user_id", currentUserId);
+  actMisCorregimientos = (areas || []).filter(a => a.nivel === "corregimiento").map(a => a.valor);
+
+  const selC = document.getElementById("act-corregimiento");
+  const selPE = document.getElementById("pe-corregimiento");
+  selC.innerHTML = '<option value="">Todos mis corregimientos</option>';
+  selPE.innerHTML = "";
+  actMisCorregimientos.forEach(c => {
+    selC.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`);
+    selPE.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`);
+  });
+  if (actMisCorregimientos.length === 0) {
+    selPE.innerHTML = '<option value="">(sin corregimiento asignado)</option>';
+  }
+
+  document.getElementById("act-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => { actPagina = 0; buscarActivista(); }, 300);
+  });
+  document.getElementById("act-corregimiento").addEventListener("change", () => { actPagina = 0; buscarActivista(); });
+  document.getElementById("act-nueva-persona").addEventListener("click", abrirModalPersona);
+  document.getElementById("pe-cancelar").addEventListener("click", cerrarModalPersona);
+  document.getElementById("pe-guardar").addEventListener("click", guardarPersonaExtra);
+  document.getElementById("pe-gps").addEventListener("click", capturarGpsPersona);
+  document.getElementById("modal-persona-overlay").addEventListener("click", (e) => {
+    if (e.target.id === "modal-persona-overlay") cerrarModalPersona();
+  });
+
+  buscarActivista();
+  cargarPersonasExtraActivista();
+}
+
+async function buscarActivista() {
+  const termino = normalizar(document.getElementById("act-buscar").value);
+  const corr = document.getElementById("act-corregimiento").value;
+  const stats = document.getElementById("act-stats");
+  const cont = document.getElementById("act-resultados");
+  const empty = document.getElementById("act-empty");
+  stats.textContent = "Buscando…";
+
+  let q = sb.from("electores_con_partido").select(
+    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha",
+    { count: "exact" }
+  );
+  if (termino) {
+    const t = termino.replace(/[%_]/g, "");
+    q = q.or(`cedula.ilike.%${t}%,nombre_completo.ilike.%${t}%`);
+  }
+  if (corr) q = q.eq("corregimiento", corr);
+  const desde = actPagina * ACT_PAGE;
+  q = q.order("nombre_completo", { ascending: true }).range(desde, desde + ACT_PAGE - 1);
+
+  const { data, error, count } = await q;
+  cont.innerHTML = "";
+  if (error) { stats.textContent = "Error: " + error.message; return; }
+  if (!data || !data.length) {
+    empty.classList.remove("hidden");
+    empty.textContent = (termino || corr) ? "Sin resultados para tu búsqueda." : "Escribe una cédula o nombre para buscar una persona de tu área.";
+    stats.textContent = "";
+    document.getElementById("act-nav").innerHTML = "";
+    return;
+  }
+  empty.classList.add("hidden");
+  const ESTADO_LABEL = { fallecido: "Fallecido", no_vive_aqui: "No vive aquí", cambio_residencia: "Cambio de resid." };
+  data.forEach(r => {
+    const card = document.createElement("button");
+    card.className = "act-card";
+    const badges = [];
+    if (r.partido_siglas) badges.push(`<span class="badge badge-partido">${escapeHtml(r.partido_siglas)}</span>`);
+    if (r.estado_nota) badges.push(`<span class="badge badge-${r.estado_nota}">${ESTADO_LABEL[r.estado_nota] || r.estado_nota}</span>`);
+    if (r.telefono) badges.push(`<span class="badge">📞</span>`);
+    if (r.latitud) badges.push(`<span class="badge">📍</span>`);
+    card.innerHTML = `
+      <div class="act-card-main">
+        <div class="act-card-nombre">${escapeHtml(r.nombre_completo)}</div>
+        <div class="act-card-sub">${escapeHtml(r.cedula)} · ${escapeHtml(r.corregimiento)} · Mesa ${escapeHtml(r.mesa)}</div>
+        <div>${badges.join("")}</div>
+      </div>
+      <span class="act-card-flecha">›</span>`;
+    card.addEventListener("click", () => abrirModal(r));
+    cont.appendChild(card);
+  });
+  const totPag = Math.max(1, Math.ceil(count / ACT_PAGE));
+  stats.textContent = `${count.toLocaleString("es-PA")} persona(s) — página ${actPagina + 1} de ${totPag}`;
+  renderNavActivista(totPag);
+}
+
+function renderNavActivista(totPag) {
+  const nav = document.getElementById("act-nav");
+  if (totPag <= 1) { nav.innerHTML = ""; return; }
+  nav.innerHTML = "";
+  const prev = document.createElement("button");
+  prev.textContent = "← Anterior"; prev.disabled = actPagina === 0;
+  prev.onclick = () => { actPagina--; buscarActivista(); window.scrollTo(0, 0); };
+  const info = document.createElement("span");
+  info.textContent = `${actPagina + 1} / ${totPag}`;
+  info.style.cssText = "font-size:0.85rem;color:var(--texto-suave)";
+  const next = document.createElement("button");
+  next.textContent = "Siguiente →"; next.disabled = actPagina >= totPag - 1;
+  next.onclick = () => { actPagina++; buscarActivista(); window.scrollTo(0, 0); };
+  nav.append(prev, info, next);
+}
+
+// ---- Modal: registrar persona fuera del padrón ----
+function abrirModalPersona() {
+  ["pe-nombre", "pe-cedula", "pe-telefono", "pe-nota"].forEach(id => { document.getElementById(id).value = ""; });
+  document.getElementById("pe-motivo").value = "";
+  document.getElementById("pe-partido").value = "";
+  document.getElementById("pe-msg").innerHTML = "";
+  const est = document.getElementById("pe-gps-estado");
+  est.textContent = ""; est.classList.remove("ok");
+  peGpsLat = peGpsLng = null;
+  const selPE = document.getElementById("pe-corregimiento");
+  const actual = document.getElementById("act-corregimiento").value;
+  if (actual) selPE.value = actual;
+  document.getElementById("modal-persona-overlay").classList.remove("hidden");
+}
+
+function cerrarModalPersona() {
+  document.getElementById("modal-persona-overlay").classList.add("hidden");
+}
+
+function capturarGpsPersona() {
+  const est = document.getElementById("pe-gps-estado");
+  if (!navigator.geolocation) { est.textContent = "Tu navegador no permite obtener la ubicación."; return; }
+  est.textContent = "Obteniendo ubicación…"; est.classList.remove("ok");
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      peGpsLat = pos.coords.latitude; peGpsLng = pos.coords.longitude;
+      est.textContent = `Ubicación capturada: ${peGpsLat.toFixed(5)}, ${peGpsLng.toFixed(5)}`;
+      est.classList.add("ok");
+    },
+    (err) => { est.textContent = "No se pudo obtener la ubicación: " + err.message; },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+
+async function guardarPersonaExtra() {
+  const nombre = document.getElementById("pe-nombre").value.trim();
+  const corr = document.getElementById("pe-corregimiento").value;
+  const msg = document.getElementById("pe-msg");
+  msg.innerHTML = "";
+  if (!nombre) { msg.innerHTML = `<div class="msg error">Escribe el nombre completo.</div>`; return; }
+  if (!corr) { msg.innerHTML = `<div class="msg error">Elige el corregimiento.</div>`; return; }
+  const btn = document.getElementById("pe-guardar");
+  btn.disabled = true; btn.textContent = "Guardando…";
+  const partidoId = document.getElementById("pe-partido").value;
+  const payload = {
+    nombre_completo: nombre,
+    cedula: document.getElementById("pe-cedula").value.trim() || null,
+    corregimiento: corr,
+    motivo: document.getElementById("pe-motivo").value || null,
+    partido_id: partidoId ? Number(partidoId) : null,
+    telefono: document.getElementById("pe-telefono").value.trim() || null,
+    nota: document.getElementById("pe-nota").value.trim() || null,
+    latitud: peGpsLat, longitud: peGpsLng,
+    registrado_por: currentUserEmail,
+    es_demo: ES_DEMO,
+  };
+  const { error } = await sb.from("personas_extra").insert(payload);
+  btn.disabled = false; btn.textContent = "Guardar";
+  if (error) { msg.innerHTML = `<div class="msg error">${escapeHtml(error.message)}</div>`; return; }
+  cerrarModalPersona();
+  cargarPersonasExtraActivista();
+}
+
+async function cargarPersonasExtraActivista() {
+  const cont = document.getElementById("act-extra-lista");
+  const { data, error } = await sb.from("personas_extra")
+    .select("nombre_completo, cedula, corregimiento, motivo, telefono, creado_en")
+    .order("creado_en", { ascending: false });
+  if (error) { cont.innerHTML = ""; return; }
+  document.getElementById("act-extra-count").textContent = (data || []).length;
+  cont.innerHTML = (data && data.length)
+    ? data.map(p => `
+        <div class="act-extra-item">
+          <b>${escapeHtml(p.nombre_completo)}</b>${p.cedula ? " · " + escapeHtml(p.cedula) : ""}
+          <div class="em">${escapeHtml(p.corregimiento || "")}${p.motivo ? " · " + escapeHtml(MOTIVO_LABEL[p.motivo] || p.motivo) : ""}${p.telefono ? " · 📞 " + escapeHtml(p.telefono) : ""}</div>
+          <div class="em">${new Date(p.creado_en).toLocaleString("es-PA")}</div>
+        </div>`).join("")
+    : `<p class="ruta-vacia" style="margin-top:8px;">Aún no registras personas nuevas.</p>`;
+}
+
+async function cargarPersonasExtraAdmin() {
+  const body = document.getElementById("admin-extra-body");
+  const msg = document.getElementById("admin-extra-msg");
+  if (!body) return;
+  body.innerHTML = ""; msg.textContent = "Cargando…";
+  const { data, error } = await sb.from("personas_extra")
+    .select("id, nombre_completo, cedula, corregimiento, motivo, telefono, registrado_por, creado_en")
+    .order("creado_en", { ascending: false });
+  if (error) { msg.textContent = "Error: " + error.message; return; }
+  msg.textContent = (data && data.length) ? "" : "Aún no hay personas registradas fuera del padrón.";
+  (data || []).forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(p.nombre_completo)}</td>
+      <td>${escapeHtml(p.cedula || "—")}</td>
+      <td>${escapeHtml(p.corregimiento || "—")}</td>
+      <td>${escapeHtml(p.motivo ? (MOTIVO_LABEL[p.motivo] || p.motivo) : "—")}</td>
+      <td>${escapeHtml(p.telefono || "—")}</td>
+      <td class="areas-cell">${escapeHtml(p.registrado_por || "—")}</td>
+      <td></td>`;
+    const btn = document.createElement("button");
+    btn.className = "mini-btn mini-btn-peligro";
+    btn.textContent = "Eliminar";
+    btn.addEventListener("click", async () => {
+      if (!confirm(`¿Eliminar el registro de ${p.nombre_completo}?`)) return;
+      btn.disabled = true;
+      const { error: e } = await sb.from("personas_extra").delete().eq("id", p.id);
+      if (e) alert(e.message);
+      cargarPersonasExtraAdmin();
+    });
+    tr.lastElementChild.appendChild(btn);
+    body.appendChild(tr);
+  });
+}
+
+// ============================================================
 // ================  PANEL DE ADMINISTRACIÓN  =================
 // ============================================================
 const EDGE_CREAR_USUARIO = SUPABASE_URL + "/functions/v1/admin-crear-usuario";
+const EDGE_ELIMINAR_USUARIO = SUPABASE_URL + "/functions/v1/admin-eliminar-usuario";
 
 const NIVEL_POR_ROL = {
   presidente: "nacional",
@@ -2359,6 +3122,7 @@ const NIVEL_POR_ROL = {
   alcalde: "distrito",
   representante: "corregimiento",
   secretaria_organizacion: "corregimiento",
+  activista: "corregimiento",
   admin: "nacional",
 };
 
@@ -2576,9 +3340,52 @@ async function cargarListaUsuarios() {
       cargarListaUsuarios();
     });
     acc.appendChild(btnT);
+
+    // Eliminar (no aparece para tu propia cuenta ni en modo demo)
+    if (!ES_DEMO && p.user_id !== currentUserId) {
+      const btnDel = document.createElement("button");
+      btnDel.className = "mini-btn mini-btn-peligro";
+      btnDel.textContent = "Eliminar";
+      btnDel.addEventListener("click", () => eliminarUsuario(p, btnDel));
+      acc.appendChild(btnDel);
+    }
+
     body.appendChild(tr);
   });
   if (perfiles.length === 0) msg.textContent = "Aún no hay colaboradores.";
+}
+
+async function eliminarUsuario(p, btn) {
+  const nombre = p.nombre || "esta cuenta";
+  if (!confirm(
+    `¿Eliminar la cuenta de ${nombre}?\n\n` +
+    `La persona perderá el acceso al sistema de inmediato y se borrará su perfil y sus áreas asignadas. ` +
+    `Esta acción no se puede deshacer.\n\n` +
+    `Si solo quieres suspender el acceso temporalmente, usa "Desactivar".`
+  )) return;
+
+  btn.disabled = true;
+  const textoOriginal = btn.textContent;
+  btn.textContent = "Eliminando…";
+  const msg = document.getElementById("admin-users-msg");
+  msg.textContent = "";
+  try {
+    const { data: sess } = await sb.auth.getSession();
+    const token = sess?.session?.access_token;
+    const resp = await fetch(EDGE_ELIMINAR_USUARIO, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token, "apikey": SUPABASE_KEY },
+      body: JSON.stringify({ user_id: p.user_id }),
+    });
+    const out = await resp.json();
+    if (!resp.ok || !out.ok) throw new Error(out.error || "No se pudo eliminar la cuenta");
+    msg.textContent = `Cuenta de ${nombre} eliminada.`;
+    cargarListaUsuarios();
+  } catch (err) {
+    msg.innerHTML = `<span class="val-error">${escapeHtml(err.message)}</span>`;
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
 }
 
 // ---------- Carga masiva Excel / CSV ----------

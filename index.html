@@ -819,6 +819,25 @@
   }
   .act-reporte-form .btn-primary { margin-top: 12px; }
 
+  /* ---- Recursos internos ---- */
+  #vista-recursos { max-width: 1080px; }
+  .rec-card {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+    padding: 13px 15px; margin-bottom: 9px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .rec-card .rec-main { flex: 1; min-width: 0; }
+  .rec-card .rec-t { font-weight: 600; font-size: 0.95rem; }
+  .rec-card .rec-meta { font-size: 0.8rem; color: var(--texto-suave); margin-top: 2px; }
+  .rec-card .rec-acc { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .rec-monto { font-weight: 700; color: var(--azul); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .badge-conciliado { background: #e9f7ee; color: #1a7f37; }
+  .badge-pendiente  { background: #fff4e5; color: #a15c00; }
+  .badge-permiso-aprobado { background: #e9f7ee; color: #1a7f37; }
+  .badge-permiso-solicitado { background: #eaf1fd; color: #1a56c4; }
+  .badge-permiso-negado { background: #fdecea; color: var(--error); }
+  .rec-doc-link { font-size: 0.8rem; color: var(--azul-claro); cursor: pointer; text-decoration: underline; }
+
   /* ---- Modo activista (app móvil de campo) ---- */
   body.activista .tabs { display: none; }
   body.activista #tab-admin-btn { display: none !important; }
@@ -943,6 +962,7 @@
       <button class="tab-btn" id="tab-candidatos-btn">🏛️ Candidatos</button>
       <button class="tab-btn" id="tab-organizacion-btn">🧭 Organización</button>
       <button class="tab-btn" id="tab-reportes-btn">📋 Reportes</button>
+      <button class="tab-btn" id="tab-recursos-btn">💰 Recursos</button>
       <button class="tab-btn" id="tab-calendario-btn">📅 Calendario</button>
     </div>
 
@@ -1414,6 +1434,145 @@
       </div>
     </div>
 
+    <!-- ===== VISTA: RECURSOS INTERNOS (inventario POP / gastos / eventos) ===== -->
+    <div id="vista-recursos" class="hidden">
+      <div id="rec-demo-aviso" class="demo-aviso hidden">
+        <b>Modo demo.</b> El inventario, los gastos y los eventos que veas o registres aquí son datos ficticios.
+      </div>
+
+      <div class="rep-totales" id="rec-kpis"></div>
+
+      <div class="org-subtabs">
+        <button class="org-subtab activo" id="rec-sub-inventario">📦 Inventario P.O.P.</button>
+        <button class="org-subtab" id="rec-sub-gastos">💵 Gastos</button>
+        <button class="org-subtab" id="rec-sub-eventos">📣 Eventos</button>
+      </div>
+
+      <!-- ---- INVENTARIO ---- -->
+      <div id="rec-vista-inventario">
+        <div class="admin-card" id="inv-form-card">
+          <h3 id="inv-form-titulo">Agregar material</h3>
+          <div class="admin-grid">
+            <div class="admin-field"><label>Material</label><input type="text" id="inv-item" placeholder="Ej: Afiches A3" /></div>
+            <div class="admin-field"><label>Cantidad</label><input type="number" id="inv-cantidad" min="0" value="0" /></div>
+            <div class="admin-field"><label>Unidad</label><input type="text" id="inv-unidad" value="unidades" /></div>
+            <div class="admin-field"><label>Nivel</label>
+              <select id="inv-nivel"><option value="">Nacional / general</option>
+                <option value="circuito">Circuito</option><option value="distrito">Distrito</option><option value="corregimiento">Corregimiento</option></select>
+            </div>
+            <div class="admin-field" id="inv-area-wrap" style="display:none;"><label id="inv-area-label">Área</label><select id="inv-area"><option value="">—</option></select></div>
+            <div class="admin-field"><label>Comité (opcional)</label><input type="text" id="inv-comite" /></div>
+            <div class="admin-field"><label>Responsable de custodia</label><input type="text" id="inv-resp" /></div>
+            <div class="admin-field"><label>Cédula del responsable</label><input type="text" id="inv-resp-ced" autocomplete="off" /></div>
+            <div class="admin-field"><label>Ubicación física</label><input type="text" id="inv-ubic" placeholder="Ej: bodega sede de campaña" /></div>
+            <div class="admin-field"><label>Fecha de entrega</label><input type="date" id="inv-fecha" /></div>
+          </div>
+          <div class="admin-field" style="margin-top:10px;"><label>Notas</label><textarea id="inv-notas" rows="2"></textarea></div>
+          <div class="admin-actions">
+            <button class="btn-primary" id="inv-guardar">Guardar</button>
+            <button class="btn-secundario" id="inv-cancelar" style="display:none;">Cancelar</button>
+            <span class="admin-msg" id="inv-msg"></span>
+          </div>
+        </div>
+        <div id="inv-lista"></div>
+      </div>
+
+      <!-- ---- GASTOS ---- -->
+      <div id="rec-vista-gastos" class="hidden">
+        <div class="admin-card" id="gas-form-card">
+          <h3 id="gas-form-titulo">Registrar gasto</h3>
+          <p class="hint">Cada gasto queda pendiente de conciliar hasta que un administrador lo marque como conciliado con tesorería.</p>
+          <div class="admin-grid">
+            <div class="admin-field"><label>Fecha</label><input type="date" id="gas-fecha" /></div>
+            <div class="admin-field"><label>Concepto</label><input type="text" id="gas-concepto" placeholder="Ej: Combustible caravana" /></div>
+            <div class="admin-field"><label>Categoría</label>
+              <select id="gas-categoria">
+                <option value="transporte">Transporte</option><option value="alimentacion">Alimentación</option>
+                <option value="pop">Material P.O.P.</option><option value="logistica">Logística</option>
+                <option value="evento">Evento</option><option value="publicidad">Publicidad</option>
+                <option value="otro" selected>Otro</option>
+              </select>
+            </div>
+            <div class="admin-field"><label>Monto (B/.)</label><input type="number" id="gas-monto" min="0" step="0.01" value="0" /></div>
+            <div class="admin-field"><label>Nivel</label>
+              <select id="gas-nivel"><option value="">Nacional / general</option>
+                <option value="circuito">Circuito</option><option value="distrito">Distrito</option><option value="corregimiento">Corregimiento</option></select>
+            </div>
+            <div class="admin-field" id="gas-area-wrap" style="display:none;"><label id="gas-area-label">Área</label><select id="gas-area"><option value="">—</option></select></div>
+            <div class="admin-field"><label>Pagado por</label><input type="text" id="gas-pagado" /></div>
+            <div class="admin-field"><label>Comprobante (foto/PDF)</label><input type="file" id="gas-comprobante" accept="image/*,.pdf" /></div>
+          </div>
+          <div class="admin-actions">
+            <button class="btn-primary" id="gas-guardar">Guardar gasto</button>
+            <button class="btn-secundario" id="gas-cancelar" style="display:none;">Cancelar</button>
+            <span class="admin-msg" id="gas-msg"></span>
+          </div>
+        </div>
+        <div class="org-filtros">
+          <select id="gas-filtro-estado">
+            <option value="">Todos</option>
+            <option value="pendiente">Pendientes de conciliar</option>
+            <option value="conciliado">Conciliados</option>
+          </select>
+          <button class="mini-btn" id="gas-exportar">⬇️ Exportar a Excel (tesorería)</button>
+        </div>
+        <div id="gas-stats" class="stats"></div>
+        <div id="gas-lista"></div>
+      </div>
+
+      <!-- ---- EVENTOS ---- -->
+      <div id="rec-vista-eventos" class="hidden">
+        <div class="admin-card" id="eve-form-card">
+          <h3 id="eve-form-titulo">Registrar evento / actividad</h3>
+          <div class="admin-grid">
+            <div class="admin-field"><label>Título</label><input type="text" id="eve-titulo" placeholder="Ej: Caminata en El Higuerón" /></div>
+            <div class="admin-field"><label>Tipo</label>
+              <select id="eve-tipo">
+                <option value="caminata">Caminata</option><option value="mitin">Mitin</option>
+                <option value="reunion">Reunión</option><option value="feria">Feria</option>
+                <option value="casa_a_casa">Casa a casa</option><option value="capacitacion">Capacitación</option>
+                <option value="otro" selected>Otro</option>
+              </select>
+            </div>
+            <div class="admin-field"><label>Fecha inicio</label><input type="date" id="eve-fecha" /></div>
+            <div class="admin-field"><label>Fecha fin (opcional)</label><input type="date" id="eve-fecha-fin" /></div>
+            <div class="admin-field"><label>Hora</label><input type="text" id="eve-hora" placeholder="Ej: 4:00 pm" /></div>
+            <div class="admin-field"><label>Lugar</label><input type="text" id="eve-lugar" /></div>
+            <div class="admin-field"><label>Corregimiento</label><select id="eve-corregimiento"><option value="">—</option></select></div>
+            <div class="admin-field"><label>Nivel</label>
+              <select id="eve-nivel"><option value="">Nacional / general</option>
+                <option value="circuito">Circuito</option><option value="distrito">Distrito</option><option value="corregimiento">Corregimiento</option></select>
+            </div>
+            <div class="admin-field" id="eve-area-wrap" style="display:none;"><label id="eve-area-label">Área</label><select id="eve-area"><option value="">—</option></select></div>
+            <div class="admin-field"><label>Asistencia estimada</label><input type="number" id="eve-asist-est" min="0" /></div>
+            <div class="admin-field"><label>Asistencia real</label><input type="number" id="eve-asist-real" min="0" /></div>
+            <div class="admin-field"><label>Responsable</label><input type="text" id="eve-responsable" /></div>
+            <div class="admin-field">
+              <label>¿Requiere permiso?</label>
+              <select id="eve-permiso-req"><option value="false">No</option><option value="true">Sí</option></select>
+            </div>
+            <div class="admin-field" id="eve-permiso-wrap" style="display:none;">
+              <label>Estado del permiso</label>
+              <select id="eve-permiso-estado">
+                <option value="solicitado">Solicitado</option><option value="aprobado">Aprobado</option><option value="negado">Negado</option>
+              </select>
+            </div>
+            <div class="admin-field" id="eve-permiso-file-wrap" style="display:none;">
+              <label>Documento del permiso</label><input type="file" id="eve-permiso-file" accept="image/*,.pdf" />
+            </div>
+          </div>
+          <div class="admin-field" style="margin-top:10px;"><label>Notas</label><textarea id="eve-notas" rows="2"></textarea></div>
+          <div id="eve-veda-aviso" class="rep-sinreportar hidden" style="margin-top:0;"></div>
+          <div class="admin-actions">
+            <button class="btn-primary" id="eve-guardar">Guardar evento</button>
+            <button class="btn-secundario" id="eve-cancelar" style="display:none;">Cancelar</button>
+            <span class="admin-msg" id="eve-msg"></span>
+          </div>
+        </div>
+        <div id="eve-lista"></div>
+      </div>
+    </div>
+
     <!-- ===== VISTA: REPORTES TERRITORIALES ===== -->
     <div id="vista-reportes" class="hidden">
       <div id="rep-demo-aviso" class="demo-aviso hidden">
@@ -1820,6 +1979,8 @@ sb.auth.onAuthStateChange((_event, session) => {
       const el = document.getElementById(id); if (el) el.value = "";
     });
     const rr = document.getElementById("rep-cons-resultado"); if (rr) rr.innerHTML = "";
+    INV_CACHE = []; GAS_CACHE = []; EVE_CACHE = [];
+    invEditId = null; gasEditId = null; eveEditId = null; recSubActual = "inventario";
     const selCorr = document.getElementById("filtro-corregimiento");
     if (selCorr) selCorr.innerHTML = '<option value="">Todos los corregimientos</option>';
     const selPar = document.getElementById("filtro-partido");
@@ -1921,6 +2082,7 @@ async function inicializarApp() {
   document.getElementById("tab-candidatos-btn").addEventListener("click", () => cambiarTab("candidatos"));
   document.getElementById("tab-organizacion-btn").addEventListener("click", () => cambiarTab("organizacion"));
   document.getElementById("tab-reportes-btn").addEventListener("click", () => cambiarTab("reportes"));
+  document.getElementById("tab-recursos-btn").addEventListener("click", () => cambiarTab("recursos"));
   document.getElementById("tab-calendario-btn").addEventListener("click", () => cambiarTab("calendario"));
   document.getElementById("tab-admin-btn").addEventListener("click", () => cambiarTab("admin"));
   initAdmin();
@@ -1928,6 +2090,7 @@ async function inicializarApp() {
   initOrganizacion();
   initCalendario();
   initReportes();
+  initRecursos();
 }
 
 // ---------- TABS ----------
@@ -1935,10 +2098,11 @@ function cambiarTab(tab) {
   const vistas = {
     buscar: "vista-buscar", mapa: "vista-mapa", admin: "vista-admin",
     candidatos: "vista-candidatos", organizacion: "vista-organizacion",
-    reportes: "vista-reportes", calendario: "vista-calendario", activista: "vista-activista",
+    reportes: "vista-reportes", recursos: "vista-recursos",
+    calendario: "vista-calendario", activista: "vista-activista",
   };
   const botones = { buscar: "tab-buscar-btn", mapa: "tab-mapa-btn", candidatos: "tab-candidatos-btn",
-    organizacion: "tab-organizacion-btn", reportes: "tab-reportes-btn",
+    organizacion: "tab-organizacion-btn", reportes: "tab-reportes-btn", recursos: "tab-recursos-btn",
     calendario: "tab-calendario-btn", admin: "tab-admin-btn" };
   Object.entries(vistas).forEach(([k, id]) => {
     const el = document.getElementById(id);
@@ -1962,6 +2126,8 @@ function cambiarTab(tab) {
     cargarCalendario();
   } else if (tab === "reportes") {
     cargarPanelReportes();
+  } else if (tab === "recursos") {
+    cambiarRecSub(recSubActual);
   }
 }
 
@@ -1979,6 +2145,8 @@ function aplicarPermisosUI() {
   if (btnCal) btnCal.classList.toggle("hidden", ES_ACTIVISTA);
   const btnRep = document.getElementById("tab-reportes-btn");
   if (btnRep) btnRep.classList.toggle("hidden", ES_ACTIVISTA);
+  const btnRec = document.getElementById("tab-recursos-btn");
+  if (btnRec) btnRec.classList.toggle("hidden", ES_ACTIVISTA);
   document.querySelectorAll("#dir-form-card, #mesa-form-card").forEach(el => {
     if (el) el.classList.toggle("hidden", !esAdmin);
   });
@@ -4700,6 +4868,454 @@ async function guardarReporteActivista() {
   if (error) { msg.textContent = "Error: " + error.message; msg.classList.remove("ok"); return; }
   msg.textContent = "Reporte enviado ✓"; msg.classList.add("ok");
   document.getElementById("act-reporte-estado").textContent = "enviado ✓";
+}
+
+// ============================================================
+// ============  RECURSOS INTERNOS (POP / gastos / eventos)  ===
+// ============================================================
+let recursosInit = false;
+let recSubActual = "inventario";
+let INV_CACHE = [], GAS_CACHE = [], EVE_CACHE = [];
+let invEditId = null, gasEditId = null, eveEditId = null;
+
+const GAS_CAT_LABEL = { transporte: "Transporte", alimentacion: "Alimentación", pop: "Material P.O.P.",
+  logistica: "Logística", evento: "Evento", publicidad: "Publicidad", otro: "Otro" };
+const EVE_TIPO_LABEL = { caminata: "Caminata", mitin: "Mitin", reunion: "Reunión", feria: "Feria",
+  casa_a_casa: "Casa a casa", capacitacion: "Capacitación", otro: "Otro" };
+const PERMISO_LABEL = { no_aplica: "No requiere", solicitado: "Solicitado", aprobado: "Aprobado", negado: "Negado" };
+
+function fmtB(n) { return "B/. " + Number(n || 0).toLocaleString("es-PA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+function initRecursos() {
+  if (recursosInit) return;
+  recursosInit = true;
+  document.getElementById("rec-sub-inventario").addEventListener("click", () => cambiarRecSub("inventario"));
+  document.getElementById("rec-sub-gastos").addEventListener("click", () => cambiarRecSub("gastos"));
+  document.getElementById("rec-sub-eventos").addEventListener("click", () => cambiarRecSub("eventos"));
+
+  ["inv", "gas", "eve"].forEach(p => {
+    const nv = document.getElementById(p + "-nivel");
+    if (nv) nv.addEventListener("change", () => construirSelectorAreaRec(p, nv.value));
+  });
+  document.getElementById("inv-guardar").addEventListener("click", guardarInventario);
+  document.getElementById("inv-cancelar").addEventListener("click", resetFormInv);
+  document.getElementById("gas-guardar").addEventListener("click", guardarGasto);
+  document.getElementById("gas-cancelar").addEventListener("click", resetFormGas);
+  document.getElementById("gas-filtro-estado").addEventListener("change", renderGastos);
+  document.getElementById("gas-exportar").addEventListener("click", exportarGastos);
+  document.getElementById("eve-guardar").addEventListener("click", guardarEvento);
+  document.getElementById("eve-cancelar").addEventListener("click", resetFormEve);
+  document.getElementById("eve-permiso-req").addEventListener("change", togglePermisoUI);
+  document.getElementById("eve-fecha").addEventListener("change", checkVedaEvento);
+}
+
+function cambiarRecSub(sub) {
+  recSubActual = sub;
+  ["inventario", "gastos", "eventos"].forEach(k => {
+    document.getElementById("rec-vista-" + k).classList.toggle("hidden", k !== sub);
+    document.getElementById("rec-sub-" + k).classList.toggle("activo", k === sub);
+  });
+  cargarPanelRecursos();
+}
+
+async function cargarPanelRecursos() {
+  const avisoD = document.getElementById("rec-demo-aviso");
+  if (avisoD) avisoD.classList.toggle("hidden", !ES_DEMO);
+  await cargarMiArea();
+  // corregimiento select para eventos
+  const selCorr = document.getElementById("eve-corregimiento");
+  if (selCorr && selCorr.options.length <= 1) {
+    (await cargarUbicaciones()).forEach(u => selCorr.insertAdjacentHTML("beforeend",
+      `<option value="${escapeHtml(u.corregimiento)}">${escapeHtml(u.corregimiento)} — ${escapeHtml(u.distrito)}</option>`));
+  }
+  // KPIs
+  const cont = document.getElementById("rec-kpis");
+  const { data } = await sb.rpc("resumen_recursos");
+  if (data) {
+    const kpi = (n, l) => `<div class="rep-kpi"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+    cont.innerHTML =
+      kpi(fmtB(data.gasto_total), "Gasto total") +
+      kpi(fmtB(data.gasto_pendiente), "Por conciliar") +
+      kpi((data.inventario_items || 0) + " ítems", "Inventario POP") +
+      kpi(data.eventos_proximos || 0, "Eventos próximos") +
+      kpi(data.eventos_permiso_pendiente || 0, "Permisos pendientes");
+  } else { cont.innerHTML = ""; }
+
+  if (recSubActual === "inventario") cargarInventario();
+  else if (recSubActual === "gastos") cargarGastos();
+  else cargarEventos();
+}
+
+async function construirSelectorAreaRec(p, nivel, valorActual) {
+  const wrap = document.getElementById(p + "-area-wrap");
+  const sel = document.getElementById(p + "-area");
+  const label = document.getElementById(p + "-area-label");
+  if (!nivel) { wrap.style.display = "none"; sel.innerHTML = '<option value="">—</option>'; return; }
+  wrap.style.display = "block";
+  sel.innerHTML = '<option value="">Elige…</option>';
+  if (nivel === "circuito") {
+    label.textContent = "Circuito";
+    (await cargarCircuitos()).forEach(c => sel.insertAdjacentHTML("beforeend",
+      `<option value="${escapeHtml(c.codigo)}">${escapeHtml(c.codigo)} · ${escapeHtml(c.provincia)}</option>`));
+  } else if (nivel === "distrito") {
+    label.textContent = "Distrito";
+    [...new Map((await cargarUbicaciones()).map(u => [u.provincia + "|" + u.distrito, u])).values()].forEach(u =>
+      sel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(u.distrito)}">${escapeHtml(u.provincia)} — ${escapeHtml(u.distrito)}</option>`));
+  } else {
+    label.textContent = "Corregimiento";
+    (await cargarUbicaciones()).forEach(u => sel.insertAdjacentHTML("beforeend",
+      `<option value="${escapeHtml(u.corregimiento)}">${escapeHtml(u.corregimiento)} — ${escapeHtml(u.distrito)}</option>`));
+  }
+  if (valorActual != null && valorActual !== "") sel.value = valorActual;
+}
+
+// Sube un documento (comprobante/permiso) al bucket 'evidencias'. Devuelve el path.
+async function subirDocRec(file, tipo, id) {
+  const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const rand = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+  const path = `${ES_DEMO ? "demo" : "real"}/${tipo}/${id}/${rand}.${ext}`;
+  const { error } = await sb.storage.from("evidencias").upload(path, file, {
+    contentType: file.type || "application/octet-stream", upsert: false,
+  });
+  if (error) throw error;
+  return path;
+}
+async function verDocRec(path) {
+  const { data } = await sb.storage.from("evidencias").createSignedUrl(path, 3600);
+  if (data) window.open(data.signedUrl, "_blank");
+}
+
+function areaPayload(p) {
+  const nivel = document.getElementById(p + "-nivel").value || null;
+  const area = nivel ? (document.getElementById(p + "-area").value || null) : null;
+  return { nivel, area_valor: area, faltaArea: !!(nivel && !area) };
+}
+
+// ---------- INVENTARIO ----------
+async function cargarInventario() {
+  const cont = document.getElementById("inv-lista");
+  cont.innerHTML = `<p class="cand-sin">Cargando…</p>`;
+  const { data, error } = await sb.from("inventario_pop").select("*").order("creado_en", { ascending: false });
+  if (error) { cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br><small>¿Ya se aplicó la migración del Módulo 5?</small></p>`; return; }
+  INV_CACHE = data || [];
+  renderInventario();
+}
+function renderInventario() {
+  const cont = document.getElementById("inv-lista");
+  if (!INV_CACHE.length) { cont.innerHTML = `<p class="cand-sin">Aún no hay material registrado.</p>`; return; }
+  cont.innerHTML = INV_CACHE.map(r => {
+    const area = r.nivel ? `${r.nivel}: ${escapeHtml(r.area_valor || "—")}` : "General";
+    const resp = r.responsable_custodia ? ` · Custodia: ${escapeHtml(r.responsable_custodia)}${r.responsable_cedula ? " (" + escapeHtml(r.responsable_cedula) + ")" : ""}` : "";
+    return `<div class="rec-card"><div class="rec-main">
+      <div class="rec-t">${escapeHtml(r.item)} <span class="badge">${r.cantidad} ${escapeHtml(r.unidad || "")}</span></div>
+      <div class="rec-meta">${area}${r.comite ? " · " + escapeHtml(r.comite) : ""}${resp}</div>
+      ${r.ubicacion_fisica ? `<div class="rec-meta">📍 ${escapeHtml(r.ubicacion_fisica)}</div>` : ""}
+      ${r.notas ? `<div class="rec-meta">${escapeHtml(r.notas)}</div>` : ""}
+    </div><div class="rec-acc">
+      <button class="mini-btn" data-e="${r.id}">Editar</button>
+      <button class="mini-btn mini-btn-peligro" data-d="${r.id}">Eliminar</button>
+    </div></div>`;
+  }).join("");
+  cont.querySelectorAll("[data-e]").forEach(b => b.addEventListener("click", () => editarInventario(INV_CACHE.find(x => x.id == b.dataset.e))));
+  cont.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => eliminarRec("inventario_pop", b.dataset.d, cargarInventario)));
+}
+async function guardarInventario() {
+  const item = document.getElementById("inv-item").value.trim();
+  const msg = document.getElementById("inv-msg"); msg.textContent = "";
+  if (!item) { msg.innerHTML = `<span class="val-error">Escribe el material.</span>`; return; }
+  const a = areaPayload("inv");
+  if (a.faltaArea) { msg.innerHTML = `<span class="val-error">Elige el área.</span>`; return; }
+  const payload = {
+    item, descripcion: null, cantidad: Math.max(0, parseInt(document.getElementById("inv-cantidad").value, 10) || 0),
+    unidad: document.getElementById("inv-unidad").value.trim() || "unidades",
+    nivel: a.nivel, area_valor: a.area_valor,
+    comite: document.getElementById("inv-comite").value.trim() || null,
+    responsable_custodia: document.getElementById("inv-resp").value.trim() || null,
+    responsable_cedula: document.getElementById("inv-resp-ced").value.trim() || null,
+    ubicacion_fisica: document.getElementById("inv-ubic").value.trim() || null,
+    fecha_entrega: document.getElementById("inv-fecha").value || null,
+    notas: document.getElementById("inv-notas").value.trim() || null,
+    es_demo: ES_DEMO,
+  };
+  const btn = document.getElementById("inv-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
+  let error;
+  if (invEditId) { payload.actualizado_en = new Date().toISOString(); ({ error } = await sb.from("inventario_pop").update(payload).eq("id", invEditId)); }
+  else { payload.registrado_por = currentUserEmail; ({ error } = await sb.from("inventario_pop").insert(payload)); }
+  btn.disabled = false; btn.textContent = "Guardar";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  resetFormInv(); cargarInventario(); cargarPanelRecursos();
+}
+async function editarInventario(r) {
+  invEditId = r.id;
+  document.getElementById("inv-form-titulo").textContent = "Editar material";
+  document.getElementById("inv-cancelar").style.display = "";
+  const s = (id, v) => document.getElementById(id).value = v;
+  s("inv-item", r.item || ""); s("inv-cantidad", r.cantidad || 0); s("inv-unidad", r.unidad || "unidades");
+  s("inv-comite", r.comite || ""); s("inv-resp", r.responsable_custodia || ""); s("inv-resp-ced", r.responsable_cedula || "");
+  s("inv-ubic", r.ubicacion_fisica || ""); s("inv-fecha", r.fecha_entrega || ""); s("inv-notas", r.notas || "");
+  s("inv-nivel", r.nivel || "");
+  await construirSelectorAreaRec("inv", r.nivel || "", r.area_valor);
+  document.getElementById("inv-msg").textContent = "";
+  document.getElementById("inv-form-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function resetFormInv() {
+  invEditId = null;
+  document.getElementById("inv-form-titulo").textContent = "Agregar material";
+  document.getElementById("inv-cancelar").style.display = "none";
+  ["inv-item", "inv-comite", "inv-resp", "inv-resp-ced", "inv-ubic", "inv-fecha", "inv-notas"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("inv-cantidad").value = 0; document.getElementById("inv-unidad").value = "unidades";
+  document.getElementById("inv-nivel").value = ""; document.getElementById("inv-area-wrap").style.display = "none";
+  document.getElementById("inv-msg").textContent = "";
+}
+
+// ---------- GASTOS ----------
+async function cargarGastos() {
+  const cont = document.getElementById("gas-lista");
+  cont.innerHTML = `<p class="cand-sin">Cargando…</p>`;
+  const { data, error } = await sb.from("gastos_organizacion").select("*").order("fecha", { ascending: false });
+  if (error) { cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br><small>¿Ya se aplicó la migración del Módulo 5?</small></p>`; return; }
+  GAS_CACHE = data || [];
+  renderGastos();
+}
+function renderGastos() {
+  const cont = document.getElementById("gas-lista");
+  const stats = document.getElementById("gas-stats");
+  const f = document.getElementById("gas-filtro-estado").value;
+  const esAdmin = perfilActual && perfilActual.rol === "admin";
+  let filas = GAS_CACHE.slice();
+  if (f === "pendiente") filas = filas.filter(g => !g.conciliado);
+  if (f === "conciliado") filas = filas.filter(g => g.conciliado);
+  const tot = filas.reduce((s, g) => s + Number(g.monto), 0);
+  const conc = filas.filter(g => g.conciliado).reduce((s, g) => s + Number(g.monto), 0);
+  stats.textContent = `${filas.length} gasto(s) · ${fmtB(tot)} total · ${fmtB(conc)} conciliado · ${fmtB(tot - conc)} pendiente`;
+  if (!filas.length) { cont.innerHTML = `<p class="cand-sin">Sin gastos para ese filtro.</p>`; return; }
+  cont.innerHTML = filas.map(g => {
+    const area = g.nivel ? `${g.nivel}: ${escapeHtml(g.area_valor || "—")}` : "General";
+    const badge = g.conciliado ? `<span class="badge badge-conciliado">Conciliado</span>` : `<span class="badge badge-pendiente">Pendiente</span>`;
+    return `<div class="rec-card"><div class="rec-main">
+      <div class="rec-t">${escapeHtml(g.concepto)} ${badge}</div>
+      <div class="rec-meta">${fechaCorta(g.fecha)} · ${escapeHtml(GAS_CAT_LABEL[g.categoria] || g.categoria)} · ${area}${g.pagado_por ? " · Pagó: " + escapeHtml(g.pagado_por) : ""}</div>
+      ${g.referencia_tesoreria ? `<div class="rec-meta">Ref. tesorería: ${escapeHtml(g.referencia_tesoreria)}</div>` : ""}
+      ${g.comprobante_path ? `<div><span class="rec-doc-link" data-doc="${escapeHtml(g.comprobante_path)}">Ver comprobante ↗</span></div>` : ""}
+    </div><div class="rec-acc">
+      <div class="rec-monto">${fmtB(g.monto)}</div>
+      ${esAdmin ? `<button class="mini-btn ${g.conciliado ? "mini-btn-activo" : ""}" data-c="${g.id}">${g.conciliado ? "✓ Conciliado" : "Marcar conciliado"}</button>
+      <button class="mini-btn" data-e="${g.id}">Editar</button>
+      <button class="mini-btn mini-btn-peligro" data-d="${g.id}">Eliminar</button>` : ""}
+    </div></div>`;
+  }).join("");
+  cont.querySelectorAll("[data-doc]").forEach(b => b.addEventListener("click", () => verDocRec(b.dataset.doc)));
+  cont.querySelectorAll("[data-c]").forEach(b => b.addEventListener("click", () => toggleConciliado(GAS_CACHE.find(x => x.id == b.dataset.c))));
+  cont.querySelectorAll("[data-e]").forEach(b => b.addEventListener("click", () => editarGasto(GAS_CACHE.find(x => x.id == b.dataset.e))));
+  cont.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => eliminarRec("gastos_organizacion", b.dataset.d, cargarGastos)));
+}
+async function toggleConciliado(g) {
+  let ref = g.referencia_tesoreria;
+  if (!g.conciliado) { ref = prompt("Referencia de tesorería (opcional):", ref || ""); if (ref === null) return; }
+  const { error } = await sb.from("gastos_organizacion")
+    .update({ conciliado: !g.conciliado, referencia_tesoreria: ref || null, actualizado_en: new Date().toISOString() })
+    .eq("id", g.id);
+  if (error) { alert(error.message); return; }
+  cargarGastos(); cargarPanelRecursos();
+}
+async function guardarGasto() {
+  const concepto = document.getElementById("gas-concepto").value.trim();
+  const msg = document.getElementById("gas-msg"); msg.textContent = "";
+  if (!concepto) { msg.innerHTML = `<span class="val-error">Escribe el concepto.</span>`; return; }
+  const a = areaPayload("gas");
+  if (a.faltaArea) { msg.innerHTML = `<span class="val-error">Elige el área.</span>`; return; }
+  const payload = {
+    fecha: document.getElementById("gas-fecha").value || fechaHoyLocal(),
+    concepto, categoria: document.getElementById("gas-categoria").value,
+    monto: Math.max(0, parseFloat(document.getElementById("gas-monto").value) || 0),
+    nivel: a.nivel, area_valor: a.area_valor,
+    pagado_por: document.getElementById("gas-pagado").value.trim() || null,
+    es_demo: ES_DEMO,
+  };
+  const btn = document.getElementById("gas-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
+  try {
+    let error, row;
+    if (gasEditId) { payload.actualizado_en = new Date().toISOString(); ({ error } = await sb.from("gastos_organizacion").update(payload).eq("id", gasEditId)); row = { id: gasEditId }; }
+    else { payload.registrado_por = currentUserEmail; ({ data: row, error } = await sb.from("gastos_organizacion").insert(payload).select("id").single()); }
+    if (error) throw error;
+    const file = document.getElementById("gas-comprobante").files[0];
+    if (file && row) {
+      const path = await subirDocRec(file, "gasto", row.id);
+      await sb.from("gastos_organizacion").update({ comprobante_path: path }).eq("id", row.id);
+    }
+  } catch (err) { msg.innerHTML = `<span class="val-error">${escapeHtml(err.message || err)}</span>`; btn.disabled = false; btn.textContent = "Guardar gasto"; return; }
+  btn.disabled = false; btn.textContent = "Guardar gasto";
+  resetFormGas(); cargarGastos(); cargarPanelRecursos();
+}
+async function editarGasto(g) {
+  gasEditId = g.id;
+  document.getElementById("gas-form-titulo").textContent = "Editar gasto";
+  document.getElementById("gas-cancelar").style.display = "";
+  const s = (id, v) => document.getElementById(id).value = v;
+  s("gas-fecha", g.fecha || ""); s("gas-concepto", g.concepto || ""); s("gas-categoria", g.categoria || "otro");
+  s("gas-monto", g.monto || 0); s("gas-pagado", g.pagado_por || ""); s("gas-nivel", g.nivel || "");
+  document.getElementById("gas-comprobante").value = "";
+  await construirSelectorAreaRec("gas", g.nivel || "", g.area_valor);
+  document.getElementById("gas-msg").textContent = "";
+  document.getElementById("gas-form-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function resetFormGas() {
+  gasEditId = null;
+  document.getElementById("gas-form-titulo").textContent = "Registrar gasto";
+  document.getElementById("gas-cancelar").style.display = "none";
+  ["gas-fecha", "gas-concepto", "gas-pagado"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("gas-monto").value = 0; document.getElementById("gas-categoria").value = "otro";
+  document.getElementById("gas-nivel").value = ""; document.getElementById("gas-area-wrap").style.display = "none";
+  document.getElementById("gas-comprobante").value = ""; document.getElementById("gas-msg").textContent = "";
+}
+function exportarGastos() {
+  const f = document.getElementById("gas-filtro-estado").value;
+  let filas = GAS_CACHE.slice();
+  if (f === "pendiente") filas = filas.filter(g => !g.conciliado);
+  if (f === "conciliado") filas = filas.filter(g => g.conciliado);
+  if (!filas.length) { document.getElementById("gas-msg").textContent = "No hay gastos para exportar."; return; }
+  const ws = XLSX.utils.json_to_sheet(filas.map(g => ({
+    "Fecha": g.fecha, "Concepto": g.concepto, "Categoría": GAS_CAT_LABEL[g.categoria] || g.categoria,
+    "Monto (B/.)": Number(g.monto), "Nivel": g.nivel || "general", "Área": g.area_valor || "",
+    "Pagado por": g.pagado_por || "", "Conciliado": g.conciliado ? "Sí" : "No",
+    "Ref. tesorería": g.referencia_tesoreria || "", "Registró": g.registrado_por || "",
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Gastos");
+  XLSX.writeFile(wb, `${ES_DEMO ? "demo_" : ""}gastos_organizacion_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+// ---------- EVENTOS ----------
+function togglePermisoUI() {
+  const req = document.getElementById("eve-permiso-req").value === "true";
+  document.getElementById("eve-permiso-wrap").style.display = req ? "block" : "none";
+  document.getElementById("eve-permiso-file-wrap").style.display = req ? "block" : "none";
+}
+async function checkVedaEvento() {
+  const f = document.getElementById("eve-fecha").value;
+  const aviso = document.getElementById("eve-veda-aviso");
+  aviso.classList.add("hidden");
+  if (!f) return;
+  try {
+    const { data } = await sb.rpc("vedas_activas", { d: f });
+    if (data && data.length) {
+      aviso.classList.remove("hidden");
+      aviso.innerHTML = `⚠️ Esa fecha cae en <b>veda electoral</b>: ${data.map(v => escapeHtml(v.titulo)).join(", ")}. ` +
+        `Revisa las actividades restringidas antes de programar el evento.`;
+    }
+  } catch (_) {}
+}
+async function cargarEventos() {
+  const cont = document.getElementById("eve-lista");
+  cont.innerHTML = `<p class="cand-sin">Cargando…</p>`;
+  const { data, error } = await sb.from("eventos").select("*").order("fecha_inicio", { ascending: false });
+  if (error) { cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br><small>¿Ya se aplicó la migración del Módulo 5?</small></p>`; return; }
+  EVE_CACHE = data || [];
+  renderEventos();
+}
+function renderEventos() {
+  const cont = document.getElementById("eve-lista");
+  if (!EVE_CACHE.length) { cont.innerHTML = `<p class="cand-sin">Aún no hay eventos registrados.</p>`; return; }
+  const hoy = fechaHoyLocal();
+  cont.innerHTML = EVE_CACHE.map(e => {
+    const prox = (e.fecha_fin || e.fecha_inicio) >= hoy;
+    const area = e.nivel ? `${e.nivel}: ${escapeHtml(e.area_valor || "—")}` : (e.corregimiento ? escapeHtml(e.corregimiento) : "General");
+    const perm = e.permiso_requerido
+      ? `<span class="badge badge-permiso-${e.permiso_estado}">Permiso: ${PERMISO_LABEL[e.permiso_estado] || e.permiso_estado}</span>` : "";
+    const asist = (e.asistencia_real != null || e.asistencia_estimada != null)
+      ? `<div class="rec-meta">Asistencia: ${e.asistencia_real != null ? e.asistencia_real + " real" : ""}${e.asistencia_real != null && e.asistencia_estimada != null ? " / " : ""}${e.asistencia_estimada != null ? e.asistencia_estimada + " estimada" : ""}</div>` : "";
+    return `<div class="rec-card"><div class="rec-main">
+      <div class="rec-t">${escapeHtml(e.titulo)} <span class="badge">${escapeHtml(EVE_TIPO_LABEL[e.tipo] || e.tipo)}</span>${prox ? "" : ' <span class="badge">pasado</span>'} ${perm}</div>
+      <div class="rec-meta">${fechaCorta(e.fecha_inicio)}${e.fecha_fin && e.fecha_fin !== e.fecha_inicio ? " – " + fechaCorta(e.fecha_fin) : ""}${e.hora ? " · " + escapeHtml(e.hora) : ""} · ${area}${e.lugar_texto ? " · " + escapeHtml(e.lugar_texto) : ""}</div>
+      ${e.responsable ? `<div class="rec-meta">Responsable: ${escapeHtml(e.responsable)}</div>` : ""}
+      ${asist}
+      ${e.permiso_path ? `<div><span class="rec-doc-link" data-doc="${escapeHtml(e.permiso_path)}">Ver permiso ↗</span></div>` : ""}
+      ${e.notas ? `<div class="rec-meta">${escapeHtml(e.notas)}</div>` : ""}
+    </div><div class="rec-acc">
+      <button class="mini-btn" data-e="${e.id}">Editar</button>
+      <button class="mini-btn mini-btn-peligro" data-d="${e.id}">Eliminar</button>
+    </div></div>`;
+  }).join("");
+  cont.querySelectorAll("[data-doc]").forEach(b => b.addEventListener("click", () => verDocRec(b.dataset.doc)));
+  cont.querySelectorAll("[data-e]").forEach(b => b.addEventListener("click", () => editarEvento(EVE_CACHE.find(x => x.id == b.dataset.e))));
+  cont.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => eliminarRec("eventos", b.dataset.d, cargarEventos)));
+}
+async function guardarEvento() {
+  const titulo = document.getElementById("eve-titulo").value.trim();
+  const fecha = document.getElementById("eve-fecha").value;
+  const msg = document.getElementById("eve-msg"); msg.textContent = "";
+  if (!titulo || !fecha) { msg.innerHTML = `<span class="val-error">Completa título y fecha de inicio.</span>`; return; }
+  const a = areaPayload("eve");
+  if (a.faltaArea) { msg.innerHTML = `<span class="val-error">Elige el área.</span>`; return; }
+  const req = document.getElementById("eve-permiso-req").value === "true";
+  const ff = document.getElementById("eve-fecha-fin").value || null;
+  const num = (id) => { const v = document.getElementById(id).value; return v === "" ? null : Math.max(0, parseInt(v, 10) || 0); };
+  const payload = {
+    titulo, tipo: document.getElementById("eve-tipo").value,
+    fecha_inicio: fecha, fecha_fin: ff,
+    hora: document.getElementById("eve-hora").value.trim() || null,
+    lugar_texto: document.getElementById("eve-lugar").value.trim() || null,
+    corregimiento: document.getElementById("eve-corregimiento").value || null,
+    nivel: a.nivel, area_valor: a.area_valor,
+    asistencia_estimada: num("eve-asist-est"), asistencia_real: num("eve-asist-real"),
+    permiso_requerido: req,
+    permiso_estado: req ? document.getElementById("eve-permiso-estado").value : "no_aplica",
+    responsable: document.getElementById("eve-responsable").value.trim() || null,
+    notas: document.getElementById("eve-notas").value.trim() || null,
+    es_demo: ES_DEMO,
+  };
+  const btn = document.getElementById("eve-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
+  try {
+    let error, row;
+    if (eveEditId) { payload.actualizado_en = new Date().toISOString(); ({ error } = await sb.from("eventos").update(payload).eq("id", eveEditId)); row = { id: eveEditId }; }
+    else { payload.registrado_por = currentUserEmail; ({ data: row, error } = await sb.from("eventos").insert(payload).select("id").single()); }
+    if (error) throw error;
+    const file = document.getElementById("eve-permiso-file").files[0];
+    if (file && row) {
+      const path = await subirDocRec(file, "evento", row.id);
+      await sb.from("eventos").update({ permiso_path: path }).eq("id", row.id);
+    }
+  } catch (err) { msg.innerHTML = `<span class="val-error">${escapeHtml(err.message || err)}</span>`; btn.disabled = false; btn.textContent = "Guardar evento"; return; }
+  btn.disabled = false; btn.textContent = "Guardar evento";
+  resetFormEve(); cargarEventos(); cargarPanelRecursos();
+}
+async function editarEvento(e) {
+  eveEditId = e.id;
+  document.getElementById("eve-form-titulo").textContent = "Editar evento";
+  document.getElementById("eve-cancelar").style.display = "";
+  const s = (id, v) => document.getElementById(id).value = v;
+  s("eve-titulo", e.titulo || ""); s("eve-tipo", e.tipo || "otro"); s("eve-fecha", e.fecha_inicio || "");
+  s("eve-fecha-fin", e.fecha_fin || ""); s("eve-hora", e.hora || ""); s("eve-lugar", e.lugar_texto || "");
+  s("eve-corregimiento", e.corregimiento || ""); s("eve-nivel", e.nivel || "");
+  s("eve-asist-est", e.asistencia_estimada ?? ""); s("eve-asist-real", e.asistencia_real ?? "");
+  s("eve-responsable", e.responsable || ""); s("eve-notas", e.notas || "");
+  s("eve-permiso-req", e.permiso_requerido ? "true" : "false");
+  s("eve-permiso-estado", e.permiso_estado === "no_aplica" ? "solicitado" : e.permiso_estado);
+  togglePermisoUI();
+  document.getElementById("eve-permiso-file").value = "";
+  await construirSelectorAreaRec("eve", e.nivel || "", e.area_valor);
+  checkVedaEvento();
+  document.getElementById("eve-msg").textContent = "";
+  document.getElementById("eve-form-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function resetFormEve() {
+  eveEditId = null;
+  document.getElementById("eve-form-titulo").textContent = "Registrar evento / actividad";
+  document.getElementById("eve-cancelar").style.display = "none";
+  ["eve-titulo", "eve-fecha", "eve-fecha-fin", "eve-hora", "eve-lugar", "eve-asist-est", "eve-asist-real", "eve-responsable", "eve-notas"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("eve-tipo").value = "otro"; document.getElementById("eve-corregimiento").value = "";
+  document.getElementById("eve-nivel").value = ""; document.getElementById("eve-area-wrap").style.display = "none";
+  document.getElementById("eve-permiso-req").value = "false"; document.getElementById("eve-permiso-file").value = "";
+  togglePermisoUI();
+  document.getElementById("eve-veda-aviso").classList.add("hidden");
+  document.getElementById("eve-msg").textContent = "";
+}
+
+async function eliminarRec(tabla, id, recargar) {
+  if (!confirm("¿Eliminar este registro?")) return;
+  const { error } = await sb.from(tabla).delete().eq("id", id);
+  if (error) { alert(error.message); return; }
+  recargar(); cargarPanelRecursos();
 }
 
 // ============================================================

@@ -1502,6 +1502,10 @@ sb.auth.onAuthStateChange((_event, session) => {
     filtrosInicializados = false;
     // organizacionInit NO se resetea: initOrganizacion solo cablea listeners (sin datos por usuario).
     DIRIGENTES_CACHE = []; MESAS_CACHE = null; MESA_CAT = []; dirEditId = null; orgSubActual = "directorio";
+    ["dir-buscar", "dir-filtro-cargo", "mesa-filtro-circuito", "mesa-filtro-corregimiento"].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = "";
+    });
+    if (typeof resetFormDirigente === "function") resetFormDirigente();
     const selCorr = document.getElementById("filtro-corregimiento");
     if (selCorr) selCorr.innerHTML = '<option value="">Todos los corregimientos</option>';
     const selPar = document.getElementById("filtro-partido");

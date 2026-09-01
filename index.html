@@ -752,6 +752,32 @@
   }
   table.mesas-tabla td { padding: 7px 10px; border-bottom: 1px solid #f0f1f6; }
 
+  /* ---- Apoderados de mesa ---- */
+  .apo-mesa-grupo {
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .apo-mesa-grupo h4 { margin: 0 0 8px; font-size: 0.92rem; color: var(--azul); }
+  .apo-mesa-grupo h4 .semaforo { font-size: 0.72rem; margin-left: 8px; font-weight: 600; }
+  .sem-ok   { color: #1a7f37; }
+  .sem-warn { color: #a15c00; }
+  .sem-bad  { color: var(--error); }
+  .apo-fila {
+    display: flex; gap: 10px; align-items: baseline; padding: 6px 0;
+    border-top: 1px solid #f2f4f8; font-size: 0.86rem; flex-wrap: wrap;
+  }
+  .apo-fila:first-of-type { border-top: none; }
+  .apo-fila .fn { font-weight: 600; min-width: 78px; text-transform: capitalize; }
+  .apo-fila .nom { flex: 1; min-width: 120px; }
+  .apo-fila .acc { display: flex; gap: 5px; }
+  .badge-cred-entregada { background: #e9f7ee; color: #1a7f37; }
+  .badge-cred-en_tramite { background: #eaf1fd; color: #1a56c4; }
+  .badge-cred-pendiente { background: #f0f1f6; color: var(--texto-suave); }
+  .badge-cred-rechazada { background: #fdecea; color: var(--error); }
+  .badge-cap-completada { background: #e9f7ee; color: #1a7f37; }
+  .badge-cap-programada { background: #eaf1fd; color: #1a56c4; }
+  .badge-cap-pendiente { background: #f0f1f6; color: var(--texto-suave); }
+
   /* ---- Calendario electoral + veda ---- */
   .veda-banner {
     background: repeating-linear-gradient(45deg, #b91c1c, #b91c1c 12px, #a31313 12px, #a31313 24px);
@@ -1304,6 +1330,7 @@
         <button class="org-subtab activo" id="org-sub-directorio">Directorio de dirigentes</button>
         <button class="org-subtab" id="org-sub-organigrama">Organigrama de mando</button>
         <button class="org-subtab" id="org-sub-mesas">Catálogo de mesas</button>
+        <button class="org-subtab" id="org-sub-apoderados">🗳️ Apoderados de mesa</button>
       </div>
 
       <!-- ---- Directorio ---- -->
@@ -1431,6 +1458,68 @@
             <tbody id="mesa-body"></tbody>
           </table>
         </div>
+      </div>
+
+      <!-- ---- Apoderados de mesa ---- -->
+      <div id="org-vista-apoderados" class="hidden">
+        <div class="org-filtros">
+          <select id="apo-nivel">
+            <option value="">Elige un ámbito…</option>
+            <option value="nacional">Nacional (todas)</option>
+            <option value="circuito">Por circuito</option>
+            <option value="distrito">Por distrito</option>
+            <option value="corregimiento">Por corregimiento</option>
+          </select>
+          <select id="apo-area" style="display:none;"><option value="">—</option></select>
+          <button class="btn-primary" id="apo-ver" style="width:auto;padding:9px 16px;">Ver</button>
+        </div>
+        <div id="apo-cobertura" style="margin-bottom:14px;"></div>
+
+        <div id="apo-form-card" class="admin-card hidden">
+          <h3 id="apo-form-titulo">Agregar apoderado / testigo</h3>
+          <p class="hint">Persona que representa a la campaña en una mesa el día de la elección.</p>
+          <div class="admin-grid">
+            <div class="admin-field"><label>Mesa</label><select id="apo-mesa"><option value="">Elige…</option></select></div>
+            <div class="admin-field"><label>Función</label>
+              <select id="apo-funcion">
+                <option value="principal">Principal</option>
+                <option value="suplente">Suplente</option>
+                <option value="testigo">Testigo</option>
+              </select>
+            </div>
+            <div class="admin-field" id="apo-orden-wrap" style="display:none;"><label>Orden (1º, 2º…)</label><input type="number" id="apo-orden" min="1" value="1" /></div>
+            <div class="admin-field"><label>Cédula</label><input type="text" id="apo-cedula" autocomplete="off" /></div>
+            <div class="admin-field"><label>Nombre</label><input type="text" id="apo-nombre" /></div>
+            <div class="admin-field"><label>Teléfono</label><input type="tel" id="apo-telefono" /></div>
+            <div class="admin-field"><label>N.º de credencial</label><input type="text" id="apo-cred-num" /></div>
+            <div class="admin-field"><label>Estado de acreditación</label>
+              <select id="apo-cred-estado">
+                <option value="pendiente">Pendiente</option>
+                <option value="en_tramite">En trámite</option>
+                <option value="entregada">Credencial entregada</option>
+                <option value="rechazada">Rechazada</option>
+              </select>
+            </div>
+            <div class="admin-field"><label>Fecha de acreditación</label><input type="date" id="apo-cred-fecha" /></div>
+            <div class="admin-field"><label>Estado de capacitación</label>
+              <select id="apo-cap-estado">
+                <option value="pendiente">Pendiente</option>
+                <option value="programada">Programada</option>
+                <option value="completada">Completada</option>
+              </select>
+            </div>
+            <div class="admin-field"><label>Fecha de capacitación</label><input type="date" id="apo-cap-fecha" /></div>
+            <div class="admin-field"><label>Constancia de capacitación (foto/PDF)</label><input type="file" id="apo-cap-file" accept="image/*,.pdf" /></div>
+          </div>
+          <div class="admin-field" style="margin-top:10px;"><label>Notas</label><textarea id="apo-notas" rows="2"></textarea></div>
+          <div class="admin-actions">
+            <button class="btn-primary" id="apo-guardar">Guardar</button>
+            <button class="btn-secundario" id="apo-cancelar" style="display:none;">Cancelar</button>
+            <span class="admin-msg" id="apo-msg"></span>
+          </div>
+        </div>
+
+        <div id="apo-lista"></div>
       </div>
     </div>
 
@@ -1981,6 +2070,7 @@ sb.auth.onAuthStateChange((_event, session) => {
     const rr = document.getElementById("rep-cons-resultado"); if (rr) rr.innerHTML = "";
     INV_CACHE = []; GAS_CACHE = []; EVE_CACHE = [];
     invEditId = null; gasEditId = null; eveEditId = null; recSubActual = "inventario";
+    APO_CACHE = []; apoEditId = null; apoAmbito = null;
     const selCorr = document.getElementById("filtro-corregimiento");
     if (selCorr) selCorr.innerHTML = '<option value="">Todos los corregimientos</option>';
     const selPar = document.getElementById("filtro-partido");
@@ -4026,6 +4116,8 @@ function initOrganizacion() {
   document.getElementById("org-sub-directorio").addEventListener("click", () => cambiarOrgSub("directorio"));
   document.getElementById("org-sub-organigrama").addEventListener("click", () => cambiarOrgSub("organigrama"));
   document.getElementById("org-sub-mesas").addEventListener("click", () => cambiarOrgSub("mesas"));
+  document.getElementById("org-sub-apoderados").addEventListener("click", () => cambiarOrgSub("apoderados"));
+  initApoderados();
 
   document.getElementById("dir-cargo").addEventListener("change", onDirCargoChange);
   document.getElementById("dir-nivel").addEventListener("change", () =>
@@ -4045,7 +4137,7 @@ function initOrganizacion() {
 
 function cambiarOrgSub(sub) {
   orgSubActual = sub;
-  ["directorio", "organigrama", "mesas"].forEach(k => {
+  ["directorio", "organigrama", "mesas", "apoderados"].forEach(k => {
     document.getElementById("org-vista-" + k).classList.toggle("hidden", k !== sub);
     document.getElementById("org-sub-" + k).classList.toggle("activo", k === sub);
   });
@@ -4056,6 +4148,11 @@ async function cargarOrganizacion() {
   const avisoD = document.getElementById("org-demo-aviso");
   if (avisoD) avisoD.classList.toggle("hidden", !ES_DEMO);
   if (orgSubActual === "mesas") { cargarMesasCatalogo(); return; }
+  if (orgSubActual === "apoderados") {
+    // el usuario elige el ámbito y presiona "Ver"; no cargamos nada hasta entonces
+    if (apoAmbito) cargarApoderados();
+    return;
+  }
 
   const { data, error } = await sb.from("dirigentes")
     .select("*, mesas ( numero, corregimiento )")
@@ -4428,6 +4525,232 @@ async function guardarMesa() {
   msg.innerHTML = `<span style="color:var(--exito)">Mesa agregada.</span>`;
   MESAS_CACHE = null;
   cargarMesasCatalogo();
+}
+
+// ---------- APODERADOS DE MESA Y TESTIGOS ----------
+let APO_CACHE = [], apoEditId = null, apoAmbito = null;
+const APO_FUN_LABEL = { principal: "Principal", suplente: "Suplente", testigo: "Testigo" };
+const CRED_LABEL = { pendiente: "Sin credencial", en_tramite: "Credencial en trámite", entregada: "Credencial entregada", rechazada: "Credencial rechazada" };
+const CAP_LABEL = { pendiente: "Sin capacitar", programada: "Capacitación programada", completada: "Capacitado" };
+
+function initApoderados() {
+  document.getElementById("apo-nivel").addEventListener("change", async () => {
+    const nivel = document.getElementById("apo-nivel").value;
+    await construirSelectorAreaApo(nivel);
+  });
+  document.getElementById("apo-ver").addEventListener("click", cargarApoderados);
+  document.getElementById("apo-funcion").addEventListener("change", () => {
+    document.getElementById("apo-orden-wrap").style.display =
+      document.getElementById("apo-funcion").value === "suplente" ? "block" : "none";
+  });
+  document.getElementById("apo-guardar").addEventListener("click", guardarApoderado);
+  document.getElementById("apo-cancelar").addEventListener("click", resetFormApo);
+}
+
+async function construirSelectorAreaApo(nivel) {
+  const sel = document.getElementById("apo-area");
+  if (!nivel || nivel === "nacional") { sel.style.display = "none"; sel.innerHTML = '<option value="">—</option>'; return; }
+  sel.style.display = "";
+  sel.innerHTML = '<option value="">Elige…</option>';
+  if (nivel === "circuito") {
+    (await cargarCircuitos()).forEach(c => sel.insertAdjacentHTML("beforeend",
+      `<option value="${escapeHtml(c.codigo)}">${escapeHtml(c.codigo)} · ${escapeHtml(c.provincia)}</option>`));
+  } else if (nivel === "distrito") {
+    [...new Map((await cargarUbicaciones()).map(u => [u.provincia + "|" + u.distrito, u])).values()].forEach(u =>
+      sel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(u.distrito)}">${escapeHtml(u.provincia)} — ${escapeHtml(u.distrito)}</option>`));
+  } else {
+    (await cargarUbicaciones()).forEach(u => sel.insertAdjacentHTML("beforeend",
+      `<option value="${escapeHtml(u.corregimiento)}">${escapeHtml(u.corregimiento)} — ${escapeHtml(u.distrito)}</option>`));
+  }
+}
+
+async function cargarApoderados() {
+  const nivel = document.getElementById("apo-nivel").value;
+  const valor = document.getElementById("apo-area").value;
+  const cont = document.getElementById("apo-lista");
+  const cob = document.getElementById("apo-cobertura");
+  if (!nivel) { cob.innerHTML = `<span class="val-error">Elige un ámbito.</span>`; return; }
+  if (nivel !== "nacional" && !valor) { cob.innerHTML = `<span class="val-error">Elige el área.</span>`; return; }
+  apoAmbito = { nivel, valor };
+  cont.innerHTML = `<p class="cand-sin">Cargando…</p>`;
+  cob.innerHTML = `<p class="cand-sin">Calculando cobertura…</p>`;
+
+  // mesas del ámbito (del catálogo M1)
+  const todasMesas = await cargarMesas();
+  const mn = (s) => normUbicJS(s || "");
+  const ubic = await cargarUbicaciones();
+  const mesas = todasMesas.filter(m => {
+    if (nivel === "nacional") return true;
+    if (nivel === "circuito") return m.circuito_codigo === valor;
+    if (nivel === "distrito") return mn(m.corregimiento) && ubic.some(u => mn(u.distrito) === mn(valor) && u.corregimiento_norm === m.corregimiento_norm);
+    return m.corregimiento_norm === mn(valor);
+  });
+  const mesaIds = mesas.map(m => m.id);
+
+  // poblar el select de mesa del formulario
+  const selMesa = document.getElementById("apo-mesa");
+  selMesa.innerHTML = '<option value="">Elige…</option>' + mesas
+    .sort((a, b) => (a.numero || "").localeCompare(b.numero || "", "es", { numeric: true }))
+    .map(m => `<option value="${m.id}">Mesa ${escapeHtml(m.numero)} · ${escapeHtml(m.corregimiento || "")}${m.centro_nombre ? " · " + escapeHtml(m.centro_nombre) : ""}</option>`).join("");
+
+  // cobertura (RPC)
+  try {
+    const { data } = await sb.rpc("cobertura_mesas", { nivel, valores: nivel === "nacional" ? [] : [String(valor)] });
+    renderCoberturaApo(cob, data || {});
+  } catch (e) { cob.innerHTML = `<p class="cand-sin">No se pudo calcular la cobertura.</p>`; }
+
+  // apoderados de esas mesas
+  const { data, error } = await sb.from("apoderados_mesa")
+    .select("*").in("mesa_id", mesaIds.length ? mesaIds : [-1]).order("mesa_id").order("funcion").order("orden");
+  if (error) {
+    cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br><small>¿Ya se aplicó la migración del Módulo 3?</small></p>`;
+    return;
+  }
+  APO_CACHE = (data || []).map(a => ({ ...a, _mesa: mesas.find(m => m.id === a.mesa_id) }));
+  const esAdmin = perfilActual && perfilActual.rol === "admin";
+  document.getElementById("apo-form-card").classList.toggle("hidden", ES_ACTIVISTA);
+  renderApoderados(mesas);
+}
+
+function renderCoberturaApo(cont, o) {
+  const total = Number(o.total_mesas || 0);
+  const kpi = (n, l, cls) => `<div class="rep-kpi"><div class="n ${cls || ""}">${n}</div><div class="l">${l}</div></div>`;
+  let html = `<div class="rep-totales">
+    ${kpi(total, "Mesas")}
+    ${kpi(o.sin_principal || 0, "Sin principal", o.sin_principal ? "sem-bad" : "sem-ok")}
+    ${kpi(o.sin_testigo || 0, "Sin testigo", o.sin_testigo ? "sem-warn" : "sem-ok")}
+    ${kpi(o.suplentes_total || 0, "Suplentes")}
+    ${kpi(o.acreditados || 0, "Acreditados")}
+    ${kpi(o.capacitados || 0, "Capacitados")}
+  </div>`;
+  const sp = o.mesas_sin_principal || [], st = o.mesas_sin_testigo || [];
+  if (sp.length) html += `<div class="rep-sinreportar"><b>Sin apoderado principal:</b> ` +
+    sp.slice(0, 30).map(m => escapeHtml(`Mesa ${m.numero}`)).join(", ") + (sp.length > 30 ? "…" : "") + `</div>`;
+  if (st.length) html += `<div class="rep-sinreportar" style="margin-top:6px;"><b>Sin testigo:</b> ` +
+    st.slice(0, 30).map(m => escapeHtml(`Mesa ${m.numero}`)).join(", ") + (st.length > 30 ? "…" : "") + `</div>`;
+  if (!sp.length && !st.length && total) html += `<div class="rep-sinreportar ok">Todas las mesas del ámbito tienen principal y testigo.</div>`;
+  cont.innerHTML = html;
+}
+
+function renderApoderados(mesas) {
+  const cont = document.getElementById("apo-lista");
+  const esAdmin = perfilActual && perfilActual.rol === "admin";
+  if (!mesas.length) { cont.innerHTML = `<p class="cand-sin">No hay mesas en este ámbito. Cárgalas primero en "Catálogo de mesas".</p>`; return; }
+  cont.innerHTML = "";
+  mesas.sort((a, b) => (a.numero || "").localeCompare(b.numero || "", "es", { numeric: true })).forEach(m => {
+    const gente = APO_CACHE.filter(a => a.mesa_id === m.id);
+    const principal = gente.find(a => a.funcion === "principal");
+    const suplentes = gente.filter(a => a.funcion === "suplente").sort((x, y) => (x.orden || 99) - (y.orden || 99));
+    const testigos = gente.filter(a => a.funcion === "testigo");
+    let sem = `<span class="semaforo sem-bad">⚠ sin principal</span>`;
+    if (principal && testigos.length) sem = `<span class="semaforo sem-ok">✓ completa</span>`;
+    else if (principal) sem = `<span class="semaforo sem-warn">falta testigo</span>`;
+    const div = document.createElement("div");
+    div.className = "apo-mesa-grupo";
+    div.innerHTML = `<h4>Mesa ${escapeHtml(m.numero)} · ${escapeHtml(m.corregimiento || "")}${sem}</h4>`;
+    [principal, ...suplentes, ...testigos].filter(Boolean).forEach(a => div.appendChild(filaApo(a, esAdmin)));
+    if (!gente.length) div.insertAdjacentHTML("beforeend", `<div class="apo-fila"><span class="em" style="color:var(--texto-suave)">Sin personas asignadas.</span></div>`);
+    cont.appendChild(div);
+  });
+}
+
+function filaApo(a, esAdmin) {
+  const f = document.createElement("div");
+  f.className = "apo-fila";
+  const fnTxt = a.funcion === "suplente" && a.orden ? `Suplente ${a.orden}º` : APO_FUN_LABEL[a.funcion];
+  const cred = `<span class="badge badge-cred-${a.credencial_estado}">${CRED_LABEL[a.credencial_estado]}${a.credencial_num ? " #" + escapeHtml(a.credencial_num) : ""}</span>`;
+  const cap = `<span class="badge badge-cap-${a.capacitacion_estado}">${CAP_LABEL[a.capacitacion_estado]}</span>`;
+  const capDoc = a.capacitacion_evidencia_path ? ` <span class="rec-doc-link" data-doc="${escapeHtml(a.capacitacion_evidencia_path)}">constancia ↗</span>` : "";
+  const wa = a.telefono ? ` · <a href="${waLink(a.telefono)}" target="_blank" rel="noopener">💬</a>` : "";
+  f.innerHTML = `<span class="fn">${fnTxt}</span>
+    <span class="nom">${escapeHtml(a.nombre)}${a.cedula ? " · " + escapeHtml(a.cedula) : ""}${wa}</span>
+    <span>${cred} ${cap}${capDoc}</span>`;
+  if (esAdmin || !ES_ACTIVISTA) {
+    const acc = document.createElement("span");
+    acc.className = "acc";
+    const be = document.createElement("button"); be.className = "mini-btn"; be.textContent = "Editar";
+    be.addEventListener("click", () => editarApoderado(a));
+    const bd = document.createElement("button"); bd.className = "mini-btn mini-btn-peligro"; bd.textContent = "×";
+    bd.addEventListener("click", () => eliminarApoderado(a));
+    acc.append(be, bd);
+    f.appendChild(acc);
+  }
+  f.querySelectorAll("[data-doc]").forEach(b => b.addEventListener("click", () => verDocRec(b.dataset.doc)));
+  return f;
+}
+
+async function guardarApoderado() {
+  const mesaId = document.getElementById("apo-mesa").value;
+  const nombre = document.getElementById("apo-nombre").value.trim();
+  const msg = document.getElementById("apo-msg"); msg.textContent = "";
+  if (!mesaId || !nombre) { msg.innerHTML = `<span class="val-error">Completa mesa y nombre.</span>`; return; }
+  const funcion = document.getElementById("apo-funcion").value;
+  const payload = {
+    mesa_id: Number(mesaId), nombre,
+    cedula: document.getElementById("apo-cedula").value.trim() || null,
+    telefono: document.getElementById("apo-telefono").value.trim() || null,
+    funcion,
+    orden: funcion === "suplente" ? (parseInt(document.getElementById("apo-orden").value, 10) || 1) : null,
+    credencial_num: document.getElementById("apo-cred-num").value.trim() || null,
+    credencial_estado: document.getElementById("apo-cred-estado").value,
+    credencial_fecha: document.getElementById("apo-cred-fecha").value || null,
+    capacitacion_estado: document.getElementById("apo-cap-estado").value,
+    capacitacion_fecha: document.getElementById("apo-cap-fecha").value || null,
+    notas: document.getElementById("apo-notas").value.trim() || null,
+    es_demo: ES_DEMO,
+  };
+  const btn = document.getElementById("apo-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
+  try {
+    let error, row;
+    if (apoEditId) { payload.actualizado_en = new Date().toISOString(); ({ error } = await sb.from("apoderados_mesa").update(payload).eq("id", apoEditId)); row = { id: apoEditId }; }
+    else { payload.registrado_por = currentUserEmail; ({ data: row, error } = await sb.from("apoderados_mesa").insert(payload).select("id").single()); }
+    if (error) throw error;
+    const file = document.getElementById("apo-cap-file").files[0];
+    if (file && row) {
+      const path = await subirDocRec(file, "capacitacion", row.id);
+      await sb.from("apoderados_mesa").update({ capacitacion_evidencia_path: path }).eq("id", row.id);
+    }
+  } catch (err) { msg.innerHTML = `<span class="val-error">${escapeHtml(err.message || err)}</span>`; btn.disabled = false; btn.textContent = "Guardar"; return; }
+  btn.disabled = false; btn.textContent = "Guardar";
+  resetFormApo();
+  cargarApoderados();
+}
+
+function editarApoderado(a) {
+  apoEditId = a.id;
+  document.getElementById("apo-form-titulo").textContent = "Editar apoderado / testigo";
+  document.getElementById("apo-cancelar").style.display = "";
+  const s = (id, v) => document.getElementById(id).value = v;
+  s("apo-mesa", String(a.mesa_id)); s("apo-funcion", a.funcion); s("apo-orden", a.orden || 1);
+  s("apo-cedula", a.cedula || ""); s("apo-nombre", a.nombre || ""); s("apo-telefono", a.telefono || "");
+  s("apo-cred-num", a.credencial_num || ""); s("apo-cred-estado", a.credencial_estado);
+  s("apo-cred-fecha", a.credencial_fecha || ""); s("apo-cap-estado", a.capacitacion_estado);
+  s("apo-cap-fecha", a.capacitacion_fecha || ""); s("apo-notas", a.notas || "");
+  document.getElementById("apo-cap-file").value = "";
+  document.getElementById("apo-orden-wrap").style.display = a.funcion === "suplente" ? "block" : "none";
+  document.getElementById("apo-msg").textContent = "";
+  document.getElementById("apo-form-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetFormApo() {
+  apoEditId = null;
+  document.getElementById("apo-form-titulo").textContent = "Agregar apoderado / testigo";
+  document.getElementById("apo-cancelar").style.display = "none";
+  ["apo-cedula", "apo-nombre", "apo-telefono", "apo-cred-num", "apo-cred-fecha", "apo-cap-fecha", "apo-notas"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("apo-funcion").value = "principal";
+  document.getElementById("apo-orden").value = 1;
+  document.getElementById("apo-cred-estado").value = "pendiente";
+  document.getElementById("apo-cap-estado").value = "pendiente";
+  document.getElementById("apo-cap-file").value = "";
+  document.getElementById("apo-orden-wrap").style.display = "none";
+  document.getElementById("apo-msg").textContent = "";
+}
+
+async function eliminarApoderado(a) {
+  if (!confirm(`¿Quitar a ${a.nombre} de la mesa?`)) return;
+  const { error } = await sb.from("apoderados_mesa").delete().eq("id", a.id);
+  if (error) { alert(error.message); return; }
+  cargarApoderados();
 }
 
 // ============================================================

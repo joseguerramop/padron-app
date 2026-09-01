@@ -793,6 +793,32 @@
   .cal-acciones { display: flex; flex-direction: column; gap: 6px; }
   .cal-sub { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texto-suave); margin: 16px 0 8px; }
 
+  /* ---- Reportes territoriales ---- */
+  #vista-reportes { max-width: 960px; }
+  .rep-totales { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .rep-kpi {
+    flex: 1; min-width: 110px; background: var(--tarjeta); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 12px 14px; text-align: center;
+  }
+  .rep-kpi .n { font-size: 1.5rem; font-weight: 700; color: var(--azul); }
+  .rep-kpi .l { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--texto-suave); }
+  table.rep-tabla { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  table.rep-tabla th { text-align: left; padding: 8px 10px; background: #eef1f8; font-size: 0.7rem; text-transform: uppercase; color: var(--texto-suave); }
+  table.rep-tabla td { padding: 8px 10px; border-bottom: 1px solid #f0f1f6; vertical-align: top; }
+  table.rep-tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .rep-sinreportar {
+    margin-top: 12px; padding: 10px 14px; border-radius: 8px;
+    background: #fff4e5; border: 1px solid #f0c68a; color: #8a4b00; font-size: 0.84rem;
+  }
+  .rep-sinreportar.ok { background: #e9f7ee; border-color: #b7e0c4; color: #1a7f37; }
+  .act-reporte-form { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+  .act-reporte-form label { font-size: 0.8rem; color: var(--texto-suave); margin-top: 6px; }
+  .act-reporte-form input, .act-reporte-form textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--borde); border-radius: 9px;
+    font-size: 1rem; background: white; color: var(--texto); font-family: inherit;
+  }
+  .act-reporte-form .btn-primary { margin-top: 12px; }
+
   /* ---- Modo activista (app móvil de campo) ---- */
   body.activista .tabs { display: none; }
   body.activista #tab-admin-btn { display: none !important; }
@@ -916,6 +942,7 @@
       <button class="tab-btn" id="tab-mapa-btn">🗺️ Mapa y ruta</button>
       <button class="tab-btn" id="tab-candidatos-btn">🏛️ Candidatos</button>
       <button class="tab-btn" id="tab-organizacion-btn">🧭 Organización</button>
+      <button class="tab-btn" id="tab-reportes-btn">📋 Reportes</button>
       <button class="tab-btn" id="tab-calendario-btn">📅 Calendario</button>
     </div>
 
@@ -1387,6 +1414,72 @@
       </div>
     </div>
 
+    <!-- ===== VISTA: REPORTES TERRITORIALES ===== -->
+    <div id="vista-reportes" class="hidden">
+      <div id="rep-demo-aviso" class="demo-aviso hidden">
+        <b>Modo demo.</b> Los reportes que envíes o veas aquí son datos ficticios.
+      </div>
+
+      <div class="admin-card">
+        <h3 id="rep-form-titulo">Mi reporte</h3>
+        <p class="hint">Registra tu avance del día. Algunos números se prellenan con tu actividad en el sistema — ajústalos si hace falta.</p>
+        <div class="admin-grid">
+          <div class="admin-field">
+            <label>Fecha</label>
+            <input type="date" id="rep-fecha" />
+          </div>
+          <div class="admin-field">
+            <label>Personas contactadas</label>
+            <input type="number" id="rep-contactos" min="0" value="0" />
+          </div>
+          <div class="admin-field">
+            <label>Afiliados nuevos</label>
+            <input type="number" id="rep-afiliados" min="0" value="0" />
+          </div>
+          <div class="admin-field">
+            <label>Incidencias reportadas</label>
+            <input type="number" id="rep-incidencias" min="0" value="0" />
+          </div>
+          <div class="admin-field">
+            <label>Eventos / actividades</label>
+            <input type="number" id="rep-eventos" min="0" value="0" />
+          </div>
+        </div>
+        <div class="admin-field" style="margin-top:10px;">
+          <label>Avance del día</label>
+          <textarea id="rep-avance" rows="2" placeholder="Qué se logró hoy"></textarea>
+        </div>
+        <div class="admin-field" style="margin-top:10px;">
+          <label>Bloqueos / dificultades</label>
+          <textarea id="rep-bloqueos" rows="2" placeholder="Qué está frenando el trabajo (opcional)"></textarea>
+        </div>
+        <div class="admin-field" style="margin-top:10px;">
+          <label>Próximos pasos</label>
+          <textarea id="rep-proximos" rows="2" placeholder="Qué sigue mañana (opcional)"></textarea>
+        </div>
+        <div class="admin-actions">
+          <button class="btn-primary" id="rep-guardar">Enviar reporte</button>
+          <span class="admin-msg" id="rep-msg"></span>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>Consolidado del equipo</h3>
+        <p class="hint">Suma de los reportes de tu área según tu nivel de mando, en el rango de fechas elegido.</p>
+        <div class="admin-grid">
+          <div class="admin-field"><label>Desde</label><input type="date" id="rep-cons-desde" /></div>
+          <div class="admin-field"><label>Hasta</label><input type="date" id="rep-cons-hasta" /></div>
+          <div class="admin-field" style="align-self:end;">
+            <button class="btn-primary" id="rep-cons-calcular" style="width:auto;padding:9px 18px;">Ver consolidado</button>
+          </div>
+          <div class="admin-field" style="align-self:end;">
+            <button class="btn-secundario" id="rep-cons-pdf" style="display:none;">🧾 PDF</button>
+          </div>
+        </div>
+        <div id="rep-cons-resultado" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
     <!-- ===== VISTA: CALENDARIO ELECTORAL ===== -->
     <div id="vista-calendario" class="hidden">
       <div id="cal-demo-aviso" class="demo-aviso hidden">
@@ -1459,6 +1552,24 @@
       <div class="act-lista" id="act-resultados"></div>
       <div id="act-empty" class="empty-state hidden">Sin resultados para tu búsqueda.</div>
       <div class="pagina-nav" id="act-nav"></div>
+
+      <details class="act-extra-wrap" id="act-reporte-wrap">
+        <summary>📋 Mi reporte de hoy (<span id="act-reporte-estado">sin enviar</span>)</summary>
+        <div class="act-reporte-form">
+          <label>Personas contactadas hoy</label>
+          <input type="number" id="actrep-contactos" min="0" value="0" />
+          <label>Afiliados nuevos</label>
+          <input type="number" id="actrep-afiliados" min="0" value="0" />
+          <label>Personas nuevas registradas</label>
+          <input type="number" id="actrep-personas" min="0" value="0" />
+          <label>Avance del día</label>
+          <textarea id="actrep-avance" rows="2" placeholder="Qué se logró hoy"></textarea>
+          <label>Bloqueos (opcional)</label>
+          <textarea id="actrep-bloqueos" rows="2"></textarea>
+          <button type="button" class="btn-primary" id="actrep-guardar">Enviar reporte</button>
+          <div class="gps-estado" id="actrep-msg"></div>
+        </div>
+      </details>
 
       <details class="act-extra-wrap">
         <summary>Personas nuevas que registré (<span id="act-extra-count">0</span>)</summary>
@@ -1704,6 +1815,11 @@ sb.auth.onAuthStateChange((_event, session) => {
     if (typeof resetFormDirigente === "function") resetFormDirigente();
     const vb = document.getElementById("veda-banner");
     if (vb) { vb.classList.add("hidden"); vb.innerHTML = ""; }
+    MI_AREA = { nivel: null, valor: null }; consolidadoActual = null;
+    ["rep-fecha", "rep-cons-desde", "rep-cons-hasta"].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = "";
+    });
+    const rr = document.getElementById("rep-cons-resultado"); if (rr) rr.innerHTML = "";
     const selCorr = document.getElementById("filtro-corregimiento");
     if (selCorr) selCorr.innerHTML = '<option value="">Todos los corregimientos</option>';
     const selPar = document.getElementById("filtro-partido");
@@ -1804,12 +1920,14 @@ async function inicializarApp() {
   document.getElementById("tab-mapa-btn").addEventListener("click", () => cambiarTab("mapa"));
   document.getElementById("tab-candidatos-btn").addEventListener("click", () => cambiarTab("candidatos"));
   document.getElementById("tab-organizacion-btn").addEventListener("click", () => cambiarTab("organizacion"));
+  document.getElementById("tab-reportes-btn").addEventListener("click", () => cambiarTab("reportes"));
   document.getElementById("tab-calendario-btn").addEventListener("click", () => cambiarTab("calendario"));
   document.getElementById("tab-admin-btn").addEventListener("click", () => cambiarTab("admin"));
   initAdmin();
   initCandidatos();
   initOrganizacion();
   initCalendario();
+  initReportes();
 }
 
 // ---------- TABS ----------
@@ -1817,10 +1935,11 @@ function cambiarTab(tab) {
   const vistas = {
     buscar: "vista-buscar", mapa: "vista-mapa", admin: "vista-admin",
     candidatos: "vista-candidatos", organizacion: "vista-organizacion",
-    calendario: "vista-calendario", activista: "vista-activista",
+    reportes: "vista-reportes", calendario: "vista-calendario", activista: "vista-activista",
   };
   const botones = { buscar: "tab-buscar-btn", mapa: "tab-mapa-btn", candidatos: "tab-candidatos-btn",
-    organizacion: "tab-organizacion-btn", calendario: "tab-calendario-btn", admin: "tab-admin-btn" };
+    organizacion: "tab-organizacion-btn", reportes: "tab-reportes-btn",
+    calendario: "tab-calendario-btn", admin: "tab-admin-btn" };
   Object.entries(vistas).forEach(([k, id]) => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle("hidden", k !== tab);
@@ -1841,6 +1960,8 @@ function cambiarTab(tab) {
     cambiarOrgSub(orgSubActual);
   } else if (tab === "calendario") {
     cargarCalendario();
+  } else if (tab === "reportes") {
+    cargarPanelReportes();
   }
 }
 
@@ -1856,6 +1977,8 @@ function aplicarPermisosUI() {
   if (btnOrg) btnOrg.classList.toggle("hidden", ES_ACTIVISTA);
   const btnCal = document.getElementById("tab-calendario-btn");
   if (btnCal) btnCal.classList.toggle("hidden", ES_ACTIVISTA);
+  const btnRep = document.getElementById("tab-reportes-btn");
+  if (btnRep) btnRep.classList.toggle("hidden", ES_ACTIVISTA);
   document.querySelectorAll("#dir-form-card, #mesa-form-card").forEach(el => {
     if (el) el.classList.toggle("hidden", !esAdmin);
   });
@@ -4320,6 +4443,266 @@ async function eliminarEventoCal(e) {
 }
 
 // ============================================================
+// ============  REPORTES TERRITORIALES  ======================
+// ============================================================
+let reportesInit = false;
+let MI_AREA = { nivel: null, valor: null };
+let consolidadoActual = null;
+
+function fechaHoyLocal() {
+  return new Date().toLocaleDateString("sv");   // 'YYYY-MM-DD' local
+}
+function fechaMasDias(iso, n) {
+  const d = new Date(iso + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toLocaleDateString("sv");
+}
+
+async function cargarMiArea() {
+  const nivel = (typeof NIVEL_POR_ROL !== "undefined" && perfilActual)
+    ? (NIVEL_POR_ROL[perfilActual.rol] || null) : null;
+  let valor = null;
+  const { data } = await sb.from("usuario_areas").select("nivel, valor").eq("user_id", currentUserId);
+  if (data && data.length) {
+    // prioriza una fila que coincida con el nivel del rol
+    const m = data.find(a => a.nivel === nivel) || data[0];
+    valor = m.valor;
+    MI_AREA = { nivel: m.nivel || nivel, valor };
+  } else {
+    MI_AREA = { nivel, valor: null };
+  }
+  return MI_AREA;
+}
+
+function initReportes() {
+  if (reportesInit) return;
+  reportesInit = true;
+  document.getElementById("rep-fecha").addEventListener("change", cargarMiReporte);
+  document.getElementById("rep-guardar").addEventListener("click", guardarMiReporte);
+  document.getElementById("rep-cons-calcular").addEventListener("click", cargarConsolidado);
+  document.getElementById("rep-cons-pdf").addEventListener("click", exportarConsolidadoPDF);
+}
+
+async function cargarPanelReportes() {
+  const avisoD = document.getElementById("rep-demo-aviso");
+  if (avisoD) avisoD.classList.toggle("hidden", !ES_DEMO);
+  await cargarMiArea();
+  const fFecha = document.getElementById("rep-fecha");
+  if (!fFecha.value) fFecha.value = fechaHoyLocal();
+  const hoy = fechaHoyLocal();
+  if (!document.getElementById("rep-cons-hasta").value) document.getElementById("rep-cons-hasta").value = hoy;
+  if (!document.getElementById("rep-cons-desde").value) document.getElementById("rep-cons-desde").value = fechaMasDias(hoy, -6);
+  cargarMiReporte();
+}
+
+async function autollenarMetricas(fecha) {
+  const sig = fechaMasDias(fecha, 1);
+  const [af, no] = await Promise.all([
+    sb.from("afiliaciones").select("cedula", { count: "exact", head: true })
+      .eq("agregado_por", currentUserEmail).gte("fecha_carga", fecha).lt("fecha_carga", sig),
+    sb.from("notas_electores").select("cedula", { count: "exact", head: true })
+      .eq("actualizado_por", currentUserEmail).gte("fecha_actualizacion", fecha).lt("fecha_actualizacion", sig),
+  ]);
+  return { afiliados: af.count || 0, contactos: no.count || 0 };
+}
+
+async function cargarMiReporte() {
+  const fecha = document.getElementById("rep-fecha").value || fechaHoyLocal();
+  const msg = document.getElementById("rep-msg");
+  msg.textContent = "";
+  const { data } = await sb.from("reportes_territoriales").select("*")
+    .eq("user_id", currentUserId).eq("fecha", fecha).maybeSingle();
+  const set = (id, v) => { document.getElementById(id).value = v; };
+  if (data) {
+    document.getElementById("rep-form-titulo").textContent = "Mi reporte (ya enviado — puedes editarlo)";
+    set("rep-contactos", data.contactos); set("rep-afiliados", data.afiliados_nuevos);
+    set("rep-incidencias", data.incidencias_reportadas); set("rep-eventos", data.eventos_realizados);
+    set("rep-avance", data.texto_avance || ""); set("rep-bloqueos", data.texto_bloqueos || "");
+    set("rep-proximos", data.texto_proximos_pasos || "");
+  } else {
+    document.getElementById("rep-form-titulo").textContent = "Mi reporte";
+    const m = await autollenarMetricas(fecha);
+    set("rep-contactos", m.contactos); set("rep-afiliados", m.afiliados);
+    set("rep-incidencias", 0); set("rep-eventos", 0);
+    set("rep-avance", ""); set("rep-bloqueos", ""); set("rep-proximos", "");
+    if (m.contactos || m.afiliados) msg.textContent = "Números prellenados con tu actividad de ese día — ajústalos si hace falta.";
+  }
+}
+
+async function guardarMiReporte() {
+  const fecha = document.getElementById("rep-fecha").value;
+  const msg = document.getElementById("rep-msg");
+  msg.textContent = "";
+  if (!fecha) { msg.innerHTML = `<span class="val-error">Elige la fecha.</span>`; return; }
+  const n = (id) => Math.max(0, parseInt(document.getElementById(id).value, 10) || 0);
+  const payload = {
+    user_id: currentUserId, fecha,
+    nivel: MI_AREA.nivel, area_valor: MI_AREA.valor,
+    contactos: n("rep-contactos"), afiliados_nuevos: n("rep-afiliados"),
+    incidencias_reportadas: n("rep-incidencias"), eventos_realizados: n("rep-eventos"),
+    texto_avance: document.getElementById("rep-avance").value.trim() || null,
+    texto_bloqueos: document.getElementById("rep-bloqueos").value.trim() || null,
+    texto_proximos_pasos: document.getElementById("rep-proximos").value.trim() || null,
+    es_demo: ES_DEMO, actualizado_en: new Date().toISOString(),
+  };
+  const btn = document.getElementById("rep-guardar");
+  btn.disabled = true; btn.textContent = "Enviando…";
+  const { error } = await sb.from("reportes_territoriales").upsert(payload, { onConflict: "user_id,fecha" });
+  btn.disabled = false; btn.textContent = "Enviar reporte";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  await cargarMiReporte();
+  msg.innerHTML = `<span style="color:var(--exito)">Reporte enviado.</span>`;
+}
+
+const REP_ROL_ABREV = {
+  admin: "Admin", presidente: "Presidente", diputado: "Diputado", alcalde: "Alcalde",
+  representante: "Represent.", secretaria_organizacion: "Secretaría", activista: "Activista",
+};
+
+async function cargarConsolidado() {
+  const desde = document.getElementById("rep-cons-desde").value;
+  const hasta = document.getElementById("rep-cons-hasta").value;
+  const cont = document.getElementById("rep-cons-resultado");
+  if (!desde || !hasta) { cont.innerHTML = `<span class="val-error">Elige el rango de fechas.</span>`; return; }
+  if (desde > hasta) { cont.innerHTML = `<span class="val-error">La fecha "desde" no puede ser posterior a "hasta".</span>`; return; }
+  cont.innerHTML = `<p class="cand-sin">Calculando…</p>`;
+  const { data, error } = await sb.rpc("consolidado_reportes", { fecha_desde: desde, fecha_hasta: hasta });
+  if (error) {
+    cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br>` +
+      `<small>¿Ya se aplicó la migración del Módulo 6?</small></p>`;
+    return;
+  }
+  consolidadoActual = { ...data, desde, hasta };
+  const t = data.totales || {};
+  const kpi = (n, l) => `<div class="rep-kpi"><div class="n">${Number(n || 0).toLocaleString("es-PA")}</div><div class="l">${l}</div></div>`;
+  let html = `<div class="rep-totales">
+    ${kpi(t.reportes, "Reportes")}${kpi(t.personas, "Personas")}${kpi(t.contactos, "Contactos")}
+    ${kpi(t.afiliados_nuevos, "Afiliados nuevos")}${kpi(t.incidencias, "Incidencias")}${kpi(t.eventos, "Eventos")}
+  </div>`;
+
+  const pp = data.por_persona || [];
+  if (pp.length) {
+    html += `<div style="overflow:auto;"><table class="rep-tabla"><thead><tr>
+      <th>Persona</th><th>Nivel</th><th>Reportes</th><th>Último</th>
+      <th>Contactos</th><th>Afil.</th><th>Incid.</th><th>Eventos</th><th>Último avance</th>
+    </tr></thead><tbody>` +
+    pp.map(p => `<tr>
+      <td>${escapeHtml(p.nombre || "—")}</td>
+      <td>${escapeHtml(REP_ROL_ABREV[p.rol] || p.rol || "")}</td>
+      <td class="num">${p.reportes}</td>
+      <td>${p.ultimo ? fechaCorta(p.ultimo) : "—"}</td>
+      <td class="num">${Number(p.contactos || 0).toLocaleString("es-PA")}</td>
+      <td class="num">${Number(p.afiliados_nuevos || 0).toLocaleString("es-PA")}</td>
+      <td class="num">${Number(p.incidencias || 0).toLocaleString("es-PA")}</td>
+      <td class="num">${Number(p.eventos || 0).toLocaleString("es-PA")}</td>
+      <td>${escapeHtml((p.avance || "").slice(0, 120))}</td>
+    </tr>`).join("") + `</tbody></table></div>`;
+  } else {
+    html += `<p class="cand-sin">Sin reportes en este rango.</p>`;
+  }
+
+  const sr = data.sin_reportar || [];
+  html += sr.length
+    ? `<div class="rep-sinreportar"><b>${sr.length}</b> sin reporte el ${fechaCorta(hasta)}: ` +
+      sr.map(x => escapeHtml(`${x.nombre}${x.area ? " (" + x.area + ")" : ""}`)).join(", ") + `</div>`
+    : `<div class="rep-sinreportar ok">Todo tu equipo reportó el ${fechaCorta(hasta)}.</div>`;
+
+  cont.innerHTML = html;
+  document.getElementById("rep-cons-pdf").style.display = pp.length ? "" : "none";
+}
+
+function exportarConsolidadoPDF() {
+  if (!consolidadoActual) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const M = 12; let y = M;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+  doc.text("Informe consolidado de reportes" + (ES_DEMO ? "  (DEMO)" : ""), M, y); y += 6;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  doc.text(`Periodo: ${fechaCorta(consolidadoActual.desde)} – ${fechaCorta(consolidadoActual.hasta)}  ·  ` +
+    `Generado ${new Date().toLocaleString("es-PA")}`, M, y); y += 7;
+  const t = consolidadoActual.totales || {};
+  doc.setFontSize(10);
+  doc.text(`Reportes: ${t.reportes || 0}    Personas: ${t.personas || 0}    Contactos: ${t.contactos || 0}    ` +
+    `Afiliados nuevos: ${t.afiliados_nuevos || 0}    Incidencias: ${t.incidencias || 0}    Eventos: ${t.eventos || 0}`, M, y);
+  y += 8;
+  const cols = [["Persona", 45], ["Nivel", 24], ["Rep.", 12], ["Último", 22], ["Contac.", 18], ["Afil.", 15], ["Incid.", 15], ["Event.", 15], ["Último avance", 100]];
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8);
+  let x = M; cols.forEach(([h, w]) => { doc.text(h, x + 1, y); x += w; });
+  y += 2; doc.setDrawColor(180); doc.line(M, y, M + cols.reduce((s, c) => s + c[1], 0), y); y += 4;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+  (consolidadoActual.por_persona || []).forEach(p => {
+    const av = doc.splitTextToSize(p.avance || "", cols[8][1] - 2);
+    if (y > 195) { doc.addPage(); y = M; }
+    x = M;
+    [[p.nombre || "—", 0], [REP_ROL_ABREV[p.rol] || p.rol || "", 1], [String(p.reportes), 2],
+     [p.ultimo ? fechaCorta(p.ultimo) : "—", 3], [String(p.contactos || 0), 4], [String(p.afiliados_nuevos || 0), 5],
+     [String(p.incidencias || 0), 6], [String(p.eventos || 0), 7], [av, 8]]
+      .forEach(([v, i]) => { doc.text(Array.isArray(v) ? v : String(v), x + 1, y); x += cols[i][1]; });
+    y += Math.max(av.length * 3, 4) + 1.5;
+  });
+  const sr = consolidadoActual.sin_reportar || [];
+  y += 4; doc.setFont("helvetica", "bold"); doc.setFontSize(8);
+  doc.text(sr.length ? `Sin reporte el ${fechaCorta(consolidadoActual.hasta)}:` : "Todo el equipo reportó.", M, y);
+  if (sr.length) {
+    y += 4; doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+    doc.text(doc.splitTextToSize(sr.map(x => `${x.nombre}${x.area ? " (" + x.area + ")" : ""}`).join(", "), 270), M, y);
+  }
+  doc.save(`${ES_DEMO ? "demo_" : ""}consolidado_reportes_${consolidadoActual.hasta}.pdf`);
+}
+
+// ---- Reporte del activista (form compacto en su vista móvil) ----
+async function initReporteActivista() {
+  await cargarMiArea();
+  document.getElementById("actrep-guardar").addEventListener("click", guardarReporteActivista);
+  cargarReporteActivista();
+}
+
+async function cargarReporteActivista() {
+  const fecha = fechaHoyLocal();
+  const { data } = await sb.from("reportes_territoriales").select("*")
+    .eq("user_id", currentUserId).eq("fecha", fecha).maybeSingle();
+  const est = document.getElementById("act-reporte-estado");
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+  if (data) {
+    est.textContent = "enviado ✓";
+    set("actrep-contactos", data.contactos); set("actrep-afiliados", data.afiliados_nuevos);
+    set("actrep-personas", data.eventos_realizados);
+    set("actrep-avance", data.texto_avance || ""); set("actrep-bloqueos", data.texto_bloqueos || "");
+  } else {
+    est.textContent = "sin enviar";
+    const m = await autollenarMetricas(fecha);
+    let personas = 0;
+    try {
+      const r = await sb.from("personas_extra").select("id", { count: "exact", head: true })
+        .eq("registrado_por", currentUserEmail).gte("creado_en", fecha).lt("creado_en", fechaMasDias(fecha, 1));
+      personas = r.count || 0;
+    } catch (_) {}
+    set("actrep-contactos", m.contactos); set("actrep-afiliados", m.afiliados); set("actrep-personas", personas);
+  }
+}
+
+async function guardarReporteActivista() {
+  const fecha = fechaHoyLocal();
+  const msg = document.getElementById("actrep-msg");
+  const n = (id) => Math.max(0, parseInt(document.getElementById(id).value, 10) || 0);
+  const btn = document.getElementById("actrep-guardar");
+  btn.disabled = true; btn.textContent = "Enviando…"; msg.textContent = "";
+  const { error } = await sb.from("reportes_territoriales").upsert({
+    user_id: currentUserId, fecha, nivel: MI_AREA.nivel, area_valor: MI_AREA.valor,
+    contactos: n("actrep-contactos"), afiliados_nuevos: n("actrep-afiliados"),
+    eventos_realizados: n("actrep-personas"), incidencias_reportadas: 0,
+    texto_avance: document.getElementById("actrep-avance").value.trim() || null,
+    texto_bloqueos: document.getElementById("actrep-bloqueos").value.trim() || null,
+    es_demo: ES_DEMO, actualizado_en: new Date().toISOString(),
+  }, { onConflict: "user_id,fecha" });
+  btn.disabled = false; btn.textContent = "Enviar reporte";
+  if (error) { msg.textContent = "Error: " + error.message; msg.classList.remove("ok"); return; }
+  msg.textContent = "Reporte enviado ✓"; msg.classList.add("ok");
+  document.getElementById("act-reporte-estado").textContent = "enviado ✓";
+}
+
+// ============================================================
 // ==============  MODO ACTIVISTA (app de campo)  =============
 // ============================================================
 let activistaInit = false;
@@ -4372,6 +4755,7 @@ async function initActivista() {
 
   buscarActivista();
   cargarPersonasExtraActivista();
+  initReporteActivista();
   if (window.refrescarInstalarUI) window.refrescarInstalarUI();
 }
 

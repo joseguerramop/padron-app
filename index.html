@@ -752,6 +752,47 @@
   }
   table.mesas-tabla td { padding: 7px 10px; border-bottom: 1px solid #f0f1f6; }
 
+  /* ---- Calendario electoral + veda ---- */
+  .veda-banner {
+    background: repeating-linear-gradient(45deg, #b91c1c, #b91c1c 12px, #a31313 12px, #a31313 24px);
+    color: white; font-size: 0.85rem; font-weight: 600;
+    padding: 9px 24px; text-align: center;
+    padding-left: calc(24px + env(safe-area-inset-left));
+    padding-right: calc(24px + env(safe-area-inset-right));
+  }
+  .veda-banner a { color: #ffe4e4; }
+  #vista-calendario { max-width: 820px; }
+  .cal-item {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--tarjeta); border: 1px solid var(--borde); border-left: 4px solid var(--borde);
+    border-radius: 10px; padding: 13px 15px; margin-bottom: 9px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .cal-item.tipo-veda  { border-left-color: #b91c1c; }
+  .cal-item.tipo-hito  { border-left-color: #1a7f37; }
+  .cal-item.tipo-plazo { border-left-color: #1a56c4; }
+  .cal-item.pasado { opacity: 0.55; }
+  .cal-fecha-box {
+    flex-shrink: 0; text-align: center; min-width: 62px;
+    background: #eef1f8; border-radius: 8px; padding: 6px 4px;
+  }
+  .cal-fecha-box .d { font-size: 1.3rem; font-weight: 700; color: var(--azul); line-height: 1; }
+  .cal-fecha-box .m { font-size: 0.7rem; text-transform: uppercase; color: var(--texto-suave); }
+  .cal-fecha-box .y { font-size: 0.7rem; color: var(--texto-suave); }
+  .cal-info { flex: 1; min-width: 0; }
+  .cal-info .t { font-weight: 600; font-size: 0.96rem; }
+  .cal-info .meta { font-size: 0.8rem; color: var(--texto-suave); margin-top: 2px; }
+  .cal-info .desc { font-size: 0.84rem; margin-top: 5px; }
+  .cal-cuenta { font-size: 0.78rem; color: var(--azul-claro); font-weight: 600; margin-top: 4px; }
+  .cal-badge {
+    display: inline-block; padding: 1px 8px; border-radius: 100px;
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .cal-badge-veda  { background: #fdecea; color: #b91c1c; }
+  .cal-badge-hito  { background: #e9f7ee; color: #1a7f37; }
+  .cal-badge-plazo { background: #eaf1fd; color: #1a56c4; }
+  .cal-acciones { display: flex; flex-direction: column; gap: 6px; }
+  .cal-sub { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texto-suave); margin: 16px 0 8px; }
+
   /* ---- Modo activista (app móvil de campo) ---- */
   body.activista .tabs { display: none; }
   body.activista #tab-admin-btn { display: none !important; }
@@ -868,12 +909,14 @@
       <button id="logout-btn">Cerrar sesión</button>
     </div>
   </header>
+  <div id="veda-banner" class="veda-banner hidden"></div>
   <main>
     <div class="tabs">
       <button class="tab-btn activo" id="tab-buscar-btn">🔍 Buscar</button>
       <button class="tab-btn" id="tab-mapa-btn">🗺️ Mapa y ruta</button>
       <button class="tab-btn" id="tab-candidatos-btn">🏛️ Candidatos</button>
       <button class="tab-btn" id="tab-organizacion-btn">🧭 Organización</button>
+      <button class="tab-btn" id="tab-calendario-btn">📅 Calendario</button>
     </div>
 
     <div id="vista-buscar">
@@ -1344,6 +1387,63 @@
       </div>
     </div>
 
+    <!-- ===== VISTA: CALENDARIO ELECTORAL ===== -->
+    <div id="vista-calendario" class="hidden">
+      <div id="cal-demo-aviso" class="demo-aviso hidden">
+        <b>Modo demo.</b> El calendario es de referencia y compartido; en modo demo no se puede editar.
+      </div>
+
+      <div id="cal-form-card" class="admin-card hidden">
+        <h3 id="cal-form-titulo">Agregar al calendario</h3>
+        <p class="hint">Plazos del Tribunal Electoral, hitos de la campaña y periodos de veda. Las fechas del ciclo 2029 aún no están todas publicadas — agrégalas conforme el TE las oficialice.</p>
+        <div class="admin-grid">
+          <div class="admin-field">
+            <label>Título</label>
+            <input type="text" id="cal-titulo" placeholder="Ej: Cierre del padrón electoral" />
+          </div>
+          <div class="admin-field">
+            <label>Tipo</label>
+            <select id="cal-tipo">
+              <option value="plazo">Plazo / fecha límite</option>
+              <option value="hito">Hito de campaña</option>
+              <option value="veda">Periodo de veda</option>
+            </select>
+          </div>
+          <div class="admin-field">
+            <label>Fecha (o inicio)</label>
+            <input type="date" id="cal-fecha" />
+          </div>
+          <div class="admin-field">
+            <label>Fecha fin (opcional, para rangos)</label>
+            <input type="date" id="cal-fecha-fin" />
+          </div>
+          <div class="admin-field">
+            <label>Fuente (URL)</label>
+            <input type="url" id="cal-fuente" placeholder="https://www.tribunal-electoral.gob.pa/" autocomplete="off" />
+          </div>
+          <div class="admin-field" id="cal-restr-wrap" style="display:none;">
+            <label>Actividades restringidas (separadas por coma)</label>
+            <input type="text" id="cal-restr" placeholder="Ej: venta de alcohol, publicidad estatal, actos públicos" />
+          </div>
+        </div>
+        <div class="admin-field" style="margin-top:10px;">
+          <label>Descripción</label>
+          <textarea id="cal-desc" rows="2" placeholder="opcional"></textarea>
+        </div>
+        <div class="admin-actions">
+          <button class="btn-primary" id="cal-guardar">Guardar</button>
+          <button class="btn-secundario" id="cal-cancelar" style="display:none;">Cancelar edición</button>
+          <span class="admin-msg" id="cal-msg"></span>
+        </div>
+      </div>
+
+      <div id="cal-proximos"></div>
+      <details class="act-extra-wrap" id="cal-pasados-wrap" style="display:none;">
+        <summary>Fechas ya pasadas (<span id="cal-pasados-count">0</span>)</summary>
+        <div id="cal-pasados"></div>
+      </details>
+    </div>
+
     <!-- ===== VISTA: ACTIVISTA (app móvil de captura) ===== -->
     <div id="vista-activista" class="hidden">
       <div id="act-instalar" class="act-instalar-bar hidden">
@@ -1602,6 +1702,8 @@ sb.auth.onAuthStateChange((_event, session) => {
       const el = document.getElementById(id); if (el) el.value = "";
     });
     if (typeof resetFormDirigente === "function") resetFormDirigente();
+    const vb = document.getElementById("veda-banner");
+    if (vb) { vb.classList.add("hidden"); vb.innerHTML = ""; }
     const selCorr = document.getElementById("filtro-corregimiento");
     if (selCorr) selCorr.innerHTML = '<option value="">Todos los corregimientos</option>';
     const selPar = document.getElementById("filtro-partido");
@@ -1643,6 +1745,7 @@ async function cargarPerfil(uid) {
     btnAdmin.classList.add("hidden");
   }
   aplicarPermisosUI();
+  chequearVeda();
   document.body.classList.toggle("demo", ES_DEMO);
   document.getElementById("demo-tag").classList.toggle("hidden", !ES_DEMO);
   const avisoAdmin = document.getElementById("admin-demo-aviso");
@@ -1701,20 +1804,23 @@ async function inicializarApp() {
   document.getElementById("tab-mapa-btn").addEventListener("click", () => cambiarTab("mapa"));
   document.getElementById("tab-candidatos-btn").addEventListener("click", () => cambiarTab("candidatos"));
   document.getElementById("tab-organizacion-btn").addEventListener("click", () => cambiarTab("organizacion"));
+  document.getElementById("tab-calendario-btn").addEventListener("click", () => cambiarTab("calendario"));
   document.getElementById("tab-admin-btn").addEventListener("click", () => cambiarTab("admin"));
   initAdmin();
   initCandidatos();
   initOrganizacion();
+  initCalendario();
 }
 
 // ---------- TABS ----------
 function cambiarTab(tab) {
   const vistas = {
     buscar: "vista-buscar", mapa: "vista-mapa", admin: "vista-admin",
-    candidatos: "vista-candidatos", organizacion: "vista-organizacion", activista: "vista-activista",
+    candidatos: "vista-candidatos", organizacion: "vista-organizacion",
+    calendario: "vista-calendario", activista: "vista-activista",
   };
   const botones = { buscar: "tab-buscar-btn", mapa: "tab-mapa-btn", candidatos: "tab-candidatos-btn",
-    organizacion: "tab-organizacion-btn", admin: "tab-admin-btn" };
+    organizacion: "tab-organizacion-btn", calendario: "tab-calendario-btn", admin: "tab-admin-btn" };
   Object.entries(vistas).forEach(([k, id]) => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle("hidden", k !== tab);
@@ -1733,6 +1839,8 @@ function cambiarTab(tab) {
     cargarCandidatos();
   } else if (tab === "organizacion") {
     cambiarOrgSub(orgSubActual);
+  } else if (tab === "calendario") {
+    cargarCalendario();
   }
 }
 
@@ -1746,9 +1854,16 @@ function aplicarPermisosUI() {
   if (formCand) formCand.classList.toggle("hidden", !esAdmin);
   const btnOrg = document.getElementById("tab-organizacion-btn");
   if (btnOrg) btnOrg.classList.toggle("hidden", ES_ACTIVISTA);
+  const btnCal = document.getElementById("tab-calendario-btn");
+  if (btnCal) btnCal.classList.toggle("hidden", ES_ACTIVISTA);
   document.querySelectorAll("#dir-form-card, #mesa-form-card").forEach(el => {
     if (el) el.classList.toggle("hidden", !esAdmin);
   });
+  // el calendario oficial solo lo edita un admin REAL (no demo)
+  const calForm = document.getElementById("cal-form-card");
+  if (calForm) calForm.classList.toggle("hidden", !(esAdmin && !ES_DEMO));
+  const calAviso = document.getElementById("cal-demo-aviso");
+  if (calAviso) calAviso.classList.toggle("hidden", !ES_DEMO);
   const btnAdmin = document.getElementById("tab-admin-btn");
   if (btnAdmin) btnAdmin.classList.toggle("hidden", !esAdmin);
   const expCampo = document.getElementById("exportar-campo");
@@ -4022,6 +4137,186 @@ async function guardarMesa() {
   msg.innerHTML = `<span style="color:var(--exito)">Mesa agregada.</span>`;
   MESAS_CACHE = null;
   cargarMesasCatalogo();
+}
+
+// ============================================================
+// ============  CALENDARIO ELECTORAL + VEDA  ==================
+// ============================================================
+let calendarioInit = false;
+let calEditId = null;
+const CAL_TIPO_LABEL = { plazo: "Plazo", hito: "Hito", veda: "Veda" };
+const MESES_ABREV = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+
+function initCalendario() {
+  if (calendarioInit) return;
+  calendarioInit = true;
+  document.getElementById("cal-tipo").addEventListener("change", () => {
+    document.getElementById("cal-restr-wrap").style.display =
+      document.getElementById("cal-tipo").value === "veda" ? "block" : "none";
+  });
+  document.getElementById("cal-guardar").addEventListener("click", guardarEventoCal);
+  document.getElementById("cal-cancelar").addEventListener("click", resetFormCal);
+}
+
+// Banner global "VEDA ACTIVA" — se llama tras cargar el perfil.
+async function chequearVeda() {
+  const banner = document.getElementById("veda-banner");
+  if (!banner) return;
+  try {
+    const { data, error } = await sb.rpc("vedas_activas");
+    if (error || !data || !data.length) { banner.classList.add("hidden"); banner.innerHTML = ""; return; }
+    const txt = data.map(v => {
+      const hasta = v.fecha_fin ? ` (hasta ${fechaCorta(v.fecha_fin)})` : "";
+      return `${escapeHtml(v.titulo)}${hasta}`;
+    }).join(" · ");
+    banner.innerHTML = `⚠️ VEDA ELECTORAL ACTIVA — ${txt}`;
+    banner.classList.remove("hidden");
+  } catch (_) { banner.classList.add("hidden"); }
+  medirTopbar();
+}
+
+function fechaCorta(iso) {
+  const [y, m, d] = String(iso).split("-").map(Number);
+  return `${d} ${MESES_ABREV[m - 1]} ${y}`;
+}
+
+async function cargarCalendario() {
+  const avisoD = document.getElementById("cal-demo-aviso");
+  if (avisoD) avisoD.classList.toggle("hidden", !ES_DEMO);
+  const esAdminReal = perfilActual && perfilActual.rol === "admin" && !ES_DEMO;
+  const cont = document.getElementById("cal-proximos");
+  cont.innerHTML = `<p class="cand-sin">Cargando…</p>`;
+  const { data, error } = await sb.from("calendario_electoral")
+    .select("*").eq("activo", true).order("fecha", { ascending: true });
+  if (error) {
+    cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br>` +
+      `<small>¿Ya se aplicó la migración del Módulo 7 en Supabase?</small></p>`;
+    return;
+  }
+  const hoy = new Date().toISOString().slice(0, 10);
+  const enCurso = (e) => e.fecha <= hoy && (e.fecha_fin || e.fecha) >= hoy;
+  const proximos = (data || []).filter(e => (e.fecha_fin || e.fecha) >= hoy);
+  const pasados = (data || []).filter(e => (e.fecha_fin || e.fecha) < hoy);
+
+  cont.innerHTML = "";
+  if (!proximos.length) {
+    cont.innerHTML = `<p class="cand-sin">No hay fechas próximas registradas.${esAdminReal ? " Usa el formulario de arriba para agregar los plazos del Tribunal Electoral." : ""}</p>`;
+  } else {
+    const h = document.createElement("div");
+    h.className = "cal-sub"; h.textContent = "Próximas fechas";
+    cont.appendChild(h);
+    proximos.forEach(e => cont.appendChild(tarjetaCal(e, esAdminReal, enCurso(e))));
+  }
+
+  const wrap = document.getElementById("cal-pasados-wrap");
+  const contP = document.getElementById("cal-pasados");
+  document.getElementById("cal-pasados-count").textContent = pasados.length;
+  wrap.style.display = pasados.length ? "block" : "none";
+  contP.innerHTML = "";
+  pasados.reverse().forEach(e => contP.appendChild(tarjetaCal(e, esAdminReal, false)));
+}
+
+function tarjetaCal(e, esAdminReal, enCurso) {
+  const card = document.createElement("div");
+  const pasado = (e.fecha_fin || e.fecha) < new Date().toISOString().slice(0, 10);
+  card.className = `cal-item tipo-${e.tipo}${pasado ? " pasado" : ""}`;
+  const [y, m, d] = e.fecha.split("-").map(Number);
+  const rango = e.fecha_fin && e.fecha_fin !== e.fecha ? ` – ${fechaCorta(e.fecha_fin)}` : "";
+  const restr = (e.actividades_restringidas || []).length
+    ? `<div class="cal-info-meta meta">Restringe: ${escapeHtml(e.actividades_restringidas.join(", "))}</div>` : "";
+  const fuente = e.fuente_url
+    ? `<div class="meta"><a href="${escapeHtml(e.fuente_url)}" target="_blank" rel="noopener">Fuente oficial ↗</a></div>` : "";
+  card.innerHTML = `
+    <div class="cal-fecha-box">
+      <div class="d">${d}</div><div class="m">${MESES_ABREV[m - 1]}</div><div class="y">${y}</div>
+    </div>
+    <div class="cal-info">
+      <div class="t">${escapeHtml(e.titulo)} <span class="cal-badge cal-badge-${e.tipo}">${CAL_TIPO_LABEL[e.tipo] || e.tipo}</span>${enCurso ? ' <span class="cal-badge cal-badge-veda">En curso</span>' : ""}</div>
+      <div class="meta">${fechaCorta(e.fecha)}${rango}</div>
+      ${e.descripcion ? `<div class="desc">${escapeHtml(e.descripcion)}</div>` : ""}
+      ${restr}${fuente}
+    </div>`;
+  if (esAdminReal) {
+    const acc = document.createElement("div");
+    acc.className = "cal-acciones";
+    const be = document.createElement("button");
+    be.className = "mini-btn"; be.textContent = "Editar";
+    be.addEventListener("click", () => editarEventoCal(e));
+    const bd = document.createElement("button");
+    bd.className = "mini-btn mini-btn-peligro"; bd.textContent = "Eliminar";
+    bd.addEventListener("click", () => eliminarEventoCal(e));
+    acc.append(be, bd);
+    card.appendChild(acc);
+  }
+  return card;
+}
+
+function editarEventoCal(e) {
+  calEditId = e.id;
+  document.getElementById("cal-form-titulo").textContent = "Editar fecha";
+  document.getElementById("cal-cancelar").style.display = "";
+  document.getElementById("cal-titulo").value = e.titulo || "";
+  document.getElementById("cal-tipo").value = e.tipo || "plazo";
+  document.getElementById("cal-fecha").value = e.fecha || "";
+  document.getElementById("cal-fecha-fin").value = e.fecha_fin || "";
+  document.getElementById("cal-fuente").value = e.fuente_url || "";
+  document.getElementById("cal-restr").value = (e.actividades_restringidas || []).join(", ");
+  document.getElementById("cal-desc").value = e.descripcion || "";
+  document.getElementById("cal-restr-wrap").style.display = e.tipo === "veda" ? "block" : "none";
+  document.getElementById("cal-msg").textContent = "";
+  document.getElementById("cal-form-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetFormCal() {
+  calEditId = null;
+  document.getElementById("cal-form-titulo").textContent = "Agregar al calendario";
+  document.getElementById("cal-cancelar").style.display = "none";
+  ["cal-titulo", "cal-fecha", "cal-fecha-fin", "cal-fuente", "cal-restr", "cal-desc"].forEach(id =>
+    document.getElementById(id).value = "");
+  document.getElementById("cal-tipo").value = "plazo";
+  document.getElementById("cal-restr-wrap").style.display = "none";
+  document.getElementById("cal-msg").textContent = "";
+}
+
+async function guardarEventoCal() {
+  const titulo = document.getElementById("cal-titulo").value.trim();
+  const fecha = document.getElementById("cal-fecha").value;
+  const msg = document.getElementById("cal-msg");
+  msg.textContent = "";
+  if (!titulo || !fecha) { msg.innerHTML = `<span class="val-error">Completa título y fecha.</span>`; return; }
+  const fechaFin = document.getElementById("cal-fecha-fin").value || null;
+  if (fechaFin && fechaFin < fecha) { msg.innerHTML = `<span class="val-error">La fecha fin no puede ser anterior a la de inicio.</span>`; return; }
+  const tipo = document.getElementById("cal-tipo").value;
+  const restr = document.getElementById("cal-restr").value.split(",").map(s => s.trim()).filter(Boolean);
+  const payload = {
+    titulo, fecha, fecha_fin: fechaFin, tipo,
+    fuente_url: document.getElementById("cal-fuente").value.trim() || null,
+    descripcion: document.getElementById("cal-desc").value.trim() || null,
+    actividades_restringidas: (tipo === "veda" && restr.length) ? restr : null,
+  };
+  const btn = document.getElementById("cal-guardar");
+  btn.disabled = true; btn.textContent = "Guardando…";
+  let error;
+  if (calEditId) {
+    payload.actualizado_en = new Date().toISOString();
+    ({ error } = await sb.from("calendario_electoral").update(payload).eq("id", calEditId));
+  } else {
+    payload.creado_por = currentUserEmail;
+    ({ error } = await sb.from("calendario_electoral").insert(payload));
+  }
+  btn.disabled = false; btn.textContent = "Guardar";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  resetFormCal();
+  cargarCalendario();
+  chequearVeda();
+}
+
+async function eliminarEventoCal(e) {
+  if (!confirm(`¿Eliminar "${e.titulo}" del calendario?`)) return;
+  const { error } = await sb.from("calendario_electoral").delete().eq("id", e.id);
+  if (error) { alert(error.message); return; }
+  cargarCalendario();
+  chequearVeda();
 }
 
 // ============================================================

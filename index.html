@@ -692,6 +692,53 @@
   .cand-acciones { display: flex; flex-direction: column; gap: 6px; }
   .cand-sin { color: var(--texto-suave); font-size: 0.88rem; padding: 20px 4px; }
 
+  /* ---- Organización (dirigentes / organigrama / mesas) ---- */
+  #vista-organizacion { max-width: 1100px; }
+  .org-subtabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .org-subtab {
+    padding: 7px 14px; border: 1px solid var(--borde); background: white;
+    border-radius: 8px; cursor: pointer; font-size: 0.84rem; font-weight: 600; color: var(--texto-suave);
+  }
+  .org-subtab.activo { background: var(--azul); color: white; border-color: var(--azul); }
+  body.demo .org-subtab.activo { background: #b45309; border-color: #b45309; }
+  .org-filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .org-filtros select, .org-filtros input {
+    padding: 8px 10px; border: 1px solid var(--borde); border-radius: 7px;
+    font-size: 0.86rem; background: white; color: var(--texto); min-width: 160px;
+  }
+  .dir-card {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+    padding: 13px 14px; margin-bottom: 9px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .dir-card.inactivo { opacity: 0.55; }
+  .dir-ini {
+    width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; background: #e6ebf5;
+    color: var(--azul); display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.95rem;
+  }
+  .dir-info { flex: 1; min-width: 0; }
+  .dir-nombre { font-weight: 600; font-size: 0.96rem; }
+  .dir-meta { font-size: 0.8rem; color: var(--texto-suave); margin-top: 2px; }
+  .dir-contacto { font-size: 0.82rem; margin-top: 4px; }
+  .dir-contacto a { color: var(--azul-claro); text-decoration: none; }
+  .dir-acciones { display: flex; flex-direction: column; gap: 6px; }
+  .org-tree, .org-tree ul { list-style: none; margin: 0; padding: 0; }
+  .org-tree ul { margin-left: 18px; border-left: 2px solid var(--borde); padding-left: 14px; margin-top: 6px; }
+  .org-nodo {
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 9px;
+    padding: 9px 12px; margin-bottom: 6px; display: inline-block; min-width: 240px;
+  }
+  .org-nodo .n { font-weight: 600; font-size: 0.9rem; }
+  .org-nodo .m { font-size: 0.76rem; color: var(--texto-suave); }
+  .org-nodo.sin-jefe { border-style: dashed; }
+  table.mesas-tabla { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  table.mesas-tabla th {
+    text-align: left; padding: 8px 10px; background: #eef1f8; position: sticky; top: 0;
+    font-size: 0.7rem; text-transform: uppercase; color: var(--texto-suave);
+  }
+  table.mesas-tabla td { padding: 7px 10px; border-bottom: 1px solid #f0f1f6; }
+
   /* ---- Modo activista (app móvil de campo) ---- */
   body.activista .tabs { display: none; }
   body.activista #tab-admin-btn { display: none !important; }
@@ -813,6 +860,7 @@
       <button class="tab-btn activo" id="tab-buscar-btn">🔍 Buscar</button>
       <button class="tab-btn" id="tab-mapa-btn">🗺️ Mapa y ruta</button>
       <button class="tab-btn" id="tab-candidatos-btn">🏛️ Candidatos</button>
+      <button class="tab-btn" id="tab-organizacion-btn">🧭 Organización</button>
     </div>
 
     <div id="vista-buscar">
@@ -1104,6 +1152,146 @@
       <div id="cand-lista"></div>
     </div>
 
+    <!-- ===== VISTA: ORGANIZACIÓN (mesas / dirigentes / organigrama) ===== -->
+    <div id="vista-organizacion" class="hidden">
+      <div id="org-demo-aviso" class="demo-aviso hidden">
+        <b>Modo demo.</b> Los dirigentes que veas o registres aquí son datos ficticios. El catálogo de mesas es de referencia.
+      </div>
+
+      <div class="org-subtabs">
+        <button class="org-subtab activo" id="org-sub-directorio">Directorio de dirigentes</button>
+        <button class="org-subtab" id="org-sub-organigrama">Organigrama de mando</button>
+        <button class="org-subtab" id="org-sub-mesas">Catálogo de mesas</button>
+      </div>
+
+      <!-- ---- Directorio ---- -->
+      <div id="org-vista-directorio">
+        <div id="dir-form-card" class="admin-card hidden">
+          <h3 id="dir-form-titulo">Agregar dirigente</h3>
+          <p class="hint">Coordinadores y enlaces territoriales de la campaña con sus datos de contacto y su línea de reporte.</p>
+          <div class="admin-grid">
+            <div class="admin-field">
+              <label>Nombre y apellido</label>
+              <input type="text" id="dir-nombre" placeholder="Ej: María Pérez" />
+            </div>
+            <div class="admin-field">
+              <label>Cédula</label>
+              <input type="text" id="dir-cedula" placeholder="Opcional" autocomplete="off" />
+            </div>
+            <div class="admin-field">
+              <label>Teléfono</label>
+              <input type="tel" id="dir-telefono" placeholder="Ej: 6123-4567" />
+            </div>
+            <div class="admin-field">
+              <label>Correo</label>
+              <input type="email" id="dir-correo" placeholder="opcional" autocomplete="off" />
+            </div>
+            <div class="admin-field">
+              <label>Cargo</label>
+              <select id="dir-cargo">
+                <option value="">Elige un cargo…</option>
+                <option value="coordinador_circuito">Coordinador de circuito</option>
+                <option value="coordinador_distrito">Coordinador de distrito</option>
+                <option value="coordinador_corregimiento">Coordinador de corregimiento</option>
+                <option value="enlace_mesa">Enlace de mesa</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div class="admin-field" id="dir-nivel-wrap" style="display:none;">
+              <label>Nivel territorial</label>
+              <select id="dir-nivel">
+                <option value="">—</option>
+                <option value="nacional">Nacional</option>
+                <option value="circuito">Circuito</option>
+                <option value="distrito">Distrito</option>
+                <option value="corregimiento">Corregimiento</option>
+              </select>
+            </div>
+            <div class="admin-field" id="dir-area-wrap" style="display:none;">
+              <label id="dir-area-label">Área</label>
+              <select id="dir-area"><option value="">—</option></select>
+            </div>
+            <div class="admin-field" id="dir-mesa-wrap" style="display:none;">
+              <label>Mesa</label>
+              <select id="dir-mesa"><option value="">— Elige un corregimiento primero —</option></select>
+            </div>
+            <div class="admin-field">
+              <label>Reporta a</label>
+              <select id="dir-reporta"><option value="">— Nadie (raíz del organigrama) —</option></select>
+            </div>
+            <div class="admin-field">
+              <label>Cuenta de acceso vinculada</label>
+              <select id="dir-cuenta"><option value="">— Ninguna —</option></select>
+            </div>
+            <div class="admin-field">
+              <label>Estado</label>
+              <select id="dir-activo">
+                <option value="true">Activo</option>
+                <option value="false">Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div class="admin-field" style="margin-top:10px;">
+            <label>Notas</label>
+            <textarea id="dir-notas" rows="2" placeholder="opcional"></textarea>
+          </div>
+          <div class="admin-actions">
+            <button class="btn-primary" id="dir-guardar">Guardar dirigente</button>
+            <button class="btn-secundario" id="dir-cancelar" style="display:none;">Cancelar edición</button>
+            <span class="admin-msg" id="dir-msg"></span>
+          </div>
+        </div>
+
+        <div class="org-filtros">
+          <input type="text" id="dir-buscar" placeholder="Buscar por nombre o cédula…" autocomplete="off" />
+          <select id="dir-filtro-cargo">
+            <option value="">Todos los cargos</option>
+            <option value="coordinador_circuito">Coordinador de circuito</option>
+            <option value="coordinador_distrito">Coordinador de distrito</option>
+            <option value="coordinador_corregimiento">Coordinador de corregimiento</option>
+            <option value="enlace_mesa">Enlace de mesa</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div id="dir-lista"></div>
+      </div>
+
+      <!-- ---- Organigrama ---- -->
+      <div id="org-vista-organigrama" class="hidden">
+        <p class="hint" style="margin-top:0;">Cadena de mando según el campo "Reporta a" de cada dirigente.</p>
+        <ul class="org-tree" id="org-tree"></ul>
+      </div>
+
+      <!-- ---- Mesas ---- -->
+      <div id="org-vista-mesas" class="hidden">
+        <div id="mesa-form-card" class="admin-card hidden">
+          <h3>Agregar mesa</h3>
+          <p class="hint">Para corregimientos cuyo padrón todavía no se ha cargado. Las mesas del padrón cargado se crean solas.</p>
+          <div class="admin-grid">
+            <div class="admin-field"><label>Número de mesa</label><input type="text" id="mesa-numero" /></div>
+            <div class="admin-field"><label>Centro de votación</label><input type="text" id="mesa-centro" /></div>
+            <div class="admin-field"><label>Corregimiento</label><select id="mesa-corregimiento"><option value="">Elige…</option></select></div>
+            <div class="admin-field"><label>Electores estimados</label><input type="number" id="mesa-electores" min="0" /></div>
+          </div>
+          <div class="admin-actions">
+            <button class="btn-primary" id="mesa-guardar">Guardar mesa</button>
+            <span class="admin-msg" id="mesa-msg"></span>
+          </div>
+        </div>
+        <div class="org-filtros">
+          <select id="mesa-filtro-circuito"><option value="">Todos los circuitos</option></select>
+          <select id="mesa-filtro-corregimiento"><option value="">Todos los corregimientos</option></select>
+        </div>
+        <div id="mesa-stats" class="stats"></div>
+        <div class="table-wrap" style="max-height:none;">
+          <table class="mesas-tabla">
+            <thead><tr><th>Mesa</th><th>Centro de votación</th><th>Corregimiento</th><th>Circuito</th><th>Electores (est.)</th><th>Padrón cargado</th></tr></thead>
+            <tbody id="mesa-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== VISTA: ACTIVISTA (app móvil de captura) ===== -->
     <div id="vista-activista" class="hidden">
       <div id="act-instalar" class="act-instalar-bar hidden">
@@ -1312,6 +1500,8 @@ sb.auth.onAuthStateChange((_event, session) => {
     activistaInit = false;
     candidatosInit = false;
     filtrosInicializados = false;
+    // organizacionInit NO se resetea: initOrganizacion solo cablea listeners (sin datos por usuario).
+    DIRIGENTES_CACHE = []; MESAS_CACHE = null; MESA_CAT = []; dirEditId = null; orgSubActual = "directorio";
     const selCorr = document.getElementById("filtro-corregimiento");
     if (selCorr) selCorr.innerHTML = '<option value="">Todos los corregimientos</option>';
     const selPar = document.getElementById("filtro-partido");
@@ -1409,18 +1599,21 @@ async function inicializarApp() {
   document.getElementById("tab-buscar-btn").addEventListener("click", () => cambiarTab("buscar"));
   document.getElementById("tab-mapa-btn").addEventListener("click", () => cambiarTab("mapa"));
   document.getElementById("tab-candidatos-btn").addEventListener("click", () => cambiarTab("candidatos"));
+  document.getElementById("tab-organizacion-btn").addEventListener("click", () => cambiarTab("organizacion"));
   document.getElementById("tab-admin-btn").addEventListener("click", () => cambiarTab("admin"));
   initAdmin();
   initCandidatos();
+  initOrganizacion();
 }
 
 // ---------- TABS ----------
 function cambiarTab(tab) {
   const vistas = {
     buscar: "vista-buscar", mapa: "vista-mapa", admin: "vista-admin",
-    candidatos: "vista-candidatos", activista: "vista-activista",
+    candidatos: "vista-candidatos", organizacion: "vista-organizacion", activista: "vista-activista",
   };
-  const botones = { buscar: "tab-buscar-btn", mapa: "tab-mapa-btn", candidatos: "tab-candidatos-btn", admin: "tab-admin-btn" };
+  const botones = { buscar: "tab-buscar-btn", mapa: "tab-mapa-btn", candidatos: "tab-candidatos-btn",
+    organizacion: "tab-organizacion-btn", admin: "tab-admin-btn" };
   Object.entries(vistas).forEach(([k, id]) => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle("hidden", k !== tab);
@@ -1437,6 +1630,8 @@ function cambiarTab(tab) {
     cargarPersonasExtraAdmin();
   } else if (tab === "candidatos") {
     cargarCandidatos();
+  } else if (tab === "organizacion") {
+    cambiarOrgSub(orgSubActual);
   }
 }
 
@@ -1448,6 +1643,11 @@ function aplicarPermisosUI() {
   if (btnCand) btnCand.classList.toggle("hidden", ES_ACTIVISTA);
   const formCand = document.getElementById("cand-form-card");
   if (formCand) formCand.classList.toggle("hidden", !esAdmin);
+  const btnOrg = document.getElementById("tab-organizacion-btn");
+  if (btnOrg) btnOrg.classList.toggle("hidden", ES_ACTIVISTA);
+  document.querySelectorAll("#dir-form-card, #mesa-form-card").forEach(el => {
+    if (el) el.classList.toggle("hidden", !esAdmin);
+  });
   const btnAdmin = document.getElementById("tab-admin-btn");
   if (btnAdmin) btnAdmin.classList.toggle("hidden", !esAdmin);
   const expCampo = document.getElementById("exportar-campo");
@@ -3180,6 +3380,440 @@ async function eliminarCandidato(c) {
   const { error } = await sb.from("candidatos").delete().eq("id", c.id);
   if (error) { alert(error.message); return; }
   cargarCandidatos();
+}
+
+// ============================================================
+// ====  ORGANIZACIÓN — dirigentes / organigrama / mesas  ======
+// ============================================================
+let organizacionInit = false;
+let dirEditId = null;
+let orgSubActual = "directorio";
+let MESAS_CACHE = null;
+let DIRIGENTES_CACHE = [];
+let MESA_CAT = [];
+
+const CARGO_LABEL = {
+  coordinador_circuito: "Coordinador de circuito",
+  coordinador_distrito: "Coordinador de distrito",
+  coordinador_corregimiento: "Coordinador de corregimiento",
+  enlace_mesa: "Enlace de mesa",
+  otro: "Otro",
+};
+const DIR_NIVEL_POR_CARGO = {
+  coordinador_circuito: "circuito",
+  coordinador_distrito: "distrito",
+  coordinador_corregimiento: "corregimiento",
+  enlace_mesa: "corregimiento",
+};
+
+function initOrganizacion() {
+  if (organizacionInit) return;
+  organizacionInit = true;
+  document.getElementById("org-sub-directorio").addEventListener("click", () => cambiarOrgSub("directorio"));
+  document.getElementById("org-sub-organigrama").addEventListener("click", () => cambiarOrgSub("organigrama"));
+  document.getElementById("org-sub-mesas").addEventListener("click", () => cambiarOrgSub("mesas"));
+
+  document.getElementById("dir-cargo").addEventListener("change", onDirCargoChange);
+  document.getElementById("dir-nivel").addEventListener("change", () =>
+    construirSelectorAreaDir(document.getElementById("dir-nivel").value));
+  document.getElementById("dir-area").addEventListener("change", onDirAreaChange);
+  document.getElementById("dir-guardar").addEventListener("click", guardarDirigente);
+  document.getElementById("dir-cancelar").addEventListener("click", resetFormDirigente);
+  document.getElementById("dir-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderDirigentes, 250);
+  });
+  document.getElementById("dir-filtro-cargo").addEventListener("change", renderDirigentes);
+
+  document.getElementById("mesa-guardar").addEventListener("click", guardarMesa);
+  document.getElementById("mesa-filtro-circuito").addEventListener("change", renderMesas);
+  document.getElementById("mesa-filtro-corregimiento").addEventListener("change", renderMesas);
+}
+
+function cambiarOrgSub(sub) {
+  orgSubActual = sub;
+  ["directorio", "organigrama", "mesas"].forEach(k => {
+    document.getElementById("org-vista-" + k).classList.toggle("hidden", k !== sub);
+    document.getElementById("org-sub-" + k).classList.toggle("activo", k === sub);
+  });
+  cargarOrganizacion();
+}
+
+async function cargarOrganizacion() {
+  const avisoD = document.getElementById("org-demo-aviso");
+  if (avisoD) avisoD.classList.toggle("hidden", !ES_DEMO);
+  if (orgSubActual === "mesas") { cargarMesasCatalogo(); return; }
+
+  const { data, error } = await sb.from("dirigentes")
+    .select("*, mesas ( numero, corregimiento )")
+    .order("nivel").order("cargo").order("nombre");
+  if (error) {
+    document.getElementById("dir-lista").innerHTML =
+      `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br>` +
+      `<small>¿Ya se aplicó la migración del Módulo 1 en Supabase?</small></p>`;
+    document.getElementById("org-tree").innerHTML = "";
+    return;
+  }
+  DIRIGENTES_CACHE = data || [];
+  poblarReportaSelect();
+  if (perfilActual && perfilActual.rol === "admin") poblarCuentasDir();
+  if (orgSubActual === "organigrama") renderOrganigrama();
+  else renderDirigentes();
+}
+
+function inicialesTxt(nombre) {
+  return (nombre || "?").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+}
+
+function renderDirigentes() {
+  const cont = document.getElementById("dir-lista");
+  const esAdmin = perfilActual && perfilActual.rol === "admin";
+  const term = (document.getElementById("dir-buscar").value || "").trim().toLowerCase();
+  const fc = document.getElementById("dir-filtro-cargo").value;
+  let filas = DIRIGENTES_CACHE.slice();
+  if (fc) filas = filas.filter(d => d.cargo === fc);
+  if (term) filas = filas.filter(d =>
+    (d.nombre || "").toLowerCase().includes(term) || (d.cedula || "").toLowerCase().includes(term));
+  if (!filas.length) {
+    cont.innerHTML = `<p class="cand-sin">${DIRIGENTES_CACHE.length
+      ? "Sin dirigentes para ese filtro."
+      : "Aún no hay dirigentes registrados." + (esAdmin ? " Usa el formulario de arriba para agregar el primero." : "")}</p>`;
+    return;
+  }
+  const NIVEL_TIT = { nacional: "Nacional", circuito: "Circuito", distrito: "Distrito", corregimiento: "Corregimiento", "": "Sin nivel" };
+  cont.innerHTML = "";
+  ["nacional", "circuito", "distrito", "corregimiento", ""].forEach(niv => {
+    const grupo = filas.filter(d => (d.nivel || "") === niv);
+    if (!grupo.length) return;
+    const div = document.createElement("div");
+    div.className = "cand-grupo";
+    div.innerHTML = `<h3>${NIVEL_TIT[niv]}</h3>`;
+    grupo.forEach(d => div.appendChild(tarjetaDirigente(d, esAdmin)));
+    cont.appendChild(div);
+  });
+}
+
+function tarjetaDirigente(d, esAdmin) {
+  const card = document.createElement("div");
+  card.className = "dir-card" + (d.activo ? "" : " inactivo");
+  const areaTxt = d.nivel === "nacional" ? "Nacional"
+    : d.mesas ? `Mesa ${d.mesas.numero} · ${d.mesas.corregimiento}`
+    : (d.area_valor || "—");
+  const jefe = d.reporta_a_id ? (DIRIGENTES_CACHE.find(x => x.id === d.reporta_a_id) || {}).nombre : null;
+  const tel = d.telefono ? d.telefono.replace(/\s+/g, "") : "";
+  const contacto = [
+    d.telefono ? `<a href="tel:${escapeHtml(tel)}">📞 ${escapeHtml(d.telefono)}</a>` : "",
+    d.correo ? `<a href="mailto:${escapeHtml(d.correo)}">✉️ ${escapeHtml(d.correo)}</a>` : "",
+  ].filter(Boolean).join("&nbsp;&nbsp;·&nbsp;&nbsp;");
+  card.innerHTML = `
+    <div class="dir-ini">${escapeHtml(inicialesTxt(d.nombre))}</div>
+    <div class="dir-info">
+      <div class="dir-nombre">${escapeHtml(d.nombre)}${d.activo ? "" : ' <span class="badge">inactivo</span>'}</div>
+      <div class="dir-meta">${escapeHtml(CARGO_LABEL[d.cargo] || d.cargo)} · ${escapeHtml(areaTxt)}${d.cedula ? " · " + escapeHtml(d.cedula) : ""}</div>
+      ${contacto ? `<div class="dir-contacto">${contacto}</div>` : ""}
+      ${jefe ? `<div class="dir-meta">Reporta a: ${escapeHtml(jefe)}</div>` : ""}
+      ${d.notas ? `<div class="dir-meta">${escapeHtml(d.notas)}</div>` : ""}
+    </div>`;
+  if (esAdmin) {
+    const acc = document.createElement("div");
+    acc.className = "dir-acciones";
+    const be = document.createElement("button");
+    be.className = "mini-btn"; be.textContent = "Editar";
+    be.addEventListener("click", () => editarDirigente(d));
+    const bd = document.createElement("button");
+    bd.className = "mini-btn mini-btn-peligro"; bd.textContent = "Eliminar";
+    bd.addEventListener("click", () => eliminarDirigente(d));
+    acc.append(be, bd);
+    card.appendChild(acc);
+  }
+  return card;
+}
+
+function renderOrganigrama() {
+  const cont = document.getElementById("org-tree");
+  if (!DIRIGENTES_CACHE.length) {
+    cont.innerHTML = `<li class="cand-sin">Aún no hay dirigentes registrados.</li>`;
+    return;
+  }
+  const idsExistentes = new Set(DIRIGENTES_CACHE.map(d => d.id));
+  const raices = DIRIGENTES_CACHE.filter(d => !d.reporta_a_id || !idsExistentes.has(d.reporta_a_id));
+  const vistos = new Set();
+  const nodoHtml = (d) => {
+    if (vistos.has(d.id)) return "";
+    vistos.add(d.id);
+    const areaTxt = d.nivel === "nacional" ? "Nacional"
+      : (d.mesas ? `Mesa ${d.mesas.numero}` : (d.area_valor || "—"));
+    const sub = DIRIGENTES_CACHE.filter(x => x.reporta_a_id === d.id && !vistos.has(x.id));
+    const clase = (!d.reporta_a_id || !idsExistentes.has(d.reporta_a_id)) ? "org-nodo sin-jefe" : "org-nodo";
+    let html = `<li><span class="${clase}"><span class="n">${escapeHtml(d.nombre)}</span>` +
+      `<br><span class="m">${escapeHtml(CARGO_LABEL[d.cargo] || d.cargo)} · ${escapeHtml(areaTxt)}</span></span>`;
+    if (sub.length) html += "<ul>" + sub.map(nodoHtml).join("") + "</ul>";
+    return html + "</li>";
+  };
+  cont.innerHTML = raices.map(nodoHtml).join("") ||
+    `<li class="cand-sin">No se pudo construir el árbol.</li>`;
+}
+
+function onDirCargoChange() {
+  const cargo = document.getElementById("dir-cargo").value;
+  const nivelWrap = document.getElementById("dir-nivel-wrap");
+  const nivelSel = document.getElementById("dir-nivel");
+  document.getElementById("dir-mesa-wrap").style.display = cargo === "enlace_mesa" ? "block" : "none";
+  if (cargo === "otro") {
+    nivelWrap.style.display = "block";
+  } else {
+    nivelWrap.style.display = "none";
+    nivelSel.value = cargo ? (DIR_NIVEL_POR_CARGO[cargo] || "") : "";
+  }
+  construirSelectorAreaDir(nivelSel.value);
+}
+
+async function construirSelectorAreaDir(nivel, valorActual) {
+  const wrap = document.getElementById("dir-area-wrap");
+  const sel = document.getElementById("dir-area");
+  const label = document.getElementById("dir-area-label");
+  if (!nivel || nivel === "nacional") {
+    wrap.style.display = "none";
+    sel.innerHTML = '<option value="">—</option>';
+    onDirAreaChange();
+    return;
+  }
+  wrap.style.display = "block";
+  sel.innerHTML = '<option value="">Elige…</option>';
+  if (nivel === "circuito") {
+    label.textContent = "Circuito electoral";
+    (await cargarCircuitos()).forEach(c => sel.insertAdjacentHTML("beforeend",
+      `<option value="${escapeHtml(c.codigo)}">${escapeHtml(c.codigo)} · ${escapeHtml(c.provincia)} — ${escapeHtml(c.descripcion || "")}</option>`));
+  } else if (nivel === "distrito") {
+    label.textContent = "Distrito";
+    const ubic = await cargarUbicaciones();
+    [...new Map(ubic.map(u => [u.provincia + "|" + u.distrito, u])).values()].forEach(u =>
+      sel.insertAdjacentHTML("beforeend",
+        `<option value="${escapeHtml(u.distrito)}">${escapeHtml(u.provincia)} — ${escapeHtml(u.distrito)}</option>`));
+  } else {
+    label.textContent = "Corregimiento";
+    (await cargarUbicaciones()).forEach(u =>
+      sel.insertAdjacentHTML("beforeend",
+        `<option value="${escapeHtml(u.corregimiento)}">${escapeHtml(u.corregimiento)} — ${escapeHtml(u.distrito)}</option>`));
+  }
+  if (valorActual != null && valorActual !== "") sel.value = valorActual;
+  onDirAreaChange();
+}
+
+async function onDirAreaChange() {
+  if (document.getElementById("dir-cargo").value !== "enlace_mesa") return;
+  const area = document.getElementById("dir-area").value;
+  const selMesa = document.getElementById("dir-mesa");
+  selMesa.innerHTML = '<option value="">— Sin mesa específica —</option>';
+  if (!area) return;
+  const objetivo = normUbicJS(area);
+  (await cargarMesas()).filter(m => m.corregimiento_norm === objetivo).forEach(m =>
+    selMesa.insertAdjacentHTML("beforeend",
+      `<option value="${m.id}">Mesa ${escapeHtml(m.numero)}${m.centro_nombre ? " · " + escapeHtml(m.centro_nombre) : ""}</option>`));
+}
+
+async function cargarMesas() {
+  if (MESAS_CACHE) return MESAS_CACHE;
+  const { data, error } = await sb.from("mesas")
+    .select("id, numero, centro_nombre, corregimiento, corregimiento_norm, circuito_codigo, electores_estimados")
+    .order("circuito_codigo").order("numero");
+  MESAS_CACHE = error ? [] : (data || []);
+  return MESAS_CACHE;
+}
+
+function poblarReportaSelect() {
+  const sel = document.getElementById("dir-reporta");
+  const previo = sel.value;
+  sel.innerHTML = '<option value="">— Nadie (raíz del organigrama) —</option>';
+  DIRIGENTES_CACHE.forEach(d => {
+    if (dirEditId && d.id === dirEditId) return;
+    sel.insertAdjacentHTML("beforeend",
+      `<option value="${d.id}">${escapeHtml(d.nombre)} · ${escapeHtml(CARGO_LABEL[d.cargo] || d.cargo)}${d.area_valor ? " (" + escapeHtml(d.area_valor) + ")" : ""}</option>`);
+  });
+  if (previo) sel.value = previo;
+}
+
+async function poblarCuentasDir(valorActual) {
+  const sel = document.getElementById("dir-cuenta");
+  sel.innerHTML = '<option value="">— Ninguna —</option>';
+  const { data } = await sb.from("perfiles_usuario").select("user_id, nombre, rol").order("nombre");
+  (data || []).forEach(p => sel.insertAdjacentHTML("beforeend",
+    `<option value="${p.user_id}">${escapeHtml(p.nombre || p.user_id.slice(0, 8))} · ${escapeHtml(ROL_LABEL[p.rol] || p.rol)}</option>`));
+  if (valorActual) sel.value = valorActual;
+}
+
+async function editarDirigente(d) {
+  dirEditId = d.id;
+  document.getElementById("dir-form-titulo").textContent = "Editar dirigente";
+  document.getElementById("dir-cancelar").style.display = "";
+  document.getElementById("dir-nombre").value = d.nombre || "";
+  document.getElementById("dir-cedula").value = d.cedula || "";
+  document.getElementById("dir-telefono").value = d.telefono || "";
+  document.getElementById("dir-correo").value = d.correo || "";
+  document.getElementById("dir-cargo").value = d.cargo || "";
+  onDirCargoChange();
+  if (d.cargo === "otro") document.getElementById("dir-nivel").value = d.nivel || "";
+  await construirSelectorAreaDir(d.nivel, d.area_valor);
+  if (d.cargo === "enlace_mesa" && d.mesa_id) {
+    await onDirAreaChange();
+    document.getElementById("dir-mesa").value = String(d.mesa_id);
+  }
+  poblarReportaSelect();
+  document.getElementById("dir-reporta").value = d.reporta_a_id ? String(d.reporta_a_id) : "";
+  await poblarCuentasDir(d.user_id || "");
+  document.getElementById("dir-activo").value = d.activo ? "true" : "false";
+  document.getElementById("dir-notas").value = d.notas || "";
+  document.getElementById("dir-msg").textContent = "";
+  document.getElementById("dir-form-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetFormDirigente() {
+  dirEditId = null;
+  document.getElementById("dir-form-titulo").textContent = "Agregar dirigente";
+  document.getElementById("dir-cancelar").style.display = "none";
+  ["dir-nombre", "dir-cedula", "dir-telefono", "dir-correo", "dir-notas"].forEach(id =>
+    document.getElementById(id).value = "");
+  document.getElementById("dir-cargo").value = "";
+  document.getElementById("dir-nivel").value = "";
+  document.getElementById("dir-reporta").value = "";
+  document.getElementById("dir-cuenta").value = "";
+  document.getElementById("dir-activo").value = "true";
+  document.getElementById("dir-nivel-wrap").style.display = "none";
+  document.getElementById("dir-area-wrap").style.display = "none";
+  document.getElementById("dir-mesa-wrap").style.display = "none";
+  document.getElementById("dir-msg").textContent = "";
+}
+
+async function guardarDirigente() {
+  const nombre = document.getElementById("dir-nombre").value.trim();
+  const cargo = document.getElementById("dir-cargo").value;
+  const msg = document.getElementById("dir-msg");
+  msg.textContent = "";
+  if (!nombre || !cargo) { msg.innerHTML = `<span class="val-error">Completa nombre y cargo.</span>`; return; }
+  const nivel = document.getElementById("dir-nivel").value || null;
+  const areaValor = (nivel && nivel !== "nacional") ? (document.getElementById("dir-area").value || null) : null;
+  if (nivel && nivel !== "nacional" && !areaValor) {
+    msg.innerHTML = `<span class="val-error">Elige el área.</span>`; return;
+  }
+  const mesaId = cargo === "enlace_mesa" ? (document.getElementById("dir-mesa").value || null) : null;
+  const reporta = document.getElementById("dir-reporta").value || null;
+  const payload = {
+    nombre,
+    cedula: document.getElementById("dir-cedula").value.trim() || null,
+    telefono: document.getElementById("dir-telefono").value.trim() || null,
+    correo: document.getElementById("dir-correo").value.trim() || null,
+    cargo, nivel, area_valor: areaValor,
+    mesa_id: mesaId ? Number(mesaId) : null,
+    reporta_a_id: reporta ? Number(reporta) : null,
+    user_id: document.getElementById("dir-cuenta").value || null,
+    activo: document.getElementById("dir-activo").value === "true",
+    notas: document.getElementById("dir-notas").value.trim() || null,
+    es_demo: ES_DEMO,
+  };
+  const btn = document.getElementById("dir-guardar");
+  btn.disabled = true; btn.textContent = "Guardando…";
+  let error;
+  if (dirEditId) {
+    payload.actualizado_en = new Date().toISOString();
+    ({ error } = await sb.from("dirigentes").update(payload).eq("id", dirEditId));
+  } else {
+    payload.registrado_por = currentUserEmail;
+    ({ error } = await sb.from("dirigentes").insert(payload));
+  }
+  btn.disabled = false; btn.textContent = "Guardar dirigente";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  resetFormDirigente();
+  cargarOrganizacion();
+}
+
+async function eliminarDirigente(d) {
+  if (!confirm(`¿Eliminar a ${d.nombre} del directorio?`)) return;
+  const { error } = await sb.from("dirigentes").delete().eq("id", d.id);
+  if (error) { alert(error.message); return; }
+  cargarOrganizacion();
+}
+
+// ---------- Catálogo de mesas ----------
+async function cargarMesasCatalogo() {
+  const body = document.getElementById("mesa-body");
+  const esAdmin = perfilActual && perfilActual.rol === "admin";
+  body.innerHTML = `<tr><td colspan="6" class="cand-sin">Cargando…</td></tr>`;
+  const { data, error } = await sb.from("mesas_con_conteo").select("*").order("circuito_codigo").order("numero");
+  if (error) {
+    body.innerHTML = `<tr><td colspan="6" class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br>` +
+      `<small>¿Ya se aplicó la migración del Módulo 1 en Supabase?</small></td></tr>`;
+    return;
+  }
+  MESA_CAT = data || [];
+  const selCirc = document.getElementById("mesa-filtro-circuito");
+  const selCorr = document.getElementById("mesa-filtro-corregimiento");
+  if (selCirc.options.length <= 1) {
+    [...new Set(MESA_CAT.map(m => m.circuito_codigo).filter(Boolean))].sort().forEach(c =>
+      selCirc.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`));
+  }
+  if (selCorr.options.length <= 1) {
+    [...new Set(MESA_CAT.map(m => m.corregimiento).filter(Boolean))].sort().forEach(c =>
+      selCorr.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`));
+  }
+  const selNew = document.getElementById("mesa-corregimiento");
+  if (esAdmin && selNew.options.length <= 1) {
+    (await cargarUbicaciones()).forEach(u =>
+      selNew.insertAdjacentHTML("beforeend",
+        `<option value="${escapeHtml(u.corregimiento)}">${escapeHtml(u.corregimiento)} — ${escapeHtml(u.distrito)}</option>`));
+  }
+  renderMesas();
+}
+
+function renderMesas() {
+  const body = document.getElementById("mesa-body");
+  const stats = document.getElementById("mesa-stats");
+  const fCirc = document.getElementById("mesa-filtro-circuito").value;
+  const fCorr = document.getElementById("mesa-filtro-corregimiento").value;
+  let filas = MESA_CAT.slice();
+  if (fCirc) filas = filas.filter(m => m.circuito_codigo === fCirc);
+  if (fCorr) filas = filas.filter(m => m.corregimiento === fCorr);
+  if (!filas.length) {
+    body.innerHTML = `<tr><td colspan="6" class="cand-sin">Sin mesas para ese filtro.</td></tr>`;
+    stats.textContent = "";
+    return;
+  }
+  const totalEst = filas.reduce((s, m) => s + (m.electores_estimados || 0), 0);
+  stats.textContent = `${filas.length} mesa(s) · ${totalEst.toLocaleString("es-PA")} electores estimados`;
+  body.innerHTML = filas.map(m => `
+    <tr>
+      <td class="cedula-cell">${escapeHtml(m.numero)}</td>
+      <td>${escapeHtml(m.centro_nombre || "—")}</td>
+      <td>${escapeHtml(m.corregimiento)}</td>
+      <td>${escapeHtml(m.circuito_codigo || "—")}</td>
+      <td>${m.electores_estimados != null ? m.electores_estimados.toLocaleString("es-PA") : "—"}</td>
+      <td>${m.electores_padron != null ? m.electores_padron.toLocaleString("es-PA") : "—"}</td>
+    </tr>`).join("");
+}
+
+async function guardarMesa() {
+  const numero = document.getElementById("mesa-numero").value.trim();
+  const corr = document.getElementById("mesa-corregimiento").value;
+  const msg = document.getElementById("mesa-msg");
+  msg.textContent = "";
+  if (!numero || !corr) { msg.innerHTML = `<span class="val-error">Completa número y corregimiento.</span>`; return; }
+  const ubic = (await cargarUbicaciones()).find(u => u.corregimiento === corr) || {};
+  const payload = {
+    numero,
+    centro_nombre: document.getElementById("mesa-centro").value.trim() || null,
+    corregimiento: corr,
+    distrito: ubic.distrito || null,
+    provincia: ubic.provincia || null,
+    circuito_codigo: ubic.circuito_codigo || null,
+    electores_estimados: Number(document.getElementById("mesa-electores").value) || null,
+  };
+  const btn = document.getElementById("mesa-guardar");
+  btn.disabled = true; btn.textContent = "Guardando…";
+  const { error } = await sb.from("mesas").insert(payload);
+  btn.disabled = false; btn.textContent = "Guardar mesa";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  ["mesa-numero", "mesa-centro", "mesa-electores"].forEach(id => document.getElementById(id).value = "");
+  msg.innerHTML = `<span style="color:var(--exito)">Mesa agregada.</span>`;
+  MESAS_CACHE = null;
+  cargarMesasCatalogo();
 }
 
 // ============================================================

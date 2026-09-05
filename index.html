@@ -209,6 +209,12 @@
   .exportar-btns button:disabled { opacity: 0.55; cursor: progress; }
   body.demo .exportar-btns button { border-color: #f0d9b5; background: #fff4e5; color: #a15c00; }
   .exportar-msg { font-size: 0.75rem; color: var(--texto-suave); margin-top: 6px; min-height: 1em; }
+  .campo-inscribir { border-top: 1px solid var(--borde); padding-top: 12px; margin-top: 12px; }
+  .btn-inscribir {
+    display: block; text-align: center; padding: 9px 10px; border: 1px solid #b7e0c4; background: #e9f7ee;
+    color: #1a7f37; border-radius: 8px; font-size: 0.82rem; font-weight: 600; text-decoration: none;
+  }
+  .btn-inscribir:hover { background: #dcf1e4; }
   .panel-resultados { min-width: 0; }
   .stats { font-size: 0.82rem; color: var(--texto-suave); margin: 2px 2px 10px; }
   @media (max-width: 900px) {
@@ -815,6 +821,12 @@
   .em-fila input[type=text] { padding: 6px 8px; border: 1px solid var(--borde); border-radius: 6px; font-size: 0.85rem; }
   .em-fila .abierta { color: #1a7f37; font-weight: 600; }
   .em-fila .cerrada { color: var(--error); font-weight: 600; }
+  #cnt-mapa {
+    height: 380px; min-height: 300px; border-radius: 10px; border: 1px solid var(--borde);
+    margin-bottom: 10px; background: #eef1f6; position: relative; z-index: 0;
+  }
+  #cnt-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; }
+  #cnt-chips .hint { width: 100%; margin: 0 0 4px; }
 
   /* ---- Calendario electoral + veda ---- */
   .veda-banner {
@@ -935,6 +947,11 @@
   .act-barra input[type=search], .act-barra select {
     width: 100%; padding: 12px 14px; border: 1px solid var(--borde); border-radius: 10px;
     font-size: 1rem; background: white; color: var(--texto);
+  }
+  .act-inscribir-link {
+    display: block; text-align: center; background: #e9f7ee; border: 1px solid #b7e0c4; color: #1a7f37;
+    border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; font-size: 0.85rem; font-weight: 600;
+    text-decoration: none;
   }
   .act-stats { font-size: 0.82rem; color: var(--texto-suave); margin: 0 2px 10px; }
   .act-lista { display: flex; flex-direction: column; gap: 8px; }
@@ -1077,6 +1094,10 @@
             <option value="opositor">Opositor</option>
             <option value="no_contactado">No contactado</option>
           </select>
+        </div>
+        <div class="campo campo-inscribir">
+          <label>¿Alguien quiere inscribirse a un partido?</label>
+          <a href="https://tribunalcontigo.com/" target="_blank" rel="noopener" class="btn-inscribir">🗳️ Trámites en Tribunal Contigo</a>
         </div>
         <div class="campo campo-exportar hidden" id="exportar-campo">
           <label>Exportar resultados</label>
@@ -1600,6 +1621,7 @@
         <button class="org-subtab" id="diae-sub-mesas">🗳️ Estado de mesas</button>
         <button class="org-subtab" id="diae-sub-transporte">🚐 Transporte</button>
         <button class="org-subtab" id="diae-sub-insumos">📦 Insumos</button>
+        <button class="org-subtab" id="diae-sub-conteo">🗳️ Conteo de mesas</button>
       </div>
 
       <!-- Tablero -->
@@ -1714,6 +1736,38 @@
           <input type="text" id="ins-buscar" placeholder="Buscar por descripción o responsable…" autocomplete="off" />
         </div>
         <div id="ins-lista"></div>
+      </div>
+
+      <!-- Conteo de mesas (todos los cargos) -->
+      <div id="diae-vista-conteo" class="hidden">
+        <p class="hint">Aquí llegan los reportes de los apoderados/testigos de cada mesa. Elige el cargo, captura los votos por mesa y toca el mapa para ver el conteo de cualquier área.</p>
+        <div class="org-filtros">
+          <select id="cnt-cargo">
+            <option value="presidente">Presidente</option>
+            <option value="diputado">Diputados</option>
+            <option value="alcalde">Alcaldes</option>
+            <option value="representante">Representantes</option>
+          </select>
+        </div>
+
+        <div class="admin-card">
+          <h3>Reportar resultados de una mesa</h3>
+          <div class="admin-grid">
+            <div class="admin-field"><label>Mesa</label><select id="cnt-mesa"><option value="">— Elige una mesa —</option></select></div>
+          </div>
+          <div class="admin-grid" id="cnt-form-candidatos" style="margin-top:10px;"></div>
+          <div class="admin-actions">
+            <button class="btn-primary" id="cnt-guardar">Guardar resultados</button>
+            <span class="admin-msg" id="cnt-msg"></span>
+          </div>
+        </div>
+
+        <div id="cnt-mapa-wrap" class="hidden">
+          <div id="cnt-mapa"></div>
+          <div id="cnt-chips"></div>
+        </div>
+
+        <div id="cnt-resumen"></div>
       </div>
     </div>
 
@@ -2000,6 +2054,7 @@
         <input type="search" id="act-buscar" placeholder="Cédula, nombre o apellido…" autocomplete="off" />
         <select id="act-corregimiento"><option value="">Todos mis corregimientos</option></select>
       </div>
+      <a href="https://tribunalcontigo.com/" target="_blank" rel="noopener" class="act-inscribir-link">🗳️ ¿Alguien quiere inscribirse a un partido? Trámites en Tribunal Contigo →</a>
       <div class="act-stats" id="act-stats"></div>
       <div class="act-lista" id="act-resultados"></div>
       <div id="act-empty" class="empty-state hidden">Sin resultados para tu búsqueda.</div>
@@ -2281,6 +2336,7 @@ sb.auth.onAuthStateChange((_event, session) => {
     CAND_CACHE = []; CAND_META = {};
     INC_CACHE = []; TRA_CACHE = []; INS_CACHE = []; EM_CACHE = []; DIAE_MESAS = [];
     traEditId = null; insEditId = null; diaeAmbito = null; diaeSubActual = "tablero";
+    cntSubArea = null; cntMesaResultado = null;
     clearTimeout(diaeAutoTimer);
     const da = document.getElementById("diae-auto"); if (da) da.checked = false;
     const selCorr = document.getElementById("filtro-corregimiento");
@@ -4608,7 +4664,7 @@ async function onDirAreaChange() {
 async function cargarMesas() {
   if (MESAS_CACHE) return MESAS_CACHE;
   const { data, error } = await sb.from("mesas")
-    .select("id, numero, centro_nombre, corregimiento, corregimiento_norm, circuito_codigo, electores_estimados")
+    .select("id, numero, centro_nombre, corregimiento, corregimiento_norm, distrito, circuito_codigo, electores_estimados")
     .order("circuito_codigo").order("numero");
   MESAS_CACHE = error ? [] : (data || []);
   return MESAS_CACHE;
@@ -5060,6 +5116,7 @@ async function eliminarApoderado(a) {
 let diaeInit = false, diaeSubActual = "tablero", diaeAmbito = null, diaeAutoTimer = null;
 let INC_CACHE = [], TRA_CACHE = [], INS_CACHE = [], EM_CACHE = [], DIAE_MESAS = [];
 let traEditId = null, insEditId = null;
+let cntMapa = null, cntCapaGeo = null, cntSubArea = null, cntMesaResultado = null;
 
 const INC_TIPO_LABEL = { logistica: "Logística", legal: "Legal", seguridad: "Seguridad", reclamo: "Reclamo", padron: "Padrón", transporte: "Transporte", otro: "Otro" };
 const INC_SEV_LABEL = { baja: "Baja", media: "Media", alta: "Alta", critica: "Crítica" };
@@ -5070,7 +5127,7 @@ const INS_ITEM_LABEL = { comida: "Comida", agua: "Agua", hidratacion: "Hidrataci
 function initDiae() {
   if (diaeInit) return;
   diaeInit = true;
-  ["tablero", "incidencias", "mesas", "transporte", "insumos"].forEach(k =>
+  ["tablero", "incidencias", "mesas", "transporte", "insumos", "conteo"].forEach(k =>
     document.getElementById("diae-sub-" + k).addEventListener("click", () => cambiarDiaeSub(k)));
   document.getElementById("diae-nivel").addEventListener("change", async () =>
     construirSelectorAreaGen("diae", document.getElementById("diae-nivel").value));
@@ -5096,6 +5153,9 @@ function initDiae() {
   document.getElementById("ins-buscar").addEventListener("input", () => {
     clearTimeout(debounceTimer); debounceTimer = setTimeout(renderInsumos, 250);
   });
+  document.getElementById("cnt-cargo").addEventListener("change", () => { cntSubArea = null; cargarConteo(); });
+  document.getElementById("cnt-mesa").addEventListener("change", cargarFormMesaConteo);
+  document.getElementById("cnt-guardar").addEventListener("click", guardarResultadosMesa);
 }
 
 // Selector de área genérico reutilizable por prefijo (comparte lógica con recursos).
@@ -5123,7 +5183,7 @@ function leerAmbitoDiae() {
 
 function cambiarDiaeSub(sub) {
   diaeSubActual = sub;
-  ["tablero", "incidencias", "mesas", "transporte", "insumos"].forEach(k => {
+  ["tablero", "incidencias", "mesas", "transporte", "insumos", "conteo"].forEach(k => {
     document.getElementById("diae-vista-" + k).classList.toggle("hidden", k !== sub);
     document.getElementById("diae-sub-" + k).classList.toggle("activo", k === sub);
   });
@@ -5142,7 +5202,7 @@ async function cargarDiae() {
   const optMesas = '<option value="">—</option>' + DIAE_MESAS
     .slice().sort((a, b) => (a.numero || "").localeCompare(b.numero || "", "es", { numeric: true }))
     .map(m => `<option value="${m.id}">Mesa ${escapeHtml(m.numero)} · ${escapeHtml(m.corregimiento || "")}</option>`).join("");
-  ["inc-mesa", "tra-mesa", "ins-mesa"].forEach(id => { const s = document.getElementById(id); if (s) s.innerHTML = optMesas; });
+  ["inc-mesa", "tra-mesa", "ins-mesa", "cnt-mesa"].forEach(id => { const s = document.getElementById(id); if (s) s.innerHTML = optMesas; });
   const corrs = [...new Set(DIAE_MESAS.map(m => m.corregimiento).filter(Boolean))].sort();
   const optCorr = '<option value="">—</option>' + corrs.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
   ["inc-corregimiento", "tra-corregimiento", "ins-corregimiento"].forEach(id => { const s = document.getElementById(id); if (s) s.innerHTML = optCorr; });
@@ -5151,6 +5211,7 @@ async function cargarDiae() {
   else if (diaeSubActual === "incidencias") cargarIncidencias();
   else if (diaeSubActual === "mesas") cargarEstadoMesas();
   else if (diaeSubActual === "transporte") cargarTransporte();
+  else if (diaeSubActual === "conteo") cargarConteo();
   else cargarInsumos();
 }
 
@@ -5495,6 +5556,248 @@ function resetFormIns() {
   document.getElementById("ins-item").value = "otro";
   document.getElementById("ins-mesa").value = ""; document.getElementById("ins-corregimiento").value = "";
   document.getElementById("ins-msg").textContent = "";
+}
+
+// ---------- Conteo de mesas (todos los cargos) ----------
+async function cargarConteo() {
+  cntSubArea = null;
+  document.getElementById("cnt-form-candidatos").innerHTML = "";
+  const selMesa = document.getElementById("cnt-mesa"); if (selMesa) selMesa.value = "";
+  await dibujarMapaConteo();
+  await cargarResumenConteo();
+}
+
+async function dibujarMapaConteo() {
+  const wrap = document.getElementById("cnt-mapa-wrap");
+  const chips = document.getElementById("cnt-chips");
+  const amb = diaeAmbito;
+  if (!amb || amb.nivel === "nacional") {
+    wrap.classList.add("hidden");
+    chips.innerHTML = "";
+    return;
+  }
+  wrap.classList.remove("hidden");
+  await new Promise(r => setTimeout(r, 0));
+  if (!cntMapa) {
+    cntMapa = L.map("cnt-mapa").setView(GUALACA_CENTRO, 9);
+    L.tileLayer(TILE_URL, { maxZoom: 19, attribution: "&copy; OpenStreetMap", subdomains: TILE_SUBS }).addTo(cntMapa);
+  } else {
+    cntMapa.invalidateSize();
+  }
+  if (cntCapaGeo) { cntMapa.removeLayer(cntCapaGeo); cntCapaGeo = null; }
+  try {
+    if (amb.nivel === "circuito") await pintarCircuitoConteo(amb.valor);
+    else if (amb.nivel === "distrito") await pintarDistritoConteo(amb.valor);
+    else if (amb.nivel === "corregimiento") await pintarCorregimientoConteo(amb.valor);
+  } catch (e) {
+    console.error(e);
+    chips.innerHTML = `<p class="cand-sin">No se pudo cargar el mapa de esta área.</p>`;
+  }
+}
+
+async function cargarDistritosIndexSiFalta() {
+  if (!distritosIndex) {
+    try { distritosIndex = await fetch("distritos/index.json").then(r => r.json()); }
+    catch (e) { console.error(e); distritosIndex = []; }
+  }
+}
+
+function idDistritoPorNombre(nombre) {
+  const mn = normUbicJS(nombre || "");
+  const d = (distritosIndex || []).find(x => normUbicJS(x.distrito) === mn);
+  return d ? d.id : null;
+}
+
+async function pintarCircuitoConteo(codigo) {
+  const key = "c:" + codigo;
+  let geo = areaGeoCache[key];
+  if (!geo) { geo = await fetch(`circuitos/${codigo}.geojson`).then(r => r.json()); areaGeoCache[key] = geo; }
+  cntCapaGeo = L.geoJSON(geo, { style: { color: "#0b3d91", weight: 2, fillColor: "#1a56c4", fillOpacity: 0.08 } }).addTo(cntMapa);
+  cntMapa.fitBounds(cntCapaGeo.getBounds(), { padding: [16, 16] });
+
+  await cargarDistritosIndexSiFalta();
+  const ubic = await cargarUbicaciones();
+  const nombresDistrito = [...new Set(ubic.filter(u => u.circuito_codigo === codigo).map(u => u.distrito))]
+    .sort((a, b) => a.localeCompare(b, "es"));
+  const chips = document.getElementById("cnt-chips");
+  chips.innerHTML = `<p class="hint">Toca un distrito para ver el detalle por corregimiento:</p>` +
+    nombresDistrito.map(nom => `<button type="button" class="mini-btn" data-distrito="${escapeHtml(nom)}">${escapeHtml(nom)}</button>`).join(" ");
+  chips.querySelectorAll("[data-distrito]").forEach(b =>
+    b.addEventListener("click", () => pintarDistritoConteo(b.dataset.distrito)));
+}
+
+async function pintarDistritoConteo(nombreDistrito) {
+  await cargarDistritosIndexSiFalta();
+  const id = idDistritoPorNombre(nombreDistrito);
+  const chips = document.getElementById("cnt-chips");
+  if (!id) { chips.innerHTML = `<p class="cand-sin">No hay mapa disponible para "${escapeHtml(nombreDistrito)}".</p>`; return; }
+  const key = "d:" + id;
+  let geo = areaGeoCache[key];
+  if (!geo) { geo = await fetch(`distritos/${id}.geojson`).then(r => r.json()); areaGeoCache[key] = geo; }
+  if (cntCapaGeo) { cntMapa.removeLayer(cntCapaGeo); cntCapaGeo = null; }
+  cntCapaGeo = L.geoJSON(geo, {
+    style: { color: "#0b3d91", weight: 1.5, fillColor: "#1a56c4", fillOpacity: 0.12 },
+    onEachFeature: (f, layer) => {
+      layer.bindTooltip(f.properties.corregimiento, { sticky: true });
+      layer.on("click", () => seleccionarSubareaCorregimiento(f.properties.corregimiento, layer));
+    },
+  }).addTo(cntMapa);
+  cntMapa.fitBounds(cntCapaGeo.getBounds(), { padding: [16, 16] });
+  chips.innerHTML = `<p class="hint">Toca un corregimiento en el mapa para ver su conteo.</p>`;
+}
+
+async function pintarCorregimientoConteo(nombreCorreg) {
+  await cargarDistritosIndexSiFalta();
+  const mn = normUbicJS(nombreCorreg);
+  const d = (distritosIndex || []).find(x => (x.corregimientos || []).some(c => normUbicJS(c) === mn));
+  if (!d) { document.getElementById("cnt-chips").innerHTML = ""; return; }
+  await pintarDistritoConteo(d.distrito);
+  if (cntCapaGeo) {
+    cntCapaGeo.eachLayer(l => {
+      if (normUbicJS(l.feature.properties.corregimiento) === mn) l.setStyle({ fillOpacity: 0.35, weight: 3 });
+    });
+  }
+}
+
+function seleccionarSubareaCorregimiento(nombreCorreg, layer) {
+  cntSubArea = { nivel: "corregimiento", valor: nombreCorreg, titulo: nombreCorreg };
+  if (cntCapaGeo) cntCapaGeo.eachLayer(l => l.setStyle({ fillOpacity: 0.12, weight: 1.5 }));
+  layer.setStyle({ fillOpacity: 0.35, weight: 3 });
+  cargarResumenConteo();
+}
+
+function tituloAmbitoConteo(amb) {
+  if (!amb) return "";
+  if (amb.titulo) return amb.titulo;
+  if (!amb.nivel || amb.nivel === "nacional") return "Nacional";
+  return amb.valor;
+}
+
+async function cargarResumenConteo() {
+  const cont = document.getElementById("cnt-resumen");
+  const cargo = document.getElementById("cnt-cargo").value;
+  const amb = cntSubArea || diaeAmbito;
+  if (!amb) { cont.innerHTML = ""; return; }
+  cont.innerHTML = `<p class="cand-sin">Cargando conteo…</p>`;
+  const { data, error } = await sb.rpc("resultados_area", {
+    nivel: amb.nivel, valores: amb.nivel === "nacional" ? [] : [String(amb.valor)], p_cargo: cargo,
+  });
+  if (error) {
+    cont.innerHTML = `<p class="cand-sin">No se pudo cargar. ${escapeHtml(error.message)}<br><small>¿Ya se aplicó la migración del Módulo 8?</small></p>`;
+    return;
+  }
+  renderResumenConteo(cont, amb, cargo, data || {});
+}
+
+function renderResumenConteo(cont, amb, cargo, d) {
+  const mesasTotal = d.mesas_total || 0, mesasRep = d.mesas_reportadas || 0;
+  const padron = d.padron_total || 0;
+  const nulos = d.votos_nulos || 0, blancos = d.votos_blancos || 0, validos = d.votos_validos || 0;
+  const emitidos = d.votos_emitidos || 0;
+  const participacion = padron > 0 ? (emitidos / padron * 100) : 0;
+  const kpi = (n, l, cls) => `<div class="rep-kpi"><div class="n ${cls || ""}">${n}</div><div class="l">${l}</div></div>`;
+  let html = `<div class="diae-panel"><h4>🗳️ ${escapeHtml(ROL_LABEL[cargo] || cargo)} — ${escapeHtml(tituloAmbitoConteo(amb))}</h4>
+    <div class="rep-totales">
+      ${kpi(mesasRep + "/" + mesasTotal, "Mesas reportadas", mesasTotal > 0 && mesasRep === mesasTotal ? "sem-ok" : "sem-warn")}
+      ${kpi(padron.toLocaleString("es-PA"), "Padrón del área")}
+      ${kpi(emitidos.toLocaleString("es-PA"), "Votos emitidos")}
+      ${kpi(participacion.toFixed(1) + "%", "Participación")}
+      ${kpi(nulos.toLocaleString("es-PA"), "Votos nulos")}
+      ${kpi(blancos.toLocaleString("es-PA"), "Votos en blanco")}
+    </div></div>`;
+  const cands = d.candidatos || [];
+  if (!cands.length) {
+    html += `<p class="cand-sin">Sin resultados reportados todavía para este cargo en esta área.</p>`;
+  } else {
+    html += `<div class="diae-panel"><h4>Resultados por candidato</h4>`;
+    cands.forEach((c, i) => {
+      const pctValidos = validos > 0 ? (c.votos / validos * 100) : 0;
+      const pctPadron = padron > 0 ? (c.votos / padron * 100) : 0;
+      const color = colorPorPartido(c.siglas);
+      html += `<div class="stat-fila">
+        <span class="etq"><span class="dot" style="background:${color}"></span>${escapeHtml(c.nombre)}${c.siglas ? " · " + escapeHtml(c.siglas) : ""}${i === 0 && c.votos > 0 ? " 🏆" : ""}</span>
+        <span class="barra"><div style="width:${pctValidos.toFixed(1)}%;background:${color}"></div></span>
+        <span class="num"><b>${Number(c.votos).toLocaleString("es-PA")}</b> · ${pctValidos.toFixed(1)}% váli. · ${pctPadron.toFixed(1)}% padrón</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  cont.innerHTML = html;
+}
+
+async function cargarFormMesaConteo() {
+  const cargo = document.getElementById("cnt-cargo").value;
+  const mesaId = document.getElementById("cnt-mesa").value;
+  const cont = document.getElementById("cnt-form-candidatos");
+  if (!mesaId) { cont.innerHTML = ""; cntMesaResultado = null; return; }
+  const mesa = DIAE_MESAS.find(m => String(m.id) === String(mesaId));
+  cont.innerHTML = `<p class="cand-sin">Cargando candidatos…</p>`;
+
+  const areaValor = cargo === "presidente" ? null
+    : cargo === "diputado" ? mesa.circuito_codigo
+    : cargo === "alcalde" ? mesa.distrito
+    : mesa.corregimiento;
+  const mn = normUbicJS(areaValor || "");
+
+  const [{ data: cands, error }, { data: resumen }, { data: existentesCand }] = await Promise.all([
+    sb.from("candidatos").select("id,nombre,area_valor,partido_id").eq("nivel", cargo),
+    sb.from("conteo_mesa_cargo").select("*").eq("mesa_id", mesaId).eq("cargo", cargo).maybeSingle(),
+    sb.from("conteo_candidato_mesa").select("candidato_id,votos").eq("mesa_id", mesaId).eq("cargo", cargo),
+  ]);
+  if (error) { cont.innerHTML = `<p class="cand-sin">Error: ${escapeHtml(error.message)}<br><small>¿Ya se aplicó la migración del Módulo 8?</small></p>`; return; }
+
+  const filtrados = cargo === "presidente"
+    ? (cands || [])
+    : (cands || []).filter(c => normUbicJS(c.area_valor || "") === mn);
+
+  if (!filtrados.length) {
+    cont.innerHTML = `<p class="cand-sin">No hay candidatos registrados para ${escapeHtml((ROL_LABEL[cargo] || cargo).toLowerCase())} en el área de esta mesa${areaValor ? " (" + escapeHtml(areaValor) + ")" : ""}. Regístralos primero en la pestaña Candidatos.</p>`;
+    cntMesaResultado = null;
+    return;
+  }
+
+  cntMesaResultado = resumen || null;
+  const votosPorCand = {};
+  (existentesCand || []).forEach(r => { votosPorCand[r.candidato_id] = r.votos; });
+
+  cont.innerHTML = filtrados.map(c => `
+    <div class="admin-field"><label>${escapeHtml(c.nombre)}</label>
+      <input type="number" min="0" data-cand="${c.id}" value="${votosPorCand[c.id] || 0}" /></div>`).join("") +
+    `<div class="admin-field"><label>Votos nulos</label><input type="number" min="0" id="cnt-nulos" value="${resumen ? resumen.votos_nulos : 0}" /></div>
+     <div class="admin-field"><label>Votos en blanco</label><input type="number" min="0" id="cnt-blancos" value="${resumen ? resumen.votos_blancos : 0}" /></div>`;
+}
+
+async function guardarResultadosMesa() {
+  const cargo = document.getElementById("cnt-cargo").value;
+  const mesaId = document.getElementById("cnt-mesa").value;
+  const msg = document.getElementById("cnt-msg"); msg.textContent = "";
+  if (!mesaId) { msg.innerHTML = `<span class="val-error">Elige una mesa.</span>`; return; }
+  const cont = document.getElementById("cnt-form-candidatos");
+  const inputsCand = [...cont.querySelectorAll("[data-cand]")];
+  if (!inputsCand.length) { msg.innerHTML = `<span class="val-error">No hay candidatos para capturar en esta mesa.</span>`; return; }
+
+  const btn = document.getElementById("cnt-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
+
+  const resumen = {
+    mesa_id: Number(mesaId), cargo,
+    votos_nulos: Number(document.getElementById("cnt-nulos").value) || 0,
+    votos_blancos: Number(document.getElementById("cnt-blancos").value) || 0,
+    reportado_por: currentUserEmail,
+    es_demo: ES_DEMO,
+    actualizado_en: new Date().toISOString(),
+  };
+  let { error } = await sb.from("conteo_mesa_cargo").upsert(resumen, { onConflict: "mesa_id,cargo,es_demo" });
+  if (!error) {
+    const filas = inputsCand.map(inp => ({
+      mesa_id: Number(mesaId), cargo, candidato_id: Number(inp.dataset.cand),
+      votos: Number(inp.value) || 0, es_demo: ES_DEMO, actualizado_en: new Date().toISOString(),
+    }));
+    ({ error } = await sb.from("conteo_candidato_mesa").upsert(filas, { onConflict: "mesa_id,cargo,candidato_id,es_demo" }));
+  }
+  btn.disabled = false; btn.textContent = "Guardar resultados";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  msg.innerHTML = `<span style="color:var(--exito)">Resultados guardados.</span>`;
+  if (diaeSubActual === "conteo") cargarResumenConteo();
 }
 
 // ============================================================

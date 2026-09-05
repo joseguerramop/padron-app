@@ -745,6 +745,7 @@
   .org-nodo .n { font-weight: 600; font-size: 0.9rem; }
   .org-nodo .m { font-size: 0.76rem; color: var(--texto-suave); }
   .org-nodo.sin-jefe { border-style: dashed; }
+  .org-nodo.match { border-color: var(--azul); box-shadow: 0 0 0 2px rgba(11,61,145,0.22); background: #eef3fd; }
   table.mesas-tabla { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
   table.mesas-tabla th {
     text-align: left; padding: 8px 10px; background: #eef1f8; position: sticky; top: 0;
@@ -1355,6 +1356,9 @@
         </div>
       </div>
 
+      <div class="org-filtros">
+        <input type="text" id="cand-buscar" placeholder="Buscar candidato por nombre, partido o área…" autocomplete="off" />
+      </div>
       <div id="cand-lista"></div>
     </div>
 
@@ -1466,6 +1470,9 @@
       <!-- ---- Organigrama ---- -->
       <div id="org-vista-organigrama" class="hidden">
         <p class="hint" style="margin-top:0;">Cadena de mando según el campo "Reporta a" de cada dirigente.</p>
+        <div class="org-filtros">
+          <input type="text" id="org-buscar" placeholder="Buscar dirigente por nombre o cédula…" autocomplete="off" />
+        </div>
         <ul class="org-tree" id="org-tree"></ul>
       </div>
 
@@ -1486,6 +1493,7 @@
           </div>
         </div>
         <div class="org-filtros">
+          <input type="text" id="mesa-buscar" placeholder="Buscar por número de mesa o centro de votación…" autocomplete="off" />
           <select id="mesa-filtro-circuito"><option value="">Todos los circuitos</option></select>
           <select id="mesa-filtro-corregimiento"><option value="">Todos los corregimientos</option></select>
         </div>
@@ -1512,6 +1520,9 @@
           <button class="btn-primary" id="apo-ver" style="width:auto;padding:9px 16px;">Ver</button>
         </div>
         <div id="apo-cobertura" style="margin-bottom:14px;"></div>
+        <div class="org-filtros">
+          <input type="text" id="apo-buscar" placeholder="Buscar por número de mesa, nombre o cédula…" autocomplete="off" />
+        </div>
 
         <div id="apo-form-card" class="admin-card hidden">
           <h3 id="apo-form-titulo">Agregar apoderado / testigo</h3>
@@ -1625,6 +1636,7 @@
           </div>
         </div>
         <div class="org-filtros">
+          <input type="text" id="inc-buscar" placeholder="Buscar por descripción, mesa o corregimiento…" autocomplete="off" />
           <select id="inc-filtro-estado">
             <option value="">Todas</option><option value="abierta">Abiertas</option>
             <option value="en_proceso">En proceso</option><option value="resuelta">Resueltas</option>
@@ -1636,6 +1648,9 @@
       <!-- Estado de mesas -->
       <div id="diae-vista-mesas" class="hidden">
         <p class="hint">Marca la apertura y el cierre de cada mesa y anota el reporte del día.</p>
+        <div class="org-filtros">
+          <input type="text" id="em-buscar" placeholder="Buscar mesa por número…" autocomplete="off" />
+        </div>
         <div id="em-lista"></div>
       </div>
 
@@ -1665,6 +1680,9 @@
             <span class="admin-msg" id="tra-msg"></span>
           </div>
         </div>
+        <div class="org-filtros">
+          <input type="text" id="tra-buscar" placeholder="Buscar por vehículo, placa, conductor o punto…" autocomplete="off" />
+        </div>
         <div id="tra-lista"></div>
       </div>
 
@@ -1691,6 +1709,9 @@
             <button class="btn-secundario" id="ins-cancelar" style="display:none;">Cancelar</button>
             <span class="admin-msg" id="ins-msg"></span>
           </div>
+        </div>
+        <div class="org-filtros">
+          <input type="text" id="ins-buscar" placeholder="Buscar por descripción o responsable…" autocomplete="off" />
         </div>
         <div id="ins-lista"></div>
       </div>
@@ -1736,6 +1757,9 @@
             <span class="admin-msg" id="inv-msg"></span>
           </div>
         </div>
+        <div class="org-filtros">
+          <input type="text" id="inv-buscar" placeholder="Buscar material, responsable o ubicación…" autocomplete="off" />
+        </div>
         <div id="inv-lista"></div>
       </div>
 
@@ -1771,6 +1795,7 @@
           </div>
         </div>
         <div class="org-filtros">
+          <input type="text" id="gas-buscar" placeholder="Buscar por concepto o quién pagó…" autocomplete="off" />
           <select id="gas-filtro-estado">
             <option value="">Todos</option>
             <option value="pendiente">Pendientes de conciliar</option>
@@ -1830,6 +1855,9 @@
             <button class="btn-secundario" id="eve-cancelar" style="display:none;">Cancelar</button>
             <span class="admin-msg" id="eve-msg"></span>
           </div>
+        </div>
+        <div class="org-filtros">
+          <input type="text" id="eve-buscar" placeholder="Buscar evento por título, lugar o responsable…" autocomplete="off" />
         </div>
         <div id="eve-lista"></div>
       </div>
@@ -1896,6 +1924,9 @@
           <div class="admin-field" style="align-self:end;">
             <button class="btn-secundario" id="rep-cons-pdf" style="display:none;">🧾 PDF</button>
           </div>
+        </div>
+        <div class="org-filtros" id="rep-cons-buscar-wrap" style="display:none;">
+          <input type="text" id="rep-cons-buscar" placeholder="Buscar persona en el consolidado…" autocomplete="off" />
         </div>
         <div id="rep-cons-resultado" style="margin-top:12px;"></div>
       </div>
@@ -2230,7 +2261,9 @@ sb.auth.onAuthStateChange((_event, session) => {
     filtrosInicializados = false;
     // organizacionInit NO se resetea: initOrganizacion solo cablea listeners (sin datos por usuario).
     DIRIGENTES_CACHE = []; MESAS_CACHE = null; MESA_CAT = []; dirEditId = null; orgSubActual = "directorio";
-    ["dir-buscar", "dir-filtro-cargo", "mesa-filtro-circuito", "mesa-filtro-corregimiento"].forEach(id => {
+    ["dir-buscar", "dir-filtro-cargo", "mesa-filtro-circuito", "mesa-filtro-corregimiento", "mesa-buscar",
+     "org-buscar", "apo-buscar", "cand-buscar", "rep-cons-buscar", "inv-buscar", "gas-buscar", "eve-buscar",
+     "inc-buscar", "em-buscar", "tra-buscar", "ins-buscar"].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = "";
     });
     if (typeof resetFormDirigente === "function") resetFormDirigente();
@@ -2241,9 +2274,11 @@ sb.auth.onAuthStateChange((_event, session) => {
       const el = document.getElementById(id); if (el) el.value = "";
     });
     const rr = document.getElementById("rep-cons-resultado"); if (rr) rr.innerHTML = "";
+    const rcbw = document.getElementById("rep-cons-buscar-wrap"); if (rcbw) rcbw.style.display = "none";
     INV_CACHE = []; GAS_CACHE = []; EVE_CACHE = [];
     invEditId = null; gasEditId = null; eveEditId = null; recSubActual = "inventario";
-    APO_CACHE = []; apoEditId = null; apoAmbito = null;
+    APO_CACHE = []; apoEditId = null; apoAmbito = null; apoMesasActuales = [];
+    CAND_CACHE = []; CAND_META = {};
     INC_CACHE = []; TRA_CACHE = []; INS_CACHE = []; EM_CACHE = []; DIAE_MESAS = [];
     traEditId = null; insEditId = null; diaeAmbito = null; diaeSubActual = "tablero";
     clearTimeout(diaeAutoTimer);
@@ -4051,6 +4086,7 @@ async function exportarMapaPDF() {
 // ============================================================
 let candidatosInit = false;
 let candEditId = null;
+let CAND_CACHE = [], CAND_META = {};
 
 function initCandidatos() {
   if (candidatosInit) return;
@@ -4059,6 +4095,9 @@ function initCandidatos() {
   nivelSel.addEventListener("change", () => construirSelectorAreaCandidato(nivelSel.value));
   document.getElementById("cand-guardar").addEventListener("click", guardarCandidato);
   document.getElementById("cand-cancelar").addEventListener("click", resetFormCandidato);
+  document.getElementById("cand-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderCandidatos, 250);
+  });
   opcionesPartidos("cand-partido", '<option value="">— Sin partido / libre postulación —</option>');
 }
 
@@ -4131,10 +4170,30 @@ async function cargarCandidatos() {
   const siglasPorId = {};
   PARTIDOS_CACHE.forEach(p => { siglasPorId[p.id] = p.siglas; });
 
-  if (!cands || !cands.length) {
+  CAND_CACHE = cands || [];
+  CAND_META = { nombrePorU, siglasPorId, esAdmin };
+  renderCandidatos();
+}
+
+function renderCandidatos() {
+  const cont = document.getElementById("cand-lista");
+  const { nombrePorU = {}, siglasPorId = {}, esAdmin = false } = CAND_META;
+  const term = (document.getElementById("cand-buscar").value || "").trim().toLowerCase();
+  if (!CAND_CACHE.length) {
     cont.innerHTML = `<p class="cand-sin">Aún no hay candidatos registrados.${esAdmin ? " Usa el formulario de arriba para agregar el primero." : ""}</p>`;
     return;
   }
+  let cands = CAND_CACHE;
+  if (term) {
+    cands = cands.filter(c => {
+      const sig = c.partido_id ? (siglasPorId[c.partido_id] || "") : "";
+      return (c.nombre || "").toLowerCase().includes(term) ||
+        sig.toLowerCase().includes(term) ||
+        (c.area_valor || "").toLowerCase().includes(term) ||
+        (c.estado || "").toLowerCase().includes(term);
+    });
+  }
+  if (!cands.length) { cont.innerHTML = `<p class="cand-sin">Sin candidatos para "${escapeHtml(term)}".</p>`; return; }
   const NIVEL_TIT = {
     presidente: "Presidencia",
     diputado: "Diputados (por circuito)",
@@ -4312,10 +4371,19 @@ function initOrganizacion() {
     clearTimeout(debounceTimer); debounceTimer = setTimeout(renderDirigentes, 250);
   });
   document.getElementById("dir-filtro-cargo").addEventListener("change", renderDirigentes);
+  document.getElementById("org-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderOrganigrama, 250);
+  });
 
   document.getElementById("mesa-guardar").addEventListener("click", guardarMesa);
   document.getElementById("mesa-filtro-circuito").addEventListener("change", renderMesas);
   document.getElementById("mesa-filtro-corregimiento").addEventListener("change", renderMesas);
+  document.getElementById("mesa-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderMesas, 250);
+  });
+  document.getElementById("apo-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(() => renderApoderados(apoMesasActuales), 250);
+  });
 }
 
 function cambiarOrgSub(sub) {
@@ -4428,16 +4496,48 @@ function renderOrganigrama() {
     cont.innerHTML = `<li class="cand-sin">Aún no hay dirigentes registrados.</li>`;
     return;
   }
+  const term = (document.getElementById("org-buscar").value || "").trim().toLowerCase();
   const idsExistentes = new Set(DIRIGENTES_CACHE.map(d => d.id));
-  const raices = DIRIGENTES_CACHE.filter(d => !d.reporta_a_id || !idsExistentes.has(d.reporta_a_id));
+  const byId = {}; DIRIGENTES_CACHE.forEach(d => byId[d.id] = d);
+
+  let keep = null, matchIds = null;
+  if (term) {
+    matchIds = new Set(DIRIGENTES_CACHE.filter(d =>
+      (d.nombre || "").toLowerCase().includes(term) || (d.cedula || "").toLowerCase().includes(term)
+    ).map(d => d.id));
+    if (!matchIds.size) {
+      cont.innerHTML = `<li class="cand-sin">Sin dirigentes para "${escapeHtml(term)}".</li>`;
+      return;
+    }
+    keep = new Set();
+    // conserva la cadena de mando hacia arriba de cada coincidencia...
+    matchIds.forEach(id => {
+      let cur = byId[id];
+      while (cur) {
+        keep.add(cur.id);
+        cur = (cur.reporta_a_id && idsExistentes.has(cur.reporta_a_id)) ? byId[cur.reporta_a_id] : null;
+      }
+    });
+    // ...y también a quienes le reportan, para no perder su equipo.
+    const addDesc = (id) => {
+      DIRIGENTES_CACHE.filter(x => x.reporta_a_id === id).forEach(x => {
+        if (!keep.has(x.id)) { keep.add(x.id); addDesc(x.id); }
+      });
+    };
+    [...matchIds].forEach(addDesc);
+  }
+
+  const raices = DIRIGENTES_CACHE.filter(d =>
+    (!d.reporta_a_id || !idsExistentes.has(d.reporta_a_id)) && (!keep || keep.has(d.id)));
   const vistos = new Set();
   const nodoHtml = (d) => {
     if (vistos.has(d.id)) return "";
     vistos.add(d.id);
     const areaTxt = d.nivel === "nacional" ? "Nacional"
       : (d.mesas ? `Mesa ${d.mesas.numero}` : (d.area_valor || "—"));
-    const sub = DIRIGENTES_CACHE.filter(x => x.reporta_a_id === d.id && !vistos.has(x.id));
-    const clase = (!d.reporta_a_id || !idsExistentes.has(d.reporta_a_id)) ? "org-nodo sin-jefe" : "org-nodo";
+    const sub = DIRIGENTES_CACHE.filter(x => x.reporta_a_id === d.id && !vistos.has(x.id) && (!keep || keep.has(x.id)));
+    let clase = (!d.reporta_a_id || !idsExistentes.has(d.reporta_a_id)) ? "org-nodo sin-jefe" : "org-nodo";
+    if (matchIds && matchIds.has(d.id)) clase += " match";
     let html = `<li><span class="${clase}"><span class="n">${escapeHtml(d.nombre)}</span>` +
       `<br><span class="m">${escapeHtml(CARGO_LABEL[d.cargo] || d.cargo)} · ${escapeHtml(areaTxt)}</span></span>`;
     if (sub.length) html += "<ul>" + sub.map(nodoHtml).join("") + "</ul>";
@@ -4675,9 +4775,12 @@ function renderMesas() {
   const stats = document.getElementById("mesa-stats");
   const fCirc = document.getElementById("mesa-filtro-circuito").value;
   const fCorr = document.getElementById("mesa-filtro-corregimiento").value;
+  const term = (document.getElementById("mesa-buscar").value || "").trim().toLowerCase();
   let filas = MESA_CAT.slice();
   if (fCirc) filas = filas.filter(m => m.circuito_codigo === fCirc);
   if (fCorr) filas = filas.filter(m => m.corregimiento === fCorr);
+  if (term) filas = filas.filter(m =>
+    (m.numero || "").toLowerCase().includes(term) || (m.centro_nombre || "").toLowerCase().includes(term));
   if (!filas.length) {
     body.innerHTML = `<tr><td colspan="6" class="cand-sin">Sin mesas para ese filtro.</td></tr>`;
     stats.textContent = "";
@@ -4724,7 +4827,7 @@ async function guardarMesa() {
 }
 
 // ---------- APODERADOS DE MESA Y TESTIGOS ----------
-let APO_CACHE = [], apoEditId = null, apoAmbito = null;
+let APO_CACHE = [], apoEditId = null, apoAmbito = null, apoMesasActuales = [];
 const APO_FUN_LABEL = { principal: "Principal", suplente: "Suplente", testigo: "Testigo" };
 const CRED_LABEL = { pendiente: "Sin credencial", en_tramite: "Credencial en trámite", entregada: "Credencial entregada", rechazada: "Credencial rechazada" };
 const CAP_LABEL = { pendiente: "Sin capacitar", programada: "Capacitación programada", completada: "Capacitado" };
@@ -4797,6 +4900,7 @@ async function cargarApoderados() {
   APO_CACHE = (data || []).map(a => ({ ...a, _mesa: mesas.find(m => m.id === a.mesa_id) }));
   const esAdmin = perfilActual && perfilActual.rol === "admin";
   document.getElementById("apo-form-card").classList.toggle("hidden", ES_ACTIVISTA);
+  apoMesasActuales = mesas;
   renderApoderados(mesas);
 }
 
@@ -4824,8 +4928,17 @@ function renderApoderados(mesas) {
   const cont = document.getElementById("apo-lista");
   const esAdmin = perfilActual && perfilActual.rol === "admin";
   if (!mesas.length) { cont.innerHTML = `<p class="cand-sin">No hay mesas en este ámbito. Cárgalas primero en "Catálogo de mesas".</p>`; return; }
+  const term = (document.getElementById("apo-buscar").value || "").trim().toLowerCase();
+  let filasMesas = mesas;
+  if (term) {
+    filasMesas = mesas.filter(m =>
+      (m.numero || "").toLowerCase().includes(term) ||
+      APO_CACHE.some(a => a.mesa_id === m.id &&
+        ((a.nombre || "").toLowerCase().includes(term) || (a.cedula || "").toLowerCase().includes(term))));
+    if (!filasMesas.length) { cont.innerHTML = `<p class="cand-sin">Sin resultados para "${escapeHtml(term)}".</p>`; return; }
+  }
   cont.innerHTML = "";
-  mesas.sort((a, b) => (a.numero || "").localeCompare(b.numero || "", "es", { numeric: true })).forEach(m => {
+  filasMesas.slice().sort((a, b) => (a.numero || "").localeCompare(b.numero || "", "es", { numeric: true })).forEach(m => {
     const gente = APO_CACHE.filter(a => a.mesa_id === m.id);
     const principal = gente.find(a => a.funcion === "principal");
     const suplentes = gente.filter(a => a.funcion === "suplente").sort((x, y) => (x.orden || 99) - (y.orden || 99));
@@ -4967,10 +5080,22 @@ function initDiae() {
   });
   document.getElementById("inc-guardar").addEventListener("click", guardarIncidencia);
   document.getElementById("inc-filtro-estado").addEventListener("change", renderIncidencias);
+  document.getElementById("inc-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderIncidencias, 250);
+  });
+  document.getElementById("em-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderEstadoMesas, 250);
+  });
   document.getElementById("tra-guardar").addEventListener("click", guardarTransporte);
   document.getElementById("tra-cancelar").addEventListener("click", resetFormTra);
+  document.getElementById("tra-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderTransporte, 250);
+  });
   document.getElementById("ins-guardar").addEventListener("click", guardarInsumo);
   document.getElementById("ins-cancelar").addEventListener("click", resetFormIns);
+  document.getElementById("ins-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderInsumos, 250);
+  });
 }
 
 // Selector de área genérico reutilizable por prefijo (comparte lógica con recursos).
@@ -5096,8 +5221,13 @@ async function cargarIncidencias() {
 function renderIncidencias() {
   const cont = document.getElementById("inc-lista");
   const f = document.getElementById("inc-filtro-estado").value;
+  const term = (document.getElementById("inc-buscar").value || "").trim().toLowerCase();
   let filas = INC_CACHE.slice();
   if (f) filas = filas.filter(i => i.estado === f);
+  if (term) filas = filas.filter(i =>
+    (i.descripcion || "").toLowerCase().includes(term) ||
+    (i.corregimiento || "").toLowerCase().includes(term) ||
+    (i.mesas && i.mesas.numero || "").toLowerCase().includes(term));
   if (!filas.length) { cont.innerHTML = `<p class="cand-sin">Sin incidencias para ese filtro.</p>`; return; }
   cont.innerHTML = filas.map(i => {
     const mesa = i.mesas ? `Mesa ${escapeHtml(i.mesas.numero)}` : (i.corregimiento ? escapeHtml(i.corregimiento) : "");
@@ -5166,9 +5296,13 @@ async function cargarEstadoMesas() {
 function renderEstadoMesas() {
   const cont = document.getElementById("em-lista");
   if (!DIAE_MESAS.length) { cont.innerHTML = `<p class="cand-sin">No hay mesas en este ámbito.</p>`; return; }
+  const term = (document.getElementById("em-buscar").value || "").trim().toLowerCase();
+  let mesasFiltradas = DIAE_MESAS;
+  if (term) mesasFiltradas = mesasFiltradas.filter(m => (m.numero || "").toLowerCase().includes(term));
+  if (!mesasFiltradas.length) { cont.innerHTML = `<p class="cand-sin">Sin mesas para "${escapeHtml(term)}".</p>`; return; }
   const byId = {}; EM_CACHE.forEach(e => byId[e.mesa_id] = e);
   cont.innerHTML = "";
-  DIAE_MESAS.slice().sort((a, b) => (a.numero || "").localeCompare(b.numero || "", "es", { numeric: true })).forEach(m => {
+  mesasFiltradas.slice().sort((a, b) => (a.numero || "").localeCompare(b.numero || "", "es", { numeric: true })).forEach(m => {
     const e = byId[m.id] || {};
     const div = document.createElement("div");
     div.className = "em-fila";
@@ -5210,7 +5344,15 @@ async function cargarTransporte() {
 function renderTransporte() {
   const cont = document.getElementById("tra-lista");
   if (!TRA_CACHE.length) { cont.innerHTML = `<p class="cand-sin">Sin vehículos registrados.</p>`; return; }
-  cont.innerHTML = TRA_CACHE.map(t => {
+  const term = (document.getElementById("tra-buscar").value || "").trim().toLowerCase();
+  let filas = TRA_CACHE;
+  if (term) filas = filas.filter(t =>
+    (t.descripcion || "").toLowerCase().includes(term) ||
+    (t.placa || "").toLowerCase().includes(term) ||
+    (t.conductor_nombre || "").toLowerCase().includes(term) ||
+    (t.punto_encuentro || "").toLowerCase().includes(term));
+  if (!filas.length) { cont.innerHTML = `<p class="cand-sin">Sin vehículos para "${escapeHtml(term)}".</p>`; return; }
+  cont.innerHTML = filas.map(t => {
     const dest = t.mesas ? `Mesa ${escapeHtml(t.mesas.numero)}` : (t.corregimiento ? escapeHtml(t.corregimiento) : "");
     const wa = t.conductor_telefono ? ` <a href="${waLink(t.conductor_telefono)}" target="_blank" rel="noopener">💬</a>` : "";
     const next = t.estado === "planificado" ? "en_ruta" : t.estado === "en_ruta" ? "completado" : null;
@@ -5296,7 +5438,14 @@ async function cargarInsumos() {
 function renderInsumos() {
   const cont = document.getElementById("ins-lista");
   if (!INS_CACHE.length) { cont.innerHTML = `<p class="cand-sin">Sin insumos registrados.</p>`; return; }
-  cont.innerHTML = INS_CACHE.map(s => {
+  const term = (document.getElementById("ins-buscar").value || "").trim().toLowerCase();
+  let filas = INS_CACHE;
+  if (term) filas = filas.filter(s =>
+    (INS_ITEM_LABEL[s.item] || s.item || "").toLowerCase().includes(term) ||
+    (s.descripcion || "").toLowerCase().includes(term) ||
+    (s.responsable || "").toLowerCase().includes(term));
+  if (!filas.length) { cont.innerHTML = `<p class="cand-sin">Sin insumos para "${escapeHtml(term)}".</p>`; return; }
+  cont.innerHTML = filas.map(s => {
     const dest = s.mesas ? `Mesa ${escapeHtml(s.mesas.numero)}` : (s.corregimiento ? escapeHtml(s.corregimiento) : "");
     return `<div class="rec-card"><div class="rec-main">
       <div class="rec-t">${escapeHtml(INS_ITEM_LABEL[s.item] || s.item)}${s.descripcion ? " · " + escapeHtml(s.descripcion) : ""}${s.cantidad ? " (" + s.cantidad + ")" : ""}
@@ -5567,6 +5716,9 @@ function initReportes() {
   document.getElementById("rep-guardar").addEventListener("click", guardarMiReporte);
   document.getElementById("rep-cons-calcular").addEventListener("click", cargarConsolidado);
   document.getElementById("rep-cons-pdf").addEventListener("click", exportarConsolidadoPDF);
+  document.getElementById("rep-cons-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderConsolidado, 250);
+  });
 }
 
 async function cargarPanelReportes() {
@@ -5659,6 +5811,16 @@ async function cargarConsolidado() {
     return;
   }
   consolidadoActual = { ...data, desde, hasta };
+  document.getElementById("rep-cons-buscar-wrap").style.display = (data.por_persona || []).length ? "" : "none";
+  renderConsolidado();
+}
+
+function renderConsolidado() {
+  const cont = document.getElementById("rep-cons-resultado");
+  if (!consolidadoActual) return;
+  const data = consolidadoActual;
+  const hasta = data.hasta;
+  const term = (document.getElementById("rep-cons-buscar").value || "").trim().toLowerCase();
   const t = data.totales || {};
   const kpi = (n, l) => `<div class="rep-kpi"><div class="n">${Number(n || 0).toLocaleString("es-PA")}</div><div class="l">${l}</div></div>`;
   let html = `<div class="rep-totales">
@@ -5666,8 +5828,11 @@ async function cargarConsolidado() {
     ${kpi(t.afiliados_nuevos, "Afiliados nuevos")}${kpi(t.incidencias, "Incidencias")}${kpi(t.eventos, "Eventos")}
   </div>`;
 
-  const pp = data.por_persona || [];
-  if (pp.length) {
+  const ppTodo = data.por_persona || [];
+  const pp = term ? ppTodo.filter(p => (p.nombre || "").toLowerCase().includes(term)) : ppTodo;
+  if (ppTodo.length && !pp.length) {
+    html += `<p class="cand-sin">Sin resultados para "${escapeHtml(term)}".</p>`;
+  } else if (pp.length) {
     html += `<div style="overflow:auto;"><table class="rep-tabla"><thead><tr>
       <th>Persona</th><th>Nivel</th><th>Reportes</th><th>Último</th>
       <th>Contactos</th><th>Afil.</th><th>Incid.</th><th>Eventos</th><th>Último avance</th>
@@ -5694,7 +5859,7 @@ async function cargarConsolidado() {
     : `<div class="rep-sinreportar ok">Todo tu equipo reportó el ${fechaCorta(hasta)}.</div>`;
 
   cont.innerHTML = html;
-  document.getElementById("rep-cons-pdf").style.display = pp.length ? "" : "none";
+  document.getElementById("rep-cons-pdf").style.display = ppTodo.length ? "" : "none";
 }
 
 function exportarConsolidadoPDF() {
@@ -5817,14 +5982,23 @@ function initRecursos() {
   });
   document.getElementById("inv-guardar").addEventListener("click", guardarInventario);
   document.getElementById("inv-cancelar").addEventListener("click", resetFormInv);
+  document.getElementById("inv-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderInventario, 250);
+  });
   document.getElementById("gas-guardar").addEventListener("click", guardarGasto);
   document.getElementById("gas-cancelar").addEventListener("click", resetFormGas);
   document.getElementById("gas-filtro-estado").addEventListener("change", renderGastos);
+  document.getElementById("gas-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderGastos, 250);
+  });
   document.getElementById("gas-exportar").addEventListener("click", exportarGastos);
   document.getElementById("eve-guardar").addEventListener("click", guardarEvento);
   document.getElementById("eve-cancelar").addEventListener("click", resetFormEve);
   document.getElementById("eve-permiso-req").addEventListener("change", togglePermisoUI);
   document.getElementById("eve-fecha").addEventListener("change", checkVedaEvento);
+  document.getElementById("eve-buscar").addEventListener("input", () => {
+    clearTimeout(debounceTimer); debounceTimer = setTimeout(renderEventos, 250);
+  });
 }
 
 function cambiarRecSub(sub) {
@@ -5921,7 +6095,15 @@ async function cargarInventario() {
 function renderInventario() {
   const cont = document.getElementById("inv-lista");
   if (!INV_CACHE.length) { cont.innerHTML = `<p class="cand-sin">Aún no hay material registrado.</p>`; return; }
-  cont.innerHTML = INV_CACHE.map(r => {
+  const term = (document.getElementById("inv-buscar").value || "").trim().toLowerCase();
+  let filas = INV_CACHE;
+  if (term) filas = filas.filter(r =>
+    (r.item || "").toLowerCase().includes(term) ||
+    (r.responsable_custodia || "").toLowerCase().includes(term) ||
+    (r.ubicacion_fisica || "").toLowerCase().includes(term) ||
+    (r.comite || "").toLowerCase().includes(term));
+  if (!filas.length) { cont.innerHTML = `<p class="cand-sin">Sin material para "${escapeHtml(term)}".</p>`; return; }
+  cont.innerHTML = filas.map(r => {
     const area = r.nivel ? `${r.nivel}: ${escapeHtml(r.area_valor || "—")}` : "General";
     const resp = r.responsable_custodia ? ` · Custodia: ${escapeHtml(r.responsable_custodia)}${r.responsable_cedula ? " (" + escapeHtml(r.responsable_cedula) + ")" : ""}` : "";
     return `<div class="rec-card"><div class="rec-main">
@@ -5999,10 +6181,13 @@ function renderGastos() {
   const cont = document.getElementById("gas-lista");
   const stats = document.getElementById("gas-stats");
   const f = document.getElementById("gas-filtro-estado").value;
+  const term = (document.getElementById("gas-buscar").value || "").trim().toLowerCase();
   const esAdmin = perfilActual && perfilActual.rol === "admin";
   let filas = GAS_CACHE.slice();
   if (f === "pendiente") filas = filas.filter(g => !g.conciliado);
   if (f === "conciliado") filas = filas.filter(g => g.conciliado);
+  if (term) filas = filas.filter(g =>
+    (g.concepto || "").toLowerCase().includes(term) || (g.pagado_por || "").toLowerCase().includes(term));
   const tot = filas.reduce((s, g) => s + Number(g.monto), 0);
   const conc = filas.filter(g => g.conciliado).reduce((s, g) => s + Number(g.monto), 0);
   stats.textContent = `${filas.length} gasto(s) · ${fmtB(tot)} total · ${fmtB(conc)} conciliado · ${fmtB(tot - conc)} pendiente`;
@@ -6134,8 +6319,16 @@ async function cargarEventos() {
 function renderEventos() {
   const cont = document.getElementById("eve-lista");
   if (!EVE_CACHE.length) { cont.innerHTML = `<p class="cand-sin">Aún no hay eventos registrados.</p>`; return; }
+  const term = (document.getElementById("eve-buscar").value || "").trim().toLowerCase();
+  let filas = EVE_CACHE;
+  if (term) filas = filas.filter(e =>
+    (e.titulo || "").toLowerCase().includes(term) ||
+    (e.lugar_texto || "").toLowerCase().includes(term) ||
+    (e.responsable || "").toLowerCase().includes(term) ||
+    (e.corregimiento || "").toLowerCase().includes(term));
+  if (!filas.length) { cont.innerHTML = `<p class="cand-sin">Sin eventos para "${escapeHtml(term)}".</p>`; return; }
   const hoy = fechaHoyLocal();
-  cont.innerHTML = EVE_CACHE.map(e => {
+  cont.innerHTML = filas.map(e => {
     const prox = (e.fecha_fin || e.fecha_inicio) >= hoy;
     const area = e.nivel ? `${e.nivel}: ${escapeHtml(e.area_valor || "—")}` : (e.corregimiento ? escapeHtml(e.corregimiento) : "General");
     const perm = e.permiso_requerido

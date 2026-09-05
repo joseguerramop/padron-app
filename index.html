@@ -828,6 +828,15 @@
   #cnt-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; }
   #cnt-chips .hint { width: 100%; margin: 0 0 4px; }
 
+  /* ---- Jurado de mesa (app móvil de una sola mesa) ---- */
+  #vista-jurado { max-width: 560px; margin: 0 auto; }
+  .jur-card {
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 12px; text-align: center;
+  }
+  .jur-card h2 { margin: 0 0 6px; font-size: 1.1rem; color: var(--azul); }
+  #jur-mesa-select { width: 100%; padding: 8px 10px; border: 1px solid var(--borde); border-radius: 7px; font-size: 0.9rem; }
+
   /* ---- Calendario electoral + veda ---- */
   .veda-banner {
     background: repeating-linear-gradient(45deg, #b91c1c, #b91c1c 12px, #a31313 12px, #a31313 24px);
@@ -914,10 +923,10 @@
   .badge-permiso-negado { background: #fdecea; color: var(--error); }
   .rec-doc-link { font-size: 0.8rem; color: var(--azul-claro); cursor: pointer; text-decoration: underline; }
 
-  /* ---- Modo activista (app móvil de campo) ---- */
-  body.activista .tabs { display: none; }
-  body.activista #tab-admin-btn { display: none !important; }
-  body.activista main {
+  /* ---- Modo activista (app móvil de campo) / jurado de mesa ---- */
+  body.activista .tabs, body.jurado .tabs { display: none; }
+  body.activista #tab-admin-btn, body.jurado #tab-admin-btn { display: none !important; }
+  body.activista main, body.jurado main {
     max-width: 560px;
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
     padding-left: calc(16px + env(safe-area-inset-left));
@@ -1756,6 +1765,11 @@
             <div class="admin-field"><label>Mesa</label><select id="cnt-mesa"><option value="">— Elige una mesa —</option></select></div>
           </div>
           <div class="admin-grid" id="cnt-form-candidatos" style="margin-top:10px;"></div>
+          <div class="admin-field" id="cnt-acta-wrap" style="display:none;margin-top:10px;">
+            <label>Foto del acta firmada</label>
+            <div class="hint" id="cnt-acta-actual"></div>
+            <input type="file" accept="image/*" capture="environment" id="cnt-acta-file" />
+          </div>
           <div class="admin-actions">
             <button class="btn-primary" id="cnt-guardar">Guardar resultados</button>
             <span class="admin-msg" id="cnt-msg"></span>
@@ -2085,6 +2099,32 @@
 
       <button id="act-nueva-persona" class="act-fab">＋ Registrar persona nueva</button>
     </div>
+
+    <!-- ===== VISTA: JURADO DE MESA (app móvil restringida a UNA mesa) ===== -->
+    <div id="vista-jurado" class="hidden">
+      <div class="jur-card">
+        <h2 id="jur-mesa-titulo">Cargando tu mesa…</h2>
+        <select id="jur-mesa-select" class="hidden"></select>
+      </div>
+      <div class="org-subtabs" id="jur-cargos">
+        <button class="org-subtab activo" data-cargo="presidente">Presidente</button>
+        <button class="org-subtab" data-cargo="diputado">Diputado</button>
+        <button class="org-subtab" data-cargo="alcalde">Alcalde</button>
+        <button class="org-subtab" data-cargo="representante">Representante</button>
+      </div>
+      <div class="admin-card">
+        <div class="admin-grid" id="jur-form-candidatos"></div>
+        <div class="admin-field" style="margin-top:10px;">
+          <label>Foto del acta firmada</label>
+          <div class="hint" id="jur-acta-actual"></div>
+          <input type="file" accept="image/*" capture="environment" id="jur-acta-file" />
+        </div>
+        <div class="admin-actions">
+          <button class="btn-primary" id="jur-guardar">Guardar resultados</button>
+          <span class="admin-msg" id="jur-msg"></span>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -2234,6 +2274,7 @@ let paginaActual = 0;
 let perfilActual = null; // { rol, nombre, es_demo }
 let ES_DEMO = false;     // sesión de cuenta demo → datos ficticios
 let ES_ACTIVISTA = false; // rol activista → app móvil restringida de captura
+let ES_JURADO = false;    // rol jurado_mesa → app móvil restringida a UNA mesa exacta
 let PUEDE_EXPORTAR = false; // admin o colaborador habilitado por un admin → botones de exportar
 let debounceTimer = null;
 let PARTIDOS_CACHE = []; // [{ id, siglas, nombre }] del catálogo visible (según es_demo)
@@ -2279,6 +2320,7 @@ const ROL_LABEL = {
   representante: "Representante",
   secretaria_organizacion: "Secretaría organización",
   activista: "Activista",
+  jurado_mesa: "Jurado de mesa",
 };
 
 const CLASIF_LABEL = {
@@ -2337,6 +2379,7 @@ sb.auth.onAuthStateChange((_event, session) => {
     INC_CACHE = []; TRA_CACHE = []; INS_CACHE = []; EM_CACHE = []; DIAE_MESAS = [];
     traEditId = null; insEditId = null; diaeAmbito = null; diaeSubActual = "tablero";
     cntSubArea = null; cntMesaResultado = null;
+    jurMesas = []; jurMesaActual = null; jurCargoActual = "presidente"; jurResumenActual = null;
     clearTimeout(diaeAutoTimer);
     const da = document.getElementById("diae-auto"); if (da) da.checked = false;
     const selCorr = document.getElementById("filtro-corregimiento");
@@ -2368,6 +2411,7 @@ async function cargarPerfil(uid) {
     perfilActual = data;
     ES_DEMO = !!data.es_demo;
     ES_ACTIVISTA = data.rol === "activista";
+    ES_JURADO = data.rol === "jurado_mesa";
     PUEDE_EXPORTAR = data.rol === "admin" || !!data.puede_exportar;
     badge.textContent = ROL_LABEL[data.rol] || data.rol;
     badge.classList.remove("hidden");
@@ -2375,6 +2419,7 @@ async function cargarPerfil(uid) {
   } else {
     ES_DEMO = false;
     ES_ACTIVISTA = false;
+    ES_JURADO = false;
     PUEDE_EXPORTAR = false;
     badge.classList.add("hidden");
     btnAdmin.classList.add("hidden");
@@ -2412,6 +2457,13 @@ async function inicializarApp() {
   if (ES_ACTIVISTA) {
     await initActivista();
     cambiarTab("activista");
+    return;
+  }
+
+  // Modo jurado de mesa: app móvil restringida a UNA mesa exacta.
+  if (ES_JURADO) {
+    await initVistaJurado();
+    cambiarTab("jurado");
     return;
   }
 
@@ -2459,7 +2511,7 @@ function cambiarTab(tab) {
     buscar: "vista-buscar", mapa: "vista-mapa", admin: "vista-admin",
     candidatos: "vista-candidatos", organizacion: "vista-organizacion",
     reportes: "vista-reportes", recursos: "vista-recursos", diae: "vista-diae",
-    calendario: "vista-calendario", activista: "vista-activista",
+    calendario: "vista-calendario", activista: "vista-activista", jurado: "vista-jurado",
   };
   const botones = { buscar: "tab-buscar-btn", mapa: "tab-mapa-btn", candidatos: "tab-candidatos-btn",
     organizacion: "tab-organizacion-btn", reportes: "tab-reportes-btn", recursos: "tab-recursos-btn",
@@ -2496,6 +2548,7 @@ function cambiarTab(tab) {
 // Muestra/oculta secciones según el rol del usuario.
 function aplicarPermisosUI() {
   document.body.classList.toggle("activista", ES_ACTIVISTA);
+  document.body.classList.toggle("jurado", ES_JURADO);
   const esAdmin = perfilActual && perfilActual.rol === "admin";
   const btnCand = document.getElementById("tab-candidatos-btn");
   if (btnCand) btnCand.classList.toggle("hidden", ES_ACTIVISTA);
@@ -5019,9 +5072,12 @@ function filaApo(a, esAdmin) {
   const cap = `<span class="badge badge-cap-${a.capacitacion_estado}">${CAP_LABEL[a.capacitacion_estado]}</span>`;
   const capDoc = a.capacitacion_evidencia_path ? ` <span class="rec-doc-link" data-doc="${escapeHtml(a.capacitacion_evidencia_path)}">constancia ↗</span>` : "";
   const wa = a.telefono ? ` · <a href="${waLink(a.telefono)}" target="_blank" rel="noopener">💬</a>` : "";
+  const acceso = a.user_id
+    ? `<span class="badge badge-conciliado">🔑 acceso creado</span>`
+    : (esAdmin ? `<button class="mini-btn" data-crear-acceso="${a.id}">🔑 Crear acceso</button>` : "");
   f.innerHTML = `<span class="fn">${fnTxt}</span>
     <span class="nom">${escapeHtml(a.nombre)}${a.cedula ? " · " + escapeHtml(a.cedula) : ""}${wa}</span>
-    <span>${cred} ${cap}${capDoc}</span>`;
+    <span>${cred} ${cap}${capDoc} ${acceso}</span>`;
   if (esAdmin || !ES_ACTIVISTA) {
     const acc = document.createElement("span");
     acc.className = "acc";
@@ -5032,6 +5088,7 @@ function filaApo(a, esAdmin) {
     acc.append(be, bd);
     f.appendChild(acc);
   }
+  f.querySelectorAll("[data-crear-acceso]").forEach(b => b.addEventListener("click", () => crearAccesoJurado(a)));
   f.querySelectorAll("[data-doc]").forEach(b => b.addEventListener("click", () => verDocRec(b.dataset.doc)));
   return f;
 }
@@ -5108,6 +5165,31 @@ async function eliminarApoderado(a) {
   const { error } = await sb.from("apoderados_mesa").delete().eq("id", a.id);
   if (error) { alert(error.message); return; }
   cargarApoderados();
+}
+
+// Crea una cuenta de acceso "jurado_mesa" ligada a ESTA mesa exacta (sin área geográfica:
+// su permiso de escritura viene de apoderados_mesa.user_id, vía soy_jurado_de_mesa()).
+async function crearAccesoJurado(a) {
+  if (ES_DEMO) { alert("En el modo demo no se crean cuentas. El conteo de mesas demo ya se reporta como admin."); return; }
+  const email = (prompt(`Correo para la cuenta de acceso de ${a.nombre} (jurado de mesa):`, a.correo || "") || "").trim().toLowerCase();
+  if (!email) return;
+  try {
+    const { data: sess } = await sb.auth.getSession();
+    const token = sess?.session?.access_token;
+    const resp = await fetch(EDGE_CREAR_USUARIO, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token, "apikey": SUPABASE_KEY },
+      body: JSON.stringify({ email, nombre: a.nombre, rol: "jurado_mesa", areas: [] }),
+    });
+    const out = await resp.json();
+    if (!resp.ok || !out.ok) throw new Error(out.error || "No se pudo crear la cuenta");
+    const { error } = await sb.from("apoderados_mesa").update({ user_id: out.user_id, correo: email }).eq("id", a.id);
+    if (error) throw error;
+    alert(`Cuenta creada para ${a.nombre}.\nCorreo: ${email}\nContraseña temporal: ${out.password_temporal}\n\nCompártela con la persona — no se vuelve a mostrar. Al entrar verá solo la Mesa ${a._mesa ? a._mesa.numero : ""} para reportar resultados.`);
+    cargarApoderados();
+  } catch (e) {
+    alert("No se pudo crear el acceso: " + (e.message || e));
+  }
 }
 
 // ============================================================
@@ -5729,7 +5811,10 @@ async function cargarFormMesaConteo() {
   const cargo = document.getElementById("cnt-cargo").value;
   const mesaId = document.getElementById("cnt-mesa").value;
   const cont = document.getElementById("cnt-form-candidatos");
-  if (!mesaId) { cont.innerHTML = ""; cntMesaResultado = null; return; }
+  const actaWrap = document.getElementById("cnt-acta-wrap");
+  const actaFile = document.getElementById("cnt-acta-file");
+  if (actaFile) actaFile.value = "";
+  if (!mesaId) { cont.innerHTML = ""; cntMesaResultado = null; actaWrap.style.display = "none"; return; }
   const mesa = DIAE_MESAS.find(m => String(m.id) === String(mesaId));
   cont.innerHTML = `<p class="cand-sin">Cargando candidatos…</p>`;
 
@@ -5753,10 +5838,15 @@ async function cargarFormMesaConteo() {
   if (!filtrados.length) {
     cont.innerHTML = `<p class="cand-sin">No hay candidatos registrados para ${escapeHtml((ROL_LABEL[cargo] || cargo).toLowerCase())} en el área de esta mesa${areaValor ? " (" + escapeHtml(areaValor) + ")" : ""}. Regístralos primero en la pestaña Candidatos.</p>`;
     cntMesaResultado = null;
+    actaWrap.style.display = "none";
     return;
   }
 
   cntMesaResultado = resumen || null;
+  actaWrap.style.display = "";
+  document.getElementById("cnt-acta-actual").innerHTML = resumen && resumen.acta_foto_path
+    ? `Ya hay una foto subida. <span class="rec-doc-link" id="cnt-ver-acta">Ver acta ↗</span>` : "Aún no se ha subido la foto del acta.";
+  document.getElementById("cnt-ver-acta")?.addEventListener("click", () => verDocRec(resumen.acta_foto_path));
   const votosPorCand = {};
   (existentesCand || []).forEach(r => { votosPorCand[r.candidato_id] = r.votos; });
 
@@ -5778,10 +5868,25 @@ async function guardarResultadosMesa() {
 
   const btn = document.getElementById("cnt-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
 
+  const archivo = document.getElementById("cnt-acta-file").files[0];
+  let actaPath = cntMesaResultado ? cntMesaResultado.acta_foto_path : null;
+  if (archivo) {
+    msg.textContent = "Comprimiendo y subiendo la foto…";
+    try {
+      const comprimida = await comprimirImagen(archivo);
+      actaPath = await subirDocRec(comprimida, "acta", `${mesaId}_${cargo}`);
+    } catch (e) {
+      msg.innerHTML = `<span class="val-error">No se pudo subir la foto del acta: ${escapeHtml(e.message || e)}</span>`;
+      btn.disabled = false; btn.textContent = "Guardar resultados";
+      return;
+    }
+  }
+
   const resumen = {
     mesa_id: Number(mesaId), cargo,
     votos_nulos: Number(document.getElementById("cnt-nulos").value) || 0,
     votos_blancos: Number(document.getElementById("cnt-blancos").value) || 0,
+    acta_foto_path: actaPath,
     reportado_por: currentUserEmail,
     es_demo: ES_DEMO,
     actualizado_en: new Date().toISOString(),
@@ -5798,6 +5903,146 @@ async function guardarResultadosMesa() {
   if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
   msg.innerHTML = `<span style="color:var(--exito)">Resultados guardados.</span>`;
   if (diaeSubActual === "conteo") cargarResumenConteo();
+}
+
+// ============================================================
+// ============  JURADO DE MESA (app de UNA mesa exacta)  ======
+// ============================================================
+let jurInit = false;
+let jurMesas = [], jurMesaActual = null, jurCargoActual = "presidente", jurResumenActual = null;
+
+async function initVistaJurado() {
+  if (!jurInit) {
+    jurInit = true;
+    document.querySelectorAll("#jur-cargos .org-subtab").forEach(b => b.addEventListener("click", () => {
+      jurCargoActual = b.dataset.cargo;
+      document.querySelectorAll("#jur-cargos .org-subtab").forEach(x => x.classList.toggle("activo", x === b));
+      cargarFormJurado();
+    }));
+    document.getElementById("jur-mesa-select").addEventListener("change", () => {
+      jurMesaActual = jurMesas.find(m => String(m.id) === document.getElementById("jur-mesa-select").value);
+      actualizarTituloJurado();
+      cargarFormJurado();
+    });
+    document.getElementById("jur-guardar").addEventListener("click", guardarResultadosJurado);
+  }
+
+  const titulo = document.getElementById("jur-mesa-titulo");
+  titulo.textContent = "Buscando tu mesa asignada…";
+  const { data, error } = await sb.from("apoderados_mesa")
+    .select("mesa_id, mesas(id, numero, corregimiento, distrito, circuito_codigo, electores_estimados)")
+    .eq("user_id", currentUserId);
+  if (error || !data || !data.length) {
+    titulo.textContent = "Todavía no tienes una mesa asignada. Contacta al administrador.";
+    document.getElementById("jur-mesa-select").classList.add("hidden");
+    document.getElementById("jur-form-candidatos").innerHTML = "";
+    return;
+  }
+  const vistos = new Set();
+  jurMesas = data.filter(r => r.mesas && !vistos.has(r.mesa_id) && (vistos.add(r.mesa_id), true)).map(r => r.mesas);
+
+  const sel = document.getElementById("jur-mesa-select");
+  if (jurMesas.length > 1) {
+    sel.classList.remove("hidden");
+    sel.innerHTML = jurMesas.map(m => `<option value="${m.id}">Mesa ${escapeHtml(m.numero)} · ${escapeHtml(m.corregimiento || "")}</option>`).join("");
+  } else {
+    sel.classList.add("hidden");
+  }
+  jurMesaActual = jurMesas[0];
+  actualizarTituloJurado();
+  await cargarFormJurado();
+}
+
+function actualizarTituloJurado() {
+  const m = jurMesaActual;
+  document.getElementById("jur-mesa-titulo").textContent = m ? `Mesa ${m.numero} · ${m.corregimiento || ""}` : "Sin mesa asignada";
+}
+
+async function cargarFormJurado() {
+  const cont = document.getElementById("jur-form-candidatos");
+  const actaWrap = document.getElementById("jur-acta-actual");
+  const fileInput = document.getElementById("jur-acta-file");
+  fileInput.value = "";
+  if (!jurMesaActual) { cont.innerHTML = ""; actaWrap.textContent = ""; return; }
+  const m = jurMesaActual, cargo = jurCargoActual;
+  cont.innerHTML = `<p class="cand-sin">Cargando candidatos…</p>`;
+
+  const areaValor = cargo === "presidente" ? null
+    : cargo === "diputado" ? m.circuito_codigo
+    : cargo === "alcalde" ? m.distrito
+    : m.corregimiento;
+  const mn = normUbicJS(areaValor || "");
+
+  const [{ data: cands, error }, { data: resumen }, { data: existentesCand }] = await Promise.all([
+    sb.from("candidatos").select("id,nombre,area_valor,partido_id").eq("nivel", cargo),
+    sb.from("conteo_mesa_cargo").select("*").eq("mesa_id", m.id).eq("cargo", cargo).maybeSingle(),
+    sb.from("conteo_candidato_mesa").select("candidato_id,votos").eq("mesa_id", m.id).eq("cargo", cargo),
+  ]);
+  if (error) { cont.innerHTML = `<p class="cand-sin">Error: ${escapeHtml(error.message)}</p>`; return; }
+
+  const filtrados = cargo === "presidente" ? (cands || []) : (cands || []).filter(c => normUbicJS(c.area_valor || "") === mn);
+  jurResumenActual = resumen || null;
+  actaWrap.innerHTML = resumen && resumen.acta_foto_path
+    ? `Ya hay una foto subida. <span class="rec-doc-link" id="jur-ver-acta">Ver acta ↗</span>` : "Aún no se ha subido la foto del acta.";
+  document.getElementById("jur-ver-acta")?.addEventListener("click", () => verDocRec(resumen.acta_foto_path));
+
+  if (!filtrados.length) {
+    cont.innerHTML = `<p class="cand-sin">No hay candidatos registrados para este cargo en tu mesa todavía.</p>`;
+    return;
+  }
+  const votosPorCand = {};
+  (existentesCand || []).forEach(r => { votosPorCand[r.candidato_id] = r.votos; });
+  cont.innerHTML = filtrados.map(c => `
+    <div class="admin-field"><label>${escapeHtml(c.nombre)}</label>
+      <input type="number" min="0" data-cand="${c.id}" value="${votosPorCand[c.id] || 0}" /></div>`).join("") +
+    `<div class="admin-field"><label>Votos nulos</label><input type="number" min="0" id="jur-nulos" value="${resumen ? resumen.votos_nulos : 0}" /></div>
+     <div class="admin-field"><label>Votos en blanco</label><input type="number" min="0" id="jur-blancos" value="${resumen ? resumen.votos_blancos : 0}" /></div>`;
+}
+
+async function guardarResultadosJurado() {
+  const msg = document.getElementById("jur-msg"); msg.textContent = "";
+  if (!jurMesaActual) return;
+  const cont = document.getElementById("jur-form-candidatos");
+  const inputsCand = [...cont.querySelectorAll("[data-cand]")];
+  if (!inputsCand.length) { msg.innerHTML = `<span class="val-error">No hay candidatos para capturar.</span>`; return; }
+  const btn = document.getElementById("jur-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
+  const mesaId = jurMesaActual.id, cargo = jurCargoActual;
+
+  const archivo = document.getElementById("jur-acta-file").files[0];
+  let actaPath = jurResumenActual ? jurResumenActual.acta_foto_path : null;
+  if (archivo) {
+    msg.textContent = "Comprimiendo y subiendo la foto…";
+    try {
+      const comprimida = await comprimirImagen(archivo);
+      actaPath = await subirDocRec(comprimida, "acta", `${mesaId}_${cargo}`);
+    } catch (e) {
+      msg.innerHTML = `<span class="val-error">No se pudo subir la foto: ${escapeHtml(e.message || e)}</span>`;
+      btn.disabled = false; btn.textContent = "Guardar resultados";
+      return;
+    }
+  }
+
+  const resumen = {
+    mesa_id: mesaId, cargo,
+    votos_nulos: Number(document.getElementById("jur-nulos").value) || 0,
+    votos_blancos: Number(document.getElementById("jur-blancos").value) || 0,
+    acta_foto_path: actaPath,
+    reportado_por: currentUserEmail,
+    es_demo: ES_DEMO,
+    actualizado_en: new Date().toISOString(),
+  };
+  let { error } = await sb.from("conteo_mesa_cargo").upsert(resumen, { onConflict: "mesa_id,cargo,es_demo" });
+  if (!error) {
+    const filas = inputsCand.map(inp => ({
+      mesa_id: mesaId, cargo, candidato_id: Number(inp.dataset.cand),
+      votos: Number(inp.value) || 0, es_demo: ES_DEMO, actualizado_en: new Date().toISOString(),
+    }));
+    ({ error } = await sb.from("conteo_candidato_mesa").upsert(filas, { onConflict: "mesa_id,cargo,candidato_id,es_demo" }));
+  }
+  btn.disabled = false; btn.textContent = "Guardar resultados";
+  if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
+  msg.innerHTML = `<span style="color:var(--exito)">Resultados guardados.</span>`;
+  cargarFormJurado();
 }
 
 // ============================================================
@@ -6378,6 +6623,26 @@ async function subirDocRec(file, tipo, id) {
 async function verDocRec(path) {
   const { data } = await sb.storage.from("evidencias").createSignedUrl(path, 3600);
   if (data) window.open(data.signedUrl, "_blank");
+}
+
+// Comprime una foto (ej. acta de escrutinio) a JPEG, máx. maxDim px, antes de subirla —
+// una elección real puede generar miles de fotos y una foto de celular sin comprimir pesa varios MB.
+async function comprimirImagen(file, maxDim = 1600, calidad = 0.62) {
+  let bitmap;
+  try { bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+  catch (e) { bitmap = await createImageBitmap(file); }
+  let { width, height } = bitmap;
+  if (width > maxDim || height > maxDim) {
+    if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+    else { width = Math.round(width * maxDim / height); height = maxDim; }
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width; canvas.height = height;
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
+  if (bitmap.close) bitmap.close();
+  const blob = await new Promise((resolve, reject) =>
+    canvas.toBlob(b => b ? resolve(b) : reject(new Error("No se pudo comprimir la imagen")), "image/jpeg", calidad));
+  return new File([blob], "acta.jpg", { type: "image/jpeg" });
 }
 
 function areaPayload(p) {

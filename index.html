@@ -1204,6 +1204,29 @@
       </div>
 
       <div class="admin-card">
+        <h3>🔑 Cambiar mi contraseña</h3>
+        <p class="hint">Cambia la contraseña de tu propia cuenta (<span id="pw-mi-correo"></span>). Necesitas tu contraseña actual.</p>
+        <div class="admin-grid">
+          <div class="admin-field">
+            <label>Contraseña actual</label>
+            <input type="password" id="pw-actual" autocomplete="current-password" />
+          </div>
+          <div class="admin-field">
+            <label>Nueva contraseña</label>
+            <input type="password" id="pw-nueva" autocomplete="new-password" />
+          </div>
+          <div class="admin-field">
+            <label>Confirmar nueva contraseña</label>
+            <input type="password" id="pw-confirmar" autocomplete="new-password" />
+          </div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn-primary" id="pw-guardar">Cambiar contraseña</button>
+          <span class="admin-msg" id="pw-msg"></span>
+        </div>
+      </div>
+
+      <div class="admin-card">
         <h3>Crear cuenta de colaborador</h3>
         <p class="hint">Se crea la cuenta con una contraseña temporal que deberás compartir con la persona. El acceso queda limitado al área que elijas según el nivel.</p>
         <div class="admin-grid">
@@ -2450,6 +2473,10 @@ async function cargarPerfil(uid) {
   if (avisoAdmin) avisoAdmin.classList.toggle("hidden", !ES_DEMO);
   const btnCrear = document.getElementById("nu-crear");
   if (btnCrear && ES_DEMO) { btnCrear.disabled = true; btnCrear.title = "Deshabilitado en modo demo"; }
+  const miCorreo = document.getElementById("pw-mi-correo");
+  if (miCorreo) miCorreo.textContent = currentUserEmail || "";
+  const btnPw = document.getElementById("pw-guardar");
+  if (btnPw && ES_DEMO) { btnPw.disabled = true; btnPw.title = "Deshabilitado en modo demo"; }
   return true;
 }
 
@@ -7422,6 +7449,7 @@ function initAdmin() {
 
   rolSel.addEventListener("change", () => construirSelectorArea(rolSel.value));
   document.getElementById("nu-crear").addEventListener("click", crearUsuario);
+  document.getElementById("pw-guardar").addEventListener("click", cambiarMiPassword);
 
   document.getElementById("imp-tipo").addEventListener("change", (e) => {
     document.getElementById("imp-partido-wrap").style.display =
@@ -7596,6 +7624,37 @@ async function construirSelectorArea(rol) {
   hint.style.margin = "6px 0 0";
   hint.textContent = "Ctrl/Cmd + clic para elegir varias.";
   wrap.appendChild(hint);
+}
+
+// Cambia la contraseña de la cuenta que tiene la sesión abierta ahora mismo. Confirma la
+// contraseña actual re-autenticando (signInWithPassword) antes de aplicar la nueva.
+async function cambiarMiPassword() {
+  const actual = document.getElementById("pw-actual").value;
+  const nueva = document.getElementById("pw-nueva").value;
+  const confirmar = document.getElementById("pw-confirmar").value;
+  const msg = document.getElementById("pw-msg"); msg.textContent = "";
+
+  if (ES_DEMO) { msg.innerHTML = `<span class="val-error">En el modo demo no se puede cambiar la contraseña (es compartida para las cuentas de ejemplo).</span>`; return; }
+  if (!actual || !nueva || !confirmar) { msg.innerHTML = `<span class="val-error">Completa los 3 campos.</span>`; return; }
+  if (nueva.length < 6) { msg.innerHTML = `<span class="val-error">La nueva contraseña debe tener al menos 6 caracteres.</span>`; return; }
+  if (nueva !== confirmar) { msg.innerHTML = `<span class="val-error">La nueva contraseña y su confirmación no coinciden.</span>`; return; }
+  if (nueva === actual) { msg.innerHTML = `<span class="val-error">La nueva contraseña debe ser distinta de la actual.</span>`; return; }
+
+  const btn = document.getElementById("pw-guardar"); btn.disabled = true; btn.textContent = "Verificando…";
+  const { error: errActual } = await sb.auth.signInWithPassword({ email: currentUserEmail, password: actual });
+  if (errActual) {
+    btn.disabled = false; btn.textContent = "Cambiar contraseña";
+    msg.innerHTML = `<span class="val-error">La contraseña actual no es correcta.</span>`;
+    return;
+  }
+  btn.textContent = "Cambiando…";
+  const { error: errNueva } = await sb.auth.updateUser({ password: nueva });
+  btn.disabled = false; btn.textContent = "Cambiar contraseña";
+  if (errNueva) { msg.innerHTML = `<span class="val-error">${escapeHtml(errNueva.message)}</span>`; return; }
+  document.getElementById("pw-actual").value = "";
+  document.getElementById("pw-nueva").value = "";
+  document.getElementById("pw-confirmar").value = "";
+  msg.innerHTML = `<span style="color:var(--exito)">Contraseña actualizada.</span>`;
 }
 
 async function crearUsuario() {

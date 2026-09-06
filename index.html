@@ -940,7 +940,7 @@
 
   /* ---- Modo activista (app móvil de campo) / jurado de mesa ---- */
   .app-reload-btn {
-    display: none; position: fixed; z-index: 40;
+    display: none; position: fixed; z-index: 45;
     top: calc(10px + env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right));
     width: 42px; height: 42px; align-items: center; justify-content: center;
     border-radius: 50%; border: 1px solid var(--borde); background: var(--tarjeta); color: var(--azul);
@@ -5959,17 +5959,22 @@ function renderResumenConteo(cont, amb, cargo, d, actas) {
   const padron = d.padron_total || 0;
   const nulos = d.votos_nulos || 0, blancos = d.votos_blancos || 0, validos = d.votos_validos || 0;
   const emitidos = d.votos_emitidos || 0;
-  const participacion = padron > 0 ? (emitidos / padron * 100) : 0;
+  const reportados = d.votantes_reportados || 0;
+  const difieren = reportados > 0 && reportados !== emitidos;
+  const participacion = padron > 0 ? ((reportados || emitidos) / padron * 100) : 0;
   const kpi = (n, l, cls) => `<div class="rep-kpi"><div class="n ${cls || ""}">${n}</div><div class="l">${l}</div></div>`;
   let html = `<div class="diae-panel"><h4>🗳️ ${escapeHtml(ROL_LABEL[cargo] || cargo)} — ${escapeHtml(tituloAmbitoConteo(amb))}</h4>
     <div class="rep-totales">
       ${kpi(mesasRep + "/" + mesasTotal, "Mesas reportadas", mesasTotal > 0 && mesasRep === mesasTotal ? "sem-ok" : "sem-warn")}
       ${kpi(padron.toLocaleString("es-PA"), "Padrón del área")}
-      ${kpi(emitidos.toLocaleString("es-PA"), "Votos emitidos")}
+      ${kpi(reportados.toLocaleString("es-PA"), "Sufragantes reportados", difieren ? "sem-warn" : "")}
+      ${kpi(emitidos.toLocaleString("es-PA"), "Votos emitidos (calculado)")}
       ${kpi(participacion.toFixed(1) + "%", "Participación")}
       ${kpi(nulos.toLocaleString("es-PA"), "Votos nulos")}
       ${kpi(blancos.toLocaleString("es-PA"), "Votos en blanco")}
-    </div></div>`;
+    </div>
+    ${difieren ? `<p class="cand-sin" style="color:var(--error);">⚠ El total de sufragantes reportados (${reportados.toLocaleString("es-PA")}) no coincide con los votos emitidos calculados (${emitidos.toLocaleString("es-PA")}). Revisa las mesas.</p>` : ""}
+  </div>`;
   const cands = d.candidatos || [];
   if (!cands.length) {
     html += `<p class="cand-sin">Sin resultados reportados todavía para este cargo en esta área.</p>`;
@@ -6060,7 +6065,10 @@ async function cargarFormMesaConteo() {
   const votosPorCand = {};
   (existentesCand || []).forEach(r => { votosPorCand[r.candidato_id] = r.votos; });
 
-  cont.innerHTML = filtrados.map(c => `
+  cont.innerHTML =
+    `<div class="admin-field" style="grid-column:1/-1;"><label>Total de personas que votaron (participación, según el acta)</label>
+      <input type="number" min="0" id="cnt-sufragantes" value="${resumen && resumen.total_sufragantes != null ? resumen.total_sufragantes : ""}" /></div>` +
+    filtrados.map(c => `
     <div class="admin-field"><label>${escapeHtml(c.nombre)}</label>
       <input type="number" min="0" data-cand="${c.id}" value="${votosPorCand[c.id] || 0}" /></div>`).join("") +
     `<div class="admin-field"><label>Votos nulos</label><input type="number" min="0" id="cnt-nulos" value="${resumen ? resumen.votos_nulos : 0}" /></div>
@@ -6110,16 +6118,19 @@ async function guardarResultadosMesa() {
     }
   }
 
+  const sufragantesRaw = document.getElementById("cnt-sufragantes").value;
+  const totalSufragantes = sufragantesRaw === "" ? null : Number(sufragantesRaw);
   const resumen = {
     mesa_id: Number(mesaId), cargo,
     votos_nulos: Number(document.getElementById("cnt-nulos").value) || 0,
     votos_blancos: Number(document.getElementById("cnt-blancos").value) || 0,
+    total_sufragantes: totalSufragantes,
     acta_foto_path: actaPath,
     reportado_por: currentUserEmail,
     es_demo: ES_DEMO,
     actualizado_en: new Date().toISOString(),
   };
-  let { error } = await sb.from("conteo_mesa_cargo").upsert(resumen, { onConflict: "mesa_id,cargo,es_demo" });
+  let { error, migracionFalta } = await upsertConteoMesaCargo(resumen);
   if (!error) {
     const filas = inputsCand.map(inp => ({
       mesa_id: Number(mesaId), cargo, candidato_id: Number(inp.dataset.cand),
@@ -6129,9 +6140,14 @@ async function guardarResultadosMesa() {
   }
   btn.disabled = false; btn.textContent = "Guardar resultados";
   if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
-  msg.innerHTML = avisoActa
-    ? `<span class="val-error">${escapeHtml(avisoActa)}</span> <span style="color:var(--exito)">Los votos sí se guardaron.</span>`
-    : `<span style="color:var(--exito)">Resultados guardados.</span>`;
+  const avisoParticip = migracionFalta
+    ? "No se pudo guardar el total de participación todavía (falta aplicar una actualización del sistema)."
+    : chequeoParticipacion(totalSufragantes, inputsCand, resumen.votos_nulos, resumen.votos_blancos);
+  msg.innerHTML = [
+    avisoActa ? `<span class="val-error">${escapeHtml(avisoActa)}</span>` : "",
+    avisoParticip ? `<span class="val-error">${escapeHtml(avisoParticip)}</span>` : "",
+    (!avisoActa && !avisoParticip) ? `<span style="color:var(--exito)">Resultados guardados.</span>` : `<span style="color:var(--exito)">Los votos sí se guardaron.</span>`,
+  ].filter(Boolean).join(" ");
   cntMesaResultado = resumen;
   document.getElementById("cnt-borrar-reporte").style.display = "";
   if (diaeSubActual === "conteo") cargarResumenConteo();
@@ -6224,7 +6240,10 @@ async function cargarFormJurado() {
   }
   const votosPorCand = {};
   (existentesCand || []).forEach(r => { votosPorCand[r.candidato_id] = r.votos; });
-  cont.innerHTML = filtrados.map(c => `
+  cont.innerHTML =
+    `<div class="admin-field" style="grid-column:1/-1;"><label>Total de personas que votaron (participación, según el acta)</label>
+      <input type="number" min="0" id="jur-sufragantes" value="${resumen && resumen.total_sufragantes != null ? resumen.total_sufragantes : ""}" /></div>` +
+    filtrados.map(c => `
     <div class="admin-field"><label>${escapeHtml(c.nombre)}</label>
       <input type="number" min="0" data-cand="${c.id}" value="${votosPorCand[c.id] || 0}" /></div>`).join("") +
     `<div class="admin-field"><label>Votos nulos</label><input type="number" min="0" id="jur-nulos" value="${resumen ? resumen.votos_nulos : 0}" /></div>
@@ -6251,16 +6270,19 @@ async function guardarResultadosJurado() {
     }
   }
 
+  const sufragantesRaw = document.getElementById("jur-sufragantes").value;
+  const totalSufragantes = sufragantesRaw === "" ? null : Number(sufragantesRaw);
   const resumen = {
     mesa_id: mesaId, cargo,
     votos_nulos: Number(document.getElementById("jur-nulos").value) || 0,
     votos_blancos: Number(document.getElementById("jur-blancos").value) || 0,
+    total_sufragantes: totalSufragantes,
     acta_foto_path: actaPath,
     reportado_por: currentUserEmail,
     es_demo: ES_DEMO,
     actualizado_en: new Date().toISOString(),
   };
-  let { error } = await sb.from("conteo_mesa_cargo").upsert(resumen, { onConflict: "mesa_id,cargo,es_demo" });
+  let { error, migracionFalta } = await upsertConteoMesaCargo(resumen);
   if (!error) {
     const filas = inputsCand.map(inp => ({
       mesa_id: mesaId, cargo, candidato_id: Number(inp.dataset.cand),
@@ -6270,9 +6292,14 @@ async function guardarResultadosJurado() {
   }
   btn.disabled = false; btn.textContent = "Guardar resultados";
   if (error) { msg.innerHTML = `<span class="val-error">${escapeHtml(error.message)}</span>`; return; }
-  msg.innerHTML = avisoActa
-    ? `<span class="val-error">${escapeHtml(avisoActa)}</span> <span style="color:var(--exito)">Los votos sí se guardaron.</span>`
-    : `<span style="color:var(--exito)">Resultados guardados.</span>`;
+  const avisoParticip = migracionFalta
+    ? "No se pudo guardar el total de participación todavía (falta aplicar una actualización del sistema)."
+    : chequeoParticipacion(totalSufragantes, inputsCand, resumen.votos_nulos, resumen.votos_blancos);
+  msg.innerHTML = [
+    avisoActa ? `<span class="val-error">${escapeHtml(avisoActa)}</span>` : "",
+    avisoParticip ? `<span class="val-error">${escapeHtml(avisoParticip)}</span>` : "",
+    (!avisoActa && !avisoParticip) ? `<span style="color:var(--exito)">Resultados guardados.</span>` : `<span style="color:var(--exito)">Los votos sí se guardaron.</span>`,
+  ].filter(Boolean).join(" ");
   cargarFormJurado();
 }
 
@@ -6951,22 +6978,42 @@ async function subirActaConFallback(archivo, mesa, cargo, msgEl) {
   }
 }
 
-// Descarga la foto del acta al dispositivo con su nombre descriptivo (fetch a blob local, no un
-// enlace directo al storage) — así "Ver acta" y "Descargar" quedan como dos acciones distintas.
+// Descarga la foto del acta al dispositivo como PDF de una página (con su nombre descriptivo) —
+// así "Ver acta" (abre la foto tal cual) y "Descargar" (para archivar) quedan como acciones distintas.
 async function descargarActa(path) {
+  let bitmap = null;
   try {
     const { data, error } = await sb.storage.from("evidencias").createSignedUrl(path, 3600);
     if (error || !data) throw error || new Error("No se generó el enlace de descarga.");
     const resp = await fetch(data.signedUrl);
     if (!resp.ok) throw new Error("No se pudo descargar el archivo.");
     const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = path.split("/").pop() || "acta.jpg";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
+
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
+      reader.readAsDataURL(blob);
+    });
+    bitmap = await createImageBitmap(blob);
+    const { width: anchoImg, height: altoImg } = bitmap;
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: altoImg >= anchoImg ? "portrait" : "landscape", unit: "mm", format: "a4" });
+    const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight();
+    const margen = 8;
+    let w = pageW - margen * 2, h = w * altoImg / anchoImg;
+    if (h > pageH - margen * 2) { h = pageH - margen * 2; w = h * anchoImg / altoImg; }
+    const x = (pageW - w) / 2, y = (pageH - h) / 2;
+    const tipoImg = blob.type.includes("png") ? "PNG" : "JPEG";
+    pdf.addImage(dataUrl, tipoImg, x, y, w, h);
+
+    const nombre = (path.split("/").pop() || "acta").replace(/\.[a-z0-9]+$/i, "");
+    pdf.save(`${nombre}.pdf`);
   } catch (e) {
     alert("No se pudo descargar la foto: " + (e.message || e));
+  } finally {
+    if (bitmap && bitmap.close) bitmap.close();
   }
 }
 
@@ -6977,6 +7024,31 @@ async function descargarTodasLasActas(conActa) {
     await descargarActa(x.path);
     await new Promise(r => setTimeout(r, 500));
   }
+}
+
+// Guarda el resumen de la mesa; si la columna total_sufragantes todavía no existe (falta correr
+// la migración de participación), reintenta sin ese campo en vez de bloquear el guardado de votos.
+async function upsertConteoMesaCargo(resumen) {
+  let { error } = await sb.from("conteo_mesa_cargo").upsert(resumen, { onConflict: "mesa_id,cargo,es_demo" });
+  if (error && /total_sufragantes/i.test(error.message || "")) {
+    const { total_sufragantes, ...sinParticipacion } = resumen;
+    const r2 = await sb.from("conteo_mesa_cargo").upsert(sinParticipacion, { onConflict: "mesa_id,cargo,es_demo" });
+    return { error: r2.error, migracionFalta: !r2.error };
+  }
+  return { error, migracionFalta: false };
+}
+
+// Compara el total de personas que votaron (según el acta, capturado a mano) contra la suma de
+// votos por candidato + nulos + blancos que se está guardando — detecta errores de digitación.
+// Devuelve un mensaje de aviso, o "" si coincide (o si no se capturó el total).
+function chequeoParticipacion(totalReportado, inputsCand, nulos, blancos) {
+  if (totalReportado === null || totalReportado === undefined) return "";
+  const validos = inputsCand.reduce((s, inp) => s + (Number(inp.value) || 0), 0);
+  const emitidos = validos + (Number(nulos) || 0) + (Number(blancos) || 0);
+  if (Number(totalReportado) !== emitidos) {
+    return `⚠ El total de personas que votaron (${totalReportado}) no coincide con la suma de votos + nulos + blancos (${emitidos}). Revisa los números.`;
+  }
+  return "";
 }
 
 function areaPayload(p) {

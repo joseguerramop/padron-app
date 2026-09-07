@@ -786,7 +786,7 @@
   .badge-cap-pendiente { background: #f0f1f6; color: var(--texto-suave); }
 
   /* ---- Día E — war room ---- */
-  #vista-diae { max-width: 1080px; }
+  #vista-diae { max-width: 1320px; margin-left: auto; margin-right: auto; }
   .diae-panel {
     background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
     padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -6907,7 +6907,9 @@ async function comprimirImagen(file, maxDim = 1600, calidad = 0.62, sello = null
     const fontSize = Math.max(11, Math.round(width * 0.026));
     ctx.font = `${fontSize}px sans-serif`;
     const alturaBarra = sello.length * (fontSize + 5) + pad * 2 - 5;
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    // Franja casi opaca: sobre una zona clara/blanca de la foto un negro translúcido se ve
+    // gris y el texto blanco encima no se lee.
+    ctx.fillStyle = "rgba(0,0,0,0.82)";
     ctx.fillRect(0, height - alturaBarra, width, alturaBarra);
     ctx.fillStyle = "#ffffff";
     ctx.textBaseline = "top";
@@ -6978,8 +6980,23 @@ async function subirActaConFallback(archivo, mesa, cargo, msgEl) {
   }
 }
 
-// Descarga la foto del acta al dispositivo como PDF de una página (con su nombre descriptivo) —
-// así "Ver acta" (abre la foto tal cual) y "Descargar" (para archivar) quedan como acciones distintas.
+// Reconstruye una etiqueta legible desde el path del acta en Storage. Las rutas nuevas son
+// {demo|real}/acta/Diputado_4-5_Mesa-2103.jpg (nombre descriptivo, ya sin tildes); las viejas
+// eran {demo|real}/acta/{mesa_id}_{cargo}/{uuid}.jpg → ahí se usa la carpeta padre.
+function etiquetaActaDesdePath(path) {
+  const segs = String(path || "").split("/");
+  let base = (segs.pop() || "acta").replace(/\.[a-z0-9]+$/i, "");
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(base)) {
+    base = (segs.pop() || "acta").replace(/_/g, " · ");
+  } else {
+    base = base.replace(/_/g, " · ").replace(/Mesa-/gi, "Mesa ");
+  }
+  return base;
+}
+
+// Descarga la foto del acta al dispositivo como PDF de una página tamaño oficio 11.5" x 14"
+// (el formato en que se archivan las actas), con la foto centrada y estampada al pie.
+// "Ver acta" (abre la foto tal cual) y "Descargar" (para archivar) quedan como acciones distintas.
 async function descargarActa(path) {
   let bitmap = null;
   try {
@@ -6999,14 +7016,36 @@ async function descargarActa(path) {
     const { width: anchoImg, height: altoImg } = bitmap;
 
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation: altoImg >= anchoImg ? "portrait" : "landscape", unit: "mm", format: "a4" });
+    // Tamaño fijo 11.5 x 14 pulgadas (oficio), en vertical u horizontal según la foto.
+    const pdf = new jsPDF({ orientation: altoImg >= anchoImg ? "portrait" : "landscape", unit: "in", format: [11.5, 14] });
     const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight();
-    const margen = 8;
-    let w = pageW - margen * 2, h = w * altoImg / anchoImg;
-    if (h > pageH - margen * 2) { h = pageH - margen * 2; w = h * anchoImg / altoImg; }
-    const x = (pageW - w) / 2, y = (pageH - h) / 2;
+    const margen = 0.3;
+    const franjaSello = 0.55;            // franja blanca reservada al pie para la estampa
+    const areaW = pageW - margen * 2;
+    const areaH = pageH - margen * 2 - franjaSello;
+    let w = areaW, h = w * altoImg / anchoImg;
+    if (h > areaH) { h = areaH; w = h * anchoImg / altoImg; }
+    const x = (pageW - w) / 2, y = margen + (areaH - h) / 2;
     const tipoImg = blob.type.includes("png") ? "PNG" : "JPEG";
     pdf.addImage(dataUrl, tipoImg, x, y, w, h);
+
+    // Estampa SIEMPRE en negro sobre el margen blanco al pie: la foto siempre deja borde
+    // blanco (la franja reservada, más los lados si la proporción no calza), y la foto
+    // misma puede tener zonas claras, así que no se pinta encima de la imagen.
+    const etiqueta = etiquetaActaDesdePath(path);
+    const selloTop = pageH - margen - franjaSello;
+    pdf.setDrawColor(150, 150, 150);
+    pdf.setLineWidth(0.008);
+    pdf.line(margen, selloTop, pageW - margen, selloTop);
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.text(etiqueta, pageW / 2, selloTop + 0.26, { align: "center" });
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.setTextColor(90, 90, 90);
+    pdf.text(`Control de Campaña · acta descargada el ${new Date().toLocaleDateString("es-PA")}`,
+      pageW / 2, selloTop + 0.45, { align: "center" });
 
     const nombre = (path.split("/").pop() || "acta").replace(/\.[a-z0-9]+$/i, "");
     pdf.save(`${nombre}.pdf`);

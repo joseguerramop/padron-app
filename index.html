@@ -2403,24 +2403,124 @@ async function cambiarPasswordObligatorio() {
   inicializarApp();
 }
 
+// ---------- Límite de intentos de inicio de sesión (por navegador) ----------
+// Freno client-side contra fuerza bruta desde el formulario. Supabase Auth ya
+// tiene su propio límite por IP en el servidor; esto lo hace visible y detiene
+// el machaque desde esta pantalla. Tras LOGIN_RL_MAX fallos en la ventana, se
+// bloquea el formulario LOGIN_RL_BLOQUEO_MS con un contador en vivo.
+const LOGIN_RL_KEY = "cc_login_rl";
+const LOGIN_RL_MAX = 5;
+const LOGIN_RL_VENTANA_MS = 15 * 60 * 1000;
+const LOGIN_RL_BLOQUEO_MS = 15 * 60 * 1000;
+let loginRlTimer = null;
+
+function loginRlLeer() {
+  try { return JSON.parse(localStorage.getItem(LOGIN_RL_KEY)) || { fails: [], hasta: 0 }; }
+  catch (_) { return { fails: [], hasta: 0 }; }
+}
+function loginRlGuardar(d) { try { localStorage.setItem(LOGIN_RL_KEY, JSON.stringify(d)); } catch (_) {} }
+function loginRlReset() {
+  try { localStorage.removeItem(LOGIN_RL_KEY); } catch (_) {}
+  clearInterval(loginRlTimer); loginRlTimer = null;
+}
+function loginRlBloqueoRestante() {
+  const d = loginRlLeer();
+  return d.hasta && d.hasta > Date.now() ? d.hasta - Date.now() : 0;
+}
+function loginRlFormato(ms) {
+  const s = Math.ceil(ms / 1000), m = Math.floor(s / 60), r = s % 60;
+  return m > 0 ? (r ? `${m} min ${r} s` : `${m} min`) : `${r} s`;
+}
+function loginRlIntentosRestantes() {
+  const ahora = Date.now(), d = loginRlLeer();
+  const recientes = (d.fails || []).filter(t => ahora - t < LOGIN_RL_VENTANA_MS);
+  return Math.max(0, LOGIN_RL_MAX - recientes.length);
+}
+// Registra un fallo y devuelve true si con este se activó el bloqueo.
+function loginRlRegistrarFallo() {
+  const ahora = Date.now(), d = loginRlLeer();
+  d.fails = (d.fails || []).filter(t => ahora - t < LOGIN_RL_VENTANA_MS);
+  d.fails.push(ahora);
+  if (d.fails.length >= LOGIN_RL_MAX) { d.hasta = ahora + LOGIN_RL_BLOQUEO_MS; d.fails = []; }
+  loginRlGuardar(d);
+  return loginRlBloqueoRestante() > 0;
+}
+// Pinta el aviso de bloqueo con contador en vivo y deshabilita el formulario.
+function loginRlAplicarBloqueo() {
+  const restante = loginRlBloqueoRestante();
+  if (restante <= 0) {
+    clearInterval(loginRlTimer); loginRlTimer = null;
+    authSubmit.disabled = false;
+    authSubmit.textContent = "Entrar";
+    if (authMsg.dataset.rl) { authMsg.innerHTML = ""; delete authMsg.dataset.rl; }
+    return;
+  }
+  authSubmit.disabled = true;
+  authSubmit.textContent = "Entrar";
+  authMsg.dataset.rl = "1";
+  authMsg.innerHTML = `<div class="msg error">Demasiados intentos fallidos. Espera ${loginRlFormato(restante)} antes de volver a intentar.</div>`;
+  if (!loginRlTimer) loginRlTimer = setInterval(loginRlAplicarBloqueo, 1000);
+}
+
+// ---------- Cierre de sesión automático a las 48 h ----------
+// A las 48 h del inicio de sesión se cierra la sesión y hay que volver a entrar,
+// sin importar la actividad. Enforcement client-side (relojo del dispositivo);
+// si el proyecto Supabase tiene "Time-box user sessions", conviene fijarlo también
+// a 172800 s para que el servidor lo imponga.
+const SESION_INICIO_KEY = "cc_sesion_inicio";
+const SESION_MAX_MS = 48 * 60 * 60 * 1000;
+let sesionTimer = null;
+
+function marcarInicioSesion() { try { localStorage.setItem(SESION_INICIO_KEY, String(Date.now())); } catch (_) {} }
+function limpiarInicioSesion() { try { localStorage.removeItem(SESION_INICIO_KEY); } catch (_) {} }
+function sesionInicio() { try { return Number(localStorage.getItem(SESION_INICIO_KEY)) || 0; } catch (_) { return 0; } }
+function sesionVencida() { const t = sesionInicio(); return t > 0 && (Date.now() - t) >= SESION_MAX_MS; }
+
+async function cerrarSesionPorVencimiento() {
+  clearInterval(sesionTimer); sesionTimer = null;
+  limpiarInicioSesion();
+  try { await sb.auth.signOut(); } catch (_) {}
+  authMsg.innerHTML = `<div class="msg error">Tu sesión se cerró automáticamente después de 48 horas. Vuelve a iniciar sesión.</div>`;
+}
+function vigilarVencimientoSesion() {
+  clearInterval(sesionTimer);
+  if (sesionVencida()) { cerrarSesionPorVencimiento(); return; }
+  sesionTimer = setInterval(() => { if (sesionVencida()) cerrarSesionPorVencimiento(); }, 60 * 1000);
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && sesionInicio() > 0 && sesionVencida()) cerrarSesionPorVencimiento();
+});
+
 authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (loginRlBloqueoRestante() > 0) { loginRlAplicarBloqueo(); return; }
   const email = document.getElementById("auth-email").value.trim();
   const password = document.getElementById("auth-password").value;
-  authMsg.innerHTML = "";
+  authMsg.innerHTML = ""; delete authMsg.dataset.rl;
   authSubmit.disabled = true;
   authSubmit.innerHTML = '<span class="spinner"></span>Entrando…';
 
+  let ok = false;
   try {
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    ok = true;
   } catch (err) {
-    authMsg.innerHTML = `<div class="msg error">${err.message}</div>`;
-  } finally {
-    authSubmit.disabled = false;
-    authSubmit.textContent = "Entrar";
+    if (loginRlRegistrarFallo()) {
+      loginRlAplicarBloqueo();
+    } else {
+      const quedan = loginRlIntentosRestantes();
+      const aviso = quedan <= 2 ? ` · Te queda${quedan === 1 ? "" : "n"} ${quedan} intento${quedan === 1 ? "" : "s"} antes de un bloqueo temporal.` : "";
+      authMsg.innerHTML = `<div class="msg error">${err.message}${aviso}</div>`;
+    }
   }
+
+  if (ok) { loginRlReset(); marcarInicioSesion(); }
+  if (loginRlBloqueoRestante() <= 0) { authSubmit.disabled = false; authSubmit.textContent = "Entrar"; }
 });
+
+// Por si el navegador quedó bloqueado de una tanda de intentos anterior.
+loginRlAplicarBloqueo();
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
   await sb.auth.signOut();
@@ -2461,12 +2561,17 @@ function waLink(tel) {
 
 sb.auth.onAuthStateChange((_event, session) => {
   if (session) {
+    if (sesionVencida()) { cerrarSesionPorVencimiento(); return; }
+    if (!sesionInicio()) marcarInicioSesion(); // sesión ya abierta antes de este cambio → cuenta desde ahora
+    vigilarVencimientoSesion();
     authScreen.classList.add("hidden");
     currentUserEmail = session.user.email;
     currentUserId = session.user.id;
     document.getElementById("user-email").textContent = session.user.email;
     cargarPerfil(session.user.id).then((ok) => { if (ok !== false) inicializarApp(); });
   } else {
+    clearInterval(sesionTimer); sesionTimer = null;
+    limpiarInicioSesion();
     perfilActual = null;
     ES_DEMO = false;
     ES_ACTIVISTA = false;

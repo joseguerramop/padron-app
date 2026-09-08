@@ -680,6 +680,37 @@
   .barra-progreso > div { height: 100%; background: var(--exito); width: 0; transition: width 0.2s; }
   .val-error { color: var(--error); font-size: 0.82rem; margin-top: 8px; white-space: pre-wrap; }
 
+  /* ---- Lista para exportar (admin) ---- */
+  #sel-buscar { flex: 1 1 240px; }
+  #sel-resultados { margin: 4px 0 6px; max-height: 320px; overflow: auto; }
+  #sel-resultados:empty { display: none; }
+  .sel-fila {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 2px; border-bottom: 1px solid var(--borde); font-size: 0.86rem;
+  }
+  .sel-fila:last-child { border-bottom: 0; }
+  .sel-fila .sel-info { flex: 1; min-width: 0; }
+  .sel-fila .sel-nom { font-weight: 600; }
+  .sel-fila .sel-meta { color: var(--texto-suave); font-size: 0.8rem; }
+  .sel-fila .sel-ced { color: var(--texto-suave); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sel-fila .btn-add, .sel-fila .btn-del {
+    border: 1px solid var(--borde); background: white; border-radius: 6px;
+    padding: 4px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+    font-family: inherit; white-space: nowrap;
+  }
+  .sel-fila .btn-add { color: var(--azul); border-color: #c9dcfa; background: #eaf1fd; }
+  .sel-fila .btn-add:disabled { opacity: 0.5; cursor: default; }
+  .sel-fila .btn-del { color: var(--error); border-color: #e7b7b1; }
+  .sel-fila .btn-del:hover { background: #fdecea; }
+  .sel-lista-head {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--borde);
+  }
+  .sel-lista-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sel-lista-acciones .btn-secundario { padding: 7px 12px; font-size: 0.82rem; }
+  #sel-lista { max-height: 360px; overflow: auto; margin-top: 4px; }
+  #sel-lista:empty::after { content: "La lista está vacía."; color: var(--texto-suave); font-size: 0.82rem; }
+
   /* ---- Candidatos ---- */
   #vista-candidatos { max-width: 1320px; margin-left: auto; margin-right: auto; }
   .cand-grupo { margin-bottom: 22px; }
@@ -1320,6 +1351,26 @@
           </table>
         </div>
         <div class="admin-msg" id="admin-users-msg"></div>
+      </div>
+
+      <div class="admin-card" id="sel-card">
+        <h3>📄 Lista para exportar a PDF</h3>
+        <p class="hint">Busca personas del padrón una por una y agrégalas a la lista. Cuando termines, exporta la lista completa a PDF o Excel. La lista se guarda en este navegador mientras tu sesión esté abierta (sobrevive a una recarga).</p>
+        <div class="org-filtros">
+          <input type="text" id="sel-buscar" placeholder="Cédula, nombre o apellido…" autocomplete="off" />
+          <button type="button" class="btn-primary" id="sel-buscar-btn" style="width:auto;padding:9px 18px;">Buscar</button>
+        </div>
+        <div id="sel-resultados"></div>
+        <div class="sel-lista-head">
+          <b>Seleccionadas (<span id="sel-count">0</span>)</b>
+          <span class="sel-lista-acciones">
+            <button type="button" class="btn-secundario" id="sel-export-pdf" disabled>🧾 Exportar PDF</button>
+            <button type="button" class="btn-secundario" id="sel-export-excel" disabled>⬇️ Excel</button>
+            <button type="button" class="btn-secundario" id="sel-vaciar" disabled>Vaciar lista</button>
+          </span>
+        </div>
+        <div id="sel-lista"></div>
+        <div class="admin-msg" id="sel-msg"></div>
       </div>
 
       <div class="admin-card">
@@ -2572,6 +2623,7 @@ sb.auth.onAuthStateChange((_event, session) => {
   } else {
     clearInterval(sesionTimer); sesionTimer = null;
     limpiarInicioSesion();
+    try { localStorage.removeItem("cc_seleccion_export"); } catch (_) {}
     perfilActual = null;
     ES_DEMO = false;
     ES_ACTIVISTA = false;
@@ -3146,7 +3198,9 @@ function exportarExcel(filas) {
   XLSX.writeFile(wb, nombreArchivoExport("xlsx"));
 }
 
-function exportarPDF(filas, f, tope) {
+// Dibuja una tabla de electores en un PDF A4 horizontal y lo descarga.
+// `titulo` (negrita) + cada línea de `subtitulos` (8 pt) van en la primera página.
+function pdfTablaElectores(filas, titulo, subtitulos, nombreArchivo) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
@@ -3163,15 +3217,10 @@ function exportarPDF(filas, f, tope) {
     y = M;
     if (primera) {
       doc.setFont("helvetica", "bold"); doc.setFontSize(13);
-      doc.text("Control de Campaña — Padrón" + (ES_DEMO ? "  (DEMO · datos ficticios)" : ""), M, y);
-      y += 5;
+      doc.text(titulo, M, y); y += 5;
       doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-      doc.text(resumenFiltros(f), M, y); y += 4;
-      doc.text(
-        `${filas.length.toLocaleString("es-PA")} registro(s)` +
-        (tope ? ` · limitado a ${EXPORT_CAP.toLocaleString("es-PA")}` : "") +
-        ` · ${new Date().toLocaleString("es-PA")}`, M, y);
-      y += 5;
+      (subtitulos || []).forEach(l => { doc.text(String(l), M, y); y += 4; });
+      y += 1;
     }
     doc.setFillColor(238, 241, 248);
     doc.rect(M, y - 3.6, totalW, 6, "F");
@@ -3214,7 +3263,162 @@ function exportarPDF(filas, f, tope) {
     doc.setTextColor(0);
   }
 
-  doc.save(nombreArchivoExport("pdf"));
+  doc.save(nombreArchivo);
+}
+
+function exportarPDF(filas, f, tope) {
+  const titulo = "Control de Campaña — Padrón" + (ES_DEMO ? "  (DEMO · datos ficticios)" : "");
+  const sub = [
+    resumenFiltros(f),
+    `${filas.length.toLocaleString("es-PA")} registro(s)` +
+      (tope ? ` · limitado a ${EXPORT_CAP.toLocaleString("es-PA")}` : "") +
+      ` · ${new Date().toLocaleString("es-PA")}`,
+  ];
+  pdfTablaElectores(filas, titulo, sub, nombreArchivoExport("pdf"));
+}
+
+// ============================================================
+// ====  LISTA PARA EXPORTAR — selección manual del padrón  ====
+//  El admin busca personas una por una y las agrega a una lista
+//  que persiste en localStorage (mientras dure la sesión), y al
+//  final la exporta a PDF/Excel. La RLS por área/es_demo sigue
+//  aplicando: solo se puede seleccionar/exportar lo que se ve.
+// ============================================================
+const SEL_EXPORT_KEY = "cc_seleccion_export";
+const SEL_EXPORT_MAX = 400;
+let selExportBusy = false;
+
+function selLeer() {
+  try { const a = JSON.parse(localStorage.getItem(SEL_EXPORT_KEY)); return Array.isArray(a) ? a : []; }
+  catch (_) { return []; }
+}
+function selGuardar(a) { try { localStorage.setItem(SEL_EXPORT_KEY, JSON.stringify(a)); } catch (_) {} }
+
+function selRenderLista() {
+  const cont = document.getElementById("sel-lista");
+  if (!cont) return;
+  const lista = selLeer();
+  document.getElementById("sel-count").textContent = lista.length;
+  const bloquear = lista.length === 0 || selExportBusy;
+  ["sel-export-pdf", "sel-export-excel", "sel-vaciar"].forEach(id => {
+    const b = document.getElementById(id); if (b) b.disabled = bloquear;
+  });
+  cont.innerHTML = lista.map(p => `
+    <div class="sel-fila">
+      <span class="sel-info">
+        <span class="sel-nom">${escapeHtml(p.nombre_completo || "—")}</span><span class="sel-meta"> · ${escapeHtml(p.corregimiento || "")}${p.mesa ? " · Mesa " + escapeHtml(p.mesa) : ""}</span>
+      </span>
+      <span class="sel-ced">${escapeHtml(p.cedula)}</span>
+      <button type="button" class="btn-del" data-quitar="${escapeHtml(p.cedula)}">Quitar</button>
+    </div>`).join("");
+  cont.querySelectorAll("[data-quitar]").forEach(b =>
+    b.addEventListener("click", () => selQuitar(b.dataset.quitar)));
+  const enLista = new Set(lista.map(x => x.cedula));
+  document.querySelectorAll("#sel-resultados [data-agregar]").forEach(b => {
+    const ya = enLista.has(b.dataset.agregar);
+    b.disabled = ya; b.textContent = ya ? "Agregada" : "Agregar";
+  });
+}
+
+function selAgregar(p) {
+  const msg = document.getElementById("sel-msg");
+  const lista = selLeer();
+  if (lista.some(x => x.cedula === p.cedula)) return;
+  if (lista.length >= SEL_EXPORT_MAX) { msg.textContent = `La lista llegó al tope de ${SEL_EXPORT_MAX}. Exporta y vacía para seguir.`; return; }
+  lista.push({ cedula: p.cedula, nombre_completo: p.nombre_completo, corregimiento: p.corregimiento, mesa: p.mesa });
+  selGuardar(lista);
+  msg.textContent = "";
+  selRenderLista();
+}
+function selQuitar(cedula) {
+  selGuardar(selLeer().filter(x => x.cedula !== cedula));
+  selRenderLista();
+}
+function selVaciar() {
+  if (!selLeer().length) return;
+  if (!confirm("¿Vaciar la lista de personas seleccionadas?")) return;
+  selGuardar([]);
+  document.getElementById("sel-msg").textContent = "";
+  selRenderLista();
+}
+
+async function selBuscar() {
+  const cont = document.getElementById("sel-resultados");
+  const msg = document.getElementById("sel-msg");
+  msg.textContent = "";
+  const term = document.getElementById("sel-buscar").value.trim().toLowerCase();
+  if (term.length < 2) { cont.innerHTML = ""; msg.textContent = "Escribe al menos 2 caracteres."; return; }
+  cont.innerHTML = `<p class="hint" style="margin:6px 0;">Buscando…</p>`;
+  const t = term.replace(/[%_,()]/g, "");
+  const { data, error } = await sb.from("electores_con_partido")
+    .select("cedula, nombre_completo, corregimiento, mesa, centro_votacion")
+    .or(`cedula.ilike.%${t}%,nombre_completo.ilike.%${t}%`)
+    .order("nombre_completo", { ascending: true })
+    .limit(25);
+  if (error) { cont.innerHTML = `<p class="val-error">${escapeHtml(error.message)}</p>`; return; }
+  if (!data || !data.length) { cont.innerHTML = `<p class="hint" style="margin:6px 0;">Sin resultados.</p>`; return; }
+  const enLista = new Set(selLeer().map(x => x.cedula));
+  cont.innerHTML = data.map(r => `
+    <div class="sel-fila">
+      <span class="sel-info">
+        <span class="sel-nom">${escapeHtml(r.nombre_completo)}</span><span class="sel-meta"> · ${escapeHtml(r.corregimiento || "")}${r.mesa ? " · Mesa " + escapeHtml(r.mesa) : ""} · ${escapeHtml(r.centro_votacion || "")}</span>
+      </span>
+      <span class="sel-ced">${escapeHtml(r.cedula)}</span>
+      <button type="button" class="btn-add" data-agregar="${escapeHtml(r.cedula)}"${enLista.has(r.cedula) ? " disabled" : ""}>${enLista.has(r.cedula) ? "Agregada" : "Agregar"}</button>
+    </div>`).join("");
+  cont.querySelectorAll("[data-agregar]").forEach(b => b.addEventListener("click", () => {
+    const r = data.find(x => x.cedula === b.dataset.agregar);
+    if (r) selAgregar(r);
+  }));
+  if (data.length === 25) msg.textContent = "Se muestran los primeros 25 — afina la búsqueda si no aparece.";
+}
+
+async function selExportar(tipo) {
+  if (selExportBusy) return;
+  const lista = selLeer();
+  const msg = document.getElementById("sel-msg");
+  if (!lista.length) return;
+  selExportBusy = true;
+  selRenderLista();
+  msg.textContent = "Preparando… (trayendo datos actualizados)";
+  try {
+    const cedulas = lista.map(x => x.cedula);
+    const cols = "cedula, nombre_completo, corregimiento, mesa, centro_votacion, " +
+      "partido_siglas, estado_nota, clasificacion, compromiso, telefono, nota_texto";
+    const filas = [];
+    for (let i = 0; i < cedulas.length; i += 300) {
+      const { data, error } = await sb.from("electores_con_partido").select(cols)
+        .in("cedula", cedulas.slice(i, i + 300));
+      if (error) throw new Error(error.message);
+      filas.push(...(data || []));
+    }
+    const orden = new Map(cedulas.map((c, i) => [c, i]));
+    filas.sort((a, b) => (orden.get(a.cedula) ?? 1e9) - (orden.get(b.cedula) ?? 1e9));
+    const faltan = cedulas.length - filas.length;
+    const fecha = new Date().toISOString().slice(0, 10);
+    if (tipo === "excel") {
+      const ws = XLSX.utils.json_to_sheet(filas.map(filaExport), { header: EXPORT_HEADERS });
+      ws["!cols"] = [{ wch: 14 }, { wch: 30 }, { wch: 18 }, { wch: 6 }, { wch: 40 },
+        { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 11 }, { wch: 14 }, { wch: 44 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Selección");
+      XLSX.writeFile(wb, `${ES_DEMO ? "demo_" : ""}seleccion_${fecha}.xlsx`);
+    } else {
+      pdfTablaElectores(
+        filas,
+        "Control de Campaña — Lista seleccionada" + (ES_DEMO ? "  (DEMO · datos ficticios)" : ""),
+        [`${filas.length.toLocaleString("es-PA")} persona(s) · ${new Date().toLocaleString("es-PA")}`],
+        `${ES_DEMO ? "demo_" : ""}seleccion_${fecha}.pdf`
+      );
+    }
+    msg.textContent = `Listo: ${filas.length.toLocaleString("es-PA")} persona(s)` +
+      (faltan > 0 ? ` · ${faltan} ya no aparece(n) en el padrón que puedes ver y no se incluyó(eron).` : ".");
+  } catch (err) {
+    msg.textContent = "Error al exportar: " + err.message;
+  } finally {
+    selExportBusy = false;
+    selRenderLista();
+  }
 }
 
 function escapeHtml(str) {
@@ -7864,6 +8068,15 @@ function initAdmin() {
   document.getElementById("cruce-nivel").addEventListener("change", construirSelectorAreaCruce);
   document.getElementById("cruce-calcular").addEventListener("click", calcularCruce);
   document.getElementById("cruce-exportar").addEventListener("click", exportarAfiliadosSinPadron);
+
+  document.getElementById("sel-buscar-btn").addEventListener("click", selBuscar);
+  document.getElementById("sel-buscar").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); selBuscar(); }
+  });
+  document.getElementById("sel-export-pdf").addEventListener("click", () => selExportar("pdf"));
+  document.getElementById("sel-export-excel").addEventListener("click", () => selExportar("excel"));
+  document.getElementById("sel-vaciar").addEventListener("click", selVaciar);
+  selRenderLista();
 }
 
 async function construirSelectorAreaCruce() {

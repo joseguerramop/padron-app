@@ -3225,28 +3225,32 @@ function pdfTablaElectores(filas, titulo, subtitulos, nombreArchivo) {
   const H = doc.internal.pageSize.getHeight();
   const M = 10;
   const cols = [
-    ["Cédula", 22], ["Nombre completo", 48], ["Corregimiento", 28], ["Mesa", 10],
-    ["Centro de votación", 50], ["Partido", 16], ["Estado", 24], ["Clasificación", 24], ["Teléfono", 22],
+    ["Cédula", 24], ["Nombre completo", 52], ["Corregimiento", 28], ["Mesa", 12],
+    ["Centro de votación", 46], ["Partido", 15], ["Estado", 30], ["Clasificación", 24], ["Teléfono", 24],
   ];
   const totalW = cols.reduce((s, c) => s + c[1], 0);
   let y = 0;
+
+  const TOP = { baseline: "top" };      // dibujar tomando la y como el borde superior del texto
+  const LH = 3.1;                        // alto de una línea de texto (7 pt)
+  const PAD_Y = 1.7;                     // relleno arriba y abajo de cada renglón
 
   function encabezado(primera) {
     y = M;
     if (primera) {
       doc.setFont("helvetica", "bold"); doc.setFontSize(13);
-      doc.text(titulo, M, y); y += 5;
+      doc.text(titulo, M, y, TOP); y += 6.4;
       doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-      (subtitulos || []).forEach(l => { doc.text(String(l), M, y); y += 4; });
-      y += 1;
+      (subtitulos || []).forEach(l => { doc.text(String(l), M, y, TOP); y += 4.2; });
+      y += 2;
     }
     doc.setFillColor(238, 241, 248);
-    doc.rect(M, y - 3.6, totalW, 6, "F");
+    doc.rect(M, y, totalW, LH + PAD_Y * 2, "F");
     doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
     let x = M;
-    cols.forEach(([t, w]) => { doc.text(t, x + 1, y); x += w; });
-    y += 2.6;
-    doc.setDrawColor(190); doc.line(M, y, M + totalW, y); y += 3.6;
+    cols.forEach(([t, w]) => { doc.text(t, x + 1.2, y + PAD_Y, TOP); x += w; });
+    y += LH + PAD_Y * 2;
+    doc.setDrawColor(190); doc.line(M, y, M + totalW, y);
     doc.setFont("helvetica", "normal"); doc.setFontSize(7);
   }
 
@@ -3254,23 +3258,25 @@ function pdfTablaElectores(filas, titulo, subtitulos, nombreArchivo) {
 
   filas.forEach((r) => {
     const rec = filaExport(r);
-    const nombre = doc.splitTextToSize(rec["Nombre completo"], cols[1][1] - 2);
-    const centro = doc.splitTextToSize(rec["Centro de votación"], cols[4][1] - 2);
+    const wrap = (txt, i) => doc.splitTextToSize(String(txt || ""), cols[i][1] - 2.4);
+    const celdas = [
+      rec["Cédula"], wrap(rec["Nombre completo"], 1), rec["Corregimiento"], rec["Mesa"],
+      wrap(rec["Centro de votación"], 4), rec["Partido"], wrap(rec["Estado"], 6),
+      wrap(rec["Clasificación"], 7), rec["Teléfono"],
+    ];
     const nota = rec["Nota"] ? doc.splitTextToSize("Nota: " + rec["Nota"], totalW - 4) : [];
-    const nLineas = Math.max(nombre.length, centro.length, 1);
-    const alto = nLineas * 3.2 + nota.length * 3 + 2;
+    const nLineas = Math.max(...celdas.map(c => Array.isArray(c) ? c.length : 1), 1);
+    const alto = PAD_Y * 2 + nLineas * LH + nota.length * LH;
     if (y + alto > H - M) { doc.addPage(); encabezado(false); }
     let x = M;
-    [[rec["Cédula"], 0], [nombre, 1], [rec["Corregimiento"], 2], [rec["Mesa"], 3],
-     [centro, 4], [rec["Partido"], 5], [rec["Estado"], 6], [rec["Clasificación"], 7], [rec["Teléfono"], 8]]
-      .forEach(([val, i]) => { doc.text(Array.isArray(val) ? val : String(val), x + 1, y); x += cols[i][1]; });
-    y += nLineas * 3.2;
+    celdas.forEach((val, i) => { doc.text(Array.isArray(val) ? val : String(val), x + 1.2, y + PAD_Y, TOP); x += cols[i][1]; });
     if (nota.length) {
-      doc.setTextColor(120); doc.text(nota, M + 1, y); doc.setTextColor(0);
-      y += nota.length * 3;
+      doc.setTextColor(120);
+      doc.text(nota, M + 1.2, y + PAD_Y + nLineas * LH, TOP);
+      doc.setTextColor(0);
     }
-    y += 2;
-    doc.setDrawColor(233); doc.line(M, y - 1.2, M + totalW, y - 1.2);
+    y += alto;
+    doc.setDrawColor(233); doc.line(M, y, M + totalW, y);
   });
 
   const paginas = doc.internal.getNumberOfPages();

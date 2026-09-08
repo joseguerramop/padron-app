@@ -2401,7 +2401,7 @@ let perfilActual = null; // { rol, nombre, es_demo }
 let ES_DEMO = false;     // sesión de cuenta demo → datos ficticios
 let ES_ACTIVISTA = false; // rol activista → app móvil restringida de captura
 let ES_JURADO = false;    // rol jurado_mesa → app móvil restringida a UNA mesa exacta
-let PUEDE_EXPORTAR = false; // admin o colaborador habilitado por un admin → botones de exportar
+let PUEDE_EXPORTAR = false; // solo admin o secretaría de organización → botones de exportar
 let debounceTimer = null;
 let PARTIDOS_CACHE = []; // [{ id, siglas, nombre }] del catálogo visible (según es_demo)
 
@@ -2691,7 +2691,9 @@ async function cargarPerfil(uid) {
     ES_DEMO = !!data.es_demo;
     ES_ACTIVISTA = data.rol === "activista";
     ES_JURADO = data.rol === "jurado_mesa";
-    PUEDE_EXPORTAR = data.rol === "admin" || !!data.puede_exportar;
+    // Exportar el padrón (Excel/PDF y la lista para exportar) solo para admin y
+    // secretaría de organización. Nunca para activista/jurado ni el resto de roles.
+    PUEDE_EXPORTAR = data.rol === "admin" || data.rol === "secretaria_organizacion";
     badge.textContent = ROL_LABEL[data.rol] || data.rol;
     badge.classList.remove("hidden");
     btnAdmin.classList.toggle("hidden", data.rol !== "admin");
@@ -2885,9 +2887,9 @@ function aplicarPermisosUI() {
   const btnAdmin = document.getElementById("tab-admin-btn");
   if (btnAdmin) btnAdmin.classList.toggle("hidden", !esAdmin);
   const expCampo = document.getElementById("exportar-campo");
-  if (expCampo) expCampo.classList.toggle("hidden", !(PUEDE_EXPORTAR && !ES_ACTIVISTA));
+  if (expCampo) expCampo.classList.toggle("hidden", !PUEDE_EXPORTAR);
   const selCampo = document.getElementById("seleccion-campo");
-  if (selCampo) selCampo.classList.toggle("hidden", !(PUEDE_EXPORTAR && !ES_ACTIVISTA));
+  if (selCampo) selCampo.classList.toggle("hidden", !PUEDE_EXPORTAR);
   if (typeof selRenderLista === "function") selRenderLista();
 }
 
@@ -3117,9 +3119,9 @@ function renderPaginacion(totalPaginas) {
 
 // ============================================================
 // ==========  EXPORTAR PADRÓN (Excel / PDF)  ==================
-//  Solo visible para admin o colaborador habilitado por un admin
-//  (perfiles_usuario.puede_exportar). Exporta lo que el usuario
-//  ya puede ver: la RLS por área/es_demo se sigue aplicando.
+//  Solo visible para admin y secretaría de organización (PUEDE_EXPORTAR).
+//  Exporta lo que el usuario ya puede ver: la RLS por área/es_demo
+//  se sigue aplicando.
 // ============================================================
 const EXPORT_CAP = 8000;   // tope de filas por exportación
 const EXPORT_ESTADO_LABEL = {
@@ -8353,27 +8355,11 @@ async function cargarListaUsuarios() {
       <td class="exportar-col"></td>
       <td></td>`;
 
-    // Columna "Exportar": los admin siempre pueden; al resto se les habilita/quita aquí.
+    // Columna "Exportar": determinado por el rol. Solo admin y secretaría de
+    // organización pueden exportar el padrón (Excel/PDF y la lista para exportar).
     const expCell = tr.children[5];
-    if (p.rol === "admin") {
-      expCell.innerHTML = '<span style="color: var(--texto-suave); font-size: 0.8rem;">Siempre</span>';
-    } else {
-      const btnExp = document.createElement("button");
-      btnExp.className = "mini-btn";
-      btnExp.textContent = p.puede_exportar ? "✓ Habilitada" : "Habilitar";
-      if (p.puede_exportar) btnExp.classList.add("mini-btn-activo");
-      btnExp.title = p.puede_exportar
-        ? "Puede exportar el padrón a Excel y PDF. Clic para quitar el permiso."
-        : "Clic para permitir que exporte el padrón a Excel y PDF.";
-      btnExp.addEventListener("click", async () => {
-        btnExp.disabled = true;
-        const { error } = await sb.from("perfiles_usuario")
-          .update({ puede_exportar: !p.puede_exportar }).eq("user_id", p.user_id);
-        if (error) alert(error.message);
-        cargarListaUsuarios();
-      });
-      expCell.appendChild(btnExp);
-    }
+    const puedeExp = p.rol === "admin" || p.rol === "secretaria_organizacion";
+    expCell.innerHTML = `<span style="color: var(--texto-suave); font-size: 0.8rem;">${puedeExp ? "Sí (por rol)" : "No"}</span>`;
 
     const acc = tr.lastElementChild;
     const btnT = document.createElement("button");

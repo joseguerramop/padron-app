@@ -680,36 +680,40 @@
   .barra-progreso > div { height: 100%; background: var(--exito); width: 0; transition: width 0.2s; }
   .val-error { color: var(--error); font-size: 0.82rem; margin-top: 8px; white-space: pre-wrap; }
 
-  /* ---- Lista para exportar (admin) ---- */
-  #sel-buscar { flex: 1 1 240px; }
-  #sel-resultados { margin: 4px 0 6px; max-height: 320px; overflow: auto; }
-  #sel-resultados:empty { display: none; }
+  /* ---- Lista para exportar (barra lateral de Buscar) ---- */
+  #seleccion-campo #sel-count { font-variant-numeric: tabular-nums; }
+  .sel-toggle, .sel-vaciar {
+    margin-top: 8px; width: 100%; padding: 7px 8px; border-radius: 8px;
+    border: 1px solid var(--borde); background: white; color: var(--texto-suave);
+    font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .sel-toggle:hover, .sel-vaciar:hover { background: #f0f1f6; }
+  .sel-vaciar { color: var(--error); border-color: #e7b7b1; }
+  .sel-vaciar:hover { background: #fdecea; }
+  #sel-lista { margin-top: 6px; max-height: 260px; overflow: auto; border: 1px solid var(--borde); border-radius: 8px; }
   .sel-fila {
-    display: flex; align-items: center; gap: 10px;
-    padding: 7px 2px; border-bottom: 1px solid var(--borde); font-size: 0.86rem;
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 8px; border-bottom: 1px solid var(--borde); font-size: 0.78rem;
   }
   .sel-fila:last-child { border-bottom: 0; }
   .sel-fila .sel-info { flex: 1; min-width: 0; }
-  .sel-fila .sel-nom { font-weight: 600; }
-  .sel-fila .sel-meta { color: var(--texto-suave); font-size: 0.8rem; }
-  .sel-fila .sel-ced { color: var(--texto-suave); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .sel-fila .btn-add, .sel-fila .btn-del {
-    border: 1px solid var(--borde); background: white; border-radius: 6px;
-    padding: 4px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
-    font-family: inherit; white-space: nowrap;
+  .sel-fila .sel-nom { font-weight: 600; display: block; }
+  .sel-fila .sel-meta { color: var(--texto-suave); font-size: 0.72rem; }
+  .sel-fila .btn-del {
+    border: 1px solid #e7b7b1; background: white; color: var(--error); border-radius: 6px;
+    padding: 3px 7px; font-size: 0.72rem; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;
   }
-  .sel-fila .btn-add { color: var(--azul); border-color: #c9dcfa; background: #eaf1fd; }
-  .sel-fila .btn-add:disabled { opacity: 0.5; cursor: default; }
-  .sel-fila .btn-del { color: var(--error); border-color: #e7b7b1; }
   .sel-fila .btn-del:hover { background: #fdecea; }
-  .sel-lista-head {
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 8px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--borde);
+  /* botón "+" / "✓" en cada fila de resultados de Buscar */
+  .btn-sel-row {
+    border: 1px solid #c9dcfa; background: #eaf1fd; color: var(--azul);
+    border-radius: 6px; width: 30px; height: 30px; font-size: 0.95rem; font-weight: 700;
+    cursor: pointer; font-family: inherit; line-height: 1; padding: 0;
   }
-  .sel-lista-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
-  .sel-lista-acciones .btn-secundario { padding: 7px 12px; font-size: 0.82rem; }
-  #sel-lista { max-height: 360px; overflow: auto; margin-top: 4px; }
-  #sel-lista:empty::after { content: "La lista está vacía."; color: var(--texto-suave); font-size: 0.82rem; }
+  .btn-sel-row:hover { background: #dfeafc; }
+  .btn-sel-row.en-lista { background: #e9f7ee; border-color: #b7e0c4; color: #1a7f37; }
+  td.acc-cell { white-space: nowrap; }
+  td.acc-cell .btn-marcar { margin-right: 5px; }
 
   /* ---- Candidatos ---- */
   #vista-candidatos { max-width: 1320px; margin-left: auto; margin-right: auto; }
@@ -1201,6 +1205,18 @@
           </div>
           <div class="exportar-msg" id="exportar-msg"></div>
         </div>
+        <div class="campo campo-exportar hidden" id="seleccion-campo">
+          <label>Lista para exportar (<span id="sel-count">0</span>)</label>
+          <p class="hint" style="margin:0 0 8px;font-size:0.75rem;">Toca <b>+</b> en cada resultado para agregarlo. La lista se guarda mientras tu sesión esté abierta.</p>
+          <div class="exportar-btns">
+            <button type="button" id="sel-export-excel" disabled>⬇️ Excel</button>
+            <button type="button" id="sel-export-pdf" disabled>🧾 PDF</button>
+          </div>
+          <button type="button" id="sel-toggle" class="sel-toggle hidden">Ver lista</button>
+          <div id="sel-lista" class="hidden"></div>
+          <button type="button" id="sel-vaciar" class="sel-vaciar hidden">Vaciar lista</button>
+          <div class="exportar-msg" id="sel-msg"></div>
+        </div>
       </aside>
 
       <div class="panel-resultados">
@@ -1353,25 +1369,6 @@
         <div class="admin-msg" id="admin-users-msg"></div>
       </div>
 
-      <div class="admin-card" id="sel-card">
-        <h3>📄 Lista para exportar a PDF</h3>
-        <p class="hint">Busca personas del padrón una por una y agrégalas a la lista. Cuando termines, exporta la lista completa a PDF o Excel. La lista se guarda en este navegador mientras tu sesión esté abierta (sobrevive a una recarga).</p>
-        <div class="org-filtros">
-          <input type="text" id="sel-buscar" placeholder="Cédula, nombre o apellido…" autocomplete="off" />
-          <button type="button" class="btn-primary" id="sel-buscar-btn" style="width:auto;padding:9px 18px;">Buscar</button>
-        </div>
-        <div id="sel-resultados"></div>
-        <div class="sel-lista-head">
-          <b>Seleccionadas (<span id="sel-count">0</span>)</b>
-          <span class="sel-lista-acciones">
-            <button type="button" class="btn-secundario" id="sel-export-pdf" disabled>🧾 Exportar PDF</button>
-            <button type="button" class="btn-secundario" id="sel-export-excel" disabled>⬇️ Excel</button>
-            <button type="button" class="btn-secundario" id="sel-vaciar" disabled>Vaciar lista</button>
-          </span>
-        </div>
-        <div id="sel-lista"></div>
-        <div class="admin-msg" id="sel-msg"></div>
-      </div>
 
       <div class="admin-card">
         <h3>Cruce de padrón vs. afiliación</h3>
@@ -2790,6 +2787,16 @@ async function inicializarApp() {
   document.getElementById("btn-exportar-excel").addEventListener("click", () => exportar("excel"));
   document.getElementById("btn-exportar-pdf").addEventListener("click", () => exportar("pdf"));
 
+  document.getElementById("sel-export-excel").addEventListener("click", () => selExportar("excel"));
+  document.getElementById("sel-export-pdf").addEventListener("click", () => selExportar("pdf"));
+  document.getElementById("sel-vaciar").addEventListener("click", selVaciar);
+  document.getElementById("sel-toggle").addEventListener("click", () => {
+    const l = document.getElementById("sel-lista");
+    const oculto = l.classList.toggle("hidden");
+    document.getElementById("sel-toggle").textContent = oculto ? "Ver lista" : "Ocultar lista";
+  });
+  selRenderLista();
+
   document.getElementById("tab-buscar-btn").addEventListener("click", () => cambiarTab("buscar"));
   document.getElementById("tab-mapa-btn").addEventListener("click", () => cambiarTab("mapa"));
   document.getElementById("tab-candidatos-btn").addEventListener("click", () => cambiarTab("candidatos"));
@@ -2879,6 +2886,9 @@ function aplicarPermisosUI() {
   if (btnAdmin) btnAdmin.classList.toggle("hidden", !esAdmin);
   const expCampo = document.getElementById("exportar-campo");
   if (expCampo) expCampo.classList.toggle("hidden", !(PUEDE_EXPORTAR && !ES_ACTIVISTA));
+  const selCampo = document.getElementById("seleccion-campo");
+  if (selCampo) selCampo.classList.toggle("hidden", !(PUEDE_EXPORTAR && !ES_ACTIVISTA));
+  if (typeof selRenderLista === "function") selRenderLista();
 }
 
 async function cargarFiltros() {
@@ -3060,14 +3070,20 @@ async function buscar() {
       <td>${escapeHtml(r.centro_votacion)}</td>
       <td>${partidoCell}</td>
       <td>${estadoCell}</td>
-      <td><button class="${btnClase}" data-cedula="${escapeHtml(r.cedula)}">${btnLabel}</button></td>
+      <td class="acc-cell">
+        <button class="${btnClase}" data-cedula="${escapeHtml(r.cedula)}">${btnLabel}</button>
+        ${PUEDE_EXPORTAR ? `<button class="btn-sel-row" data-selrow="${escapeHtml(r.cedula)}" title="Agregar a la lista para exportar">+</button>` : ""}
+      </td>
     `;
     tbody.appendChild(tr);
 
     tr.querySelector(".btn-marcar").addEventListener("click", () => {
       abrirModal(r);
     });
+    const selBtn = tr.querySelector(".btn-sel-row");
+    if (selBtn) selBtn.addEventListener("click", () => selToggleDesdeBusqueda(r));
   });
+  selSyncBotonesBusqueda();
 
   const totalPaginas = Math.ceil(count / PAGE_SIZE);
   stats.textContent = `${count.toLocaleString("es-PA")} electores encontrados — página ${paginaActual + 1} de ${totalPaginas}`;
@@ -3279,10 +3295,10 @@ function exportarPDF(filas, f, tope) {
 
 // ============================================================
 // ====  LISTA PARA EXPORTAR — selección manual del padrón  ====
-//  El admin busca personas una por una y las agrega a una lista
-//  que persiste en localStorage (mientras dure la sesión), y al
-//  final la exporta a PDF/Excel. La RLS por área/es_demo sigue
-//  aplicando: solo se puede seleccionar/exportar lo que se ve.
+//  Desde la pestaña Buscar (solo si PUEDE_EXPORTAR) se agrega gente
+//  con el botón "+" de cada resultado. La lista vive en localStorage
+//  (mientras dure la sesión) y se exporta a PDF/Excel desde la barra
+//  lateral. La RLS por área/es_demo sigue aplicando.
 // ============================================================
 const SEL_EXPORT_KEY = "cc_seleccion_export";
 const SEL_EXPORT_MAX = 400;
@@ -3294,40 +3310,62 @@ function selLeer() {
 }
 function selGuardar(a) { try { localStorage.setItem(SEL_EXPORT_KEY, JSON.stringify(a)); } catch (_) {} }
 
-function selRenderLista() {
-  const cont = document.getElementById("sel-lista");
-  if (!cont) return;
-  const lista = selLeer();
-  document.getElementById("sel-count").textContent = lista.length;
-  const bloquear = lista.length === 0 || selExportBusy;
-  ["sel-export-pdf", "sel-export-excel", "sel-vaciar"].forEach(id => {
-    const b = document.getElementById(id); if (b) b.disabled = bloquear;
+// Pinta "+" / "✓" en los botones de la tabla de resultados de Buscar.
+function selSyncBotonesBusqueda() {
+  const enLista = new Set(selLeer().map(x => x.cedula));
+  document.querySelectorAll(".btn-sel-row").forEach(b => {
+    const ya = enLista.has(b.dataset.selrow);
+    b.classList.toggle("en-lista", ya);
+    b.textContent = ya ? "✓" : "+";
+    b.title = ya ? "Quitar de la lista para exportar" : "Agregar a la lista para exportar";
   });
+}
+
+function selRenderLista() {
+  selSyncBotonesBusqueda();
+  const campo = document.getElementById("seleccion-campo");
+  if (!campo) return;
+  const lista = selLeer();
+  const cont = document.getElementById("sel-lista");
+  document.getElementById("sel-count").textContent = lista.length;
+  const vacia = lista.length === 0;
+  ["sel-export-pdf", "sel-export-excel"].forEach(id => {
+    const b = document.getElementById(id); if (b) b.disabled = vacia || selExportBusy;
+  });
+  const toggle = document.getElementById("sel-toggle");
+  const vaciar = document.getElementById("sel-vaciar");
+  toggle.classList.toggle("hidden", vacia);
+  vaciar.classList.toggle("hidden", vacia);
+  if (vacia) { cont.classList.add("hidden"); toggle.textContent = "Ver lista"; }
   cont.innerHTML = lista.map(p => `
     <div class="sel-fila">
       <span class="sel-info">
-        <span class="sel-nom">${escapeHtml(p.nombre_completo || "—")}</span><span class="sel-meta"> · ${escapeHtml(p.corregimiento || "")}${p.mesa ? " · Mesa " + escapeHtml(p.mesa) : ""}</span>
+        <span class="sel-nom">${escapeHtml(p.nombre_completo || "—")}</span>
+        <span class="sel-meta">${escapeHtml(p.cedula)}${p.corregimiento ? " · " + escapeHtml(p.corregimiento) : ""}${p.mesa ? " · Mesa " + escapeHtml(p.mesa) : ""}</span>
       </span>
-      <span class="sel-ced">${escapeHtml(p.cedula)}</span>
       <button type="button" class="btn-del" data-quitar="${escapeHtml(p.cedula)}">Quitar</button>
     </div>`).join("");
   cont.querySelectorAll("[data-quitar]").forEach(b =>
     b.addEventListener("click", () => selQuitar(b.dataset.quitar)));
-  const enLista = new Set(lista.map(x => x.cedula));
-  document.querySelectorAll("#sel-resultados [data-agregar]").forEach(b => {
-    const ya = enLista.has(b.dataset.agregar);
-    b.disabled = ya; b.textContent = ya ? "Agregada" : "Agregar";
-  });
+}
+
+function selToggleDesdeBusqueda(r) {
+  const lista = selLeer();
+  if (lista.some(x => x.cedula === r.cedula)) { selQuitar(r.cedula); return; }
+  selAgregar(r);
 }
 
 function selAgregar(p) {
   const msg = document.getElementById("sel-msg");
   const lista = selLeer();
   if (lista.some(x => x.cedula === p.cedula)) return;
-  if (lista.length >= SEL_EXPORT_MAX) { msg.textContent = `La lista llegó al tope de ${SEL_EXPORT_MAX}. Exporta y vacía para seguir.`; return; }
+  if (lista.length >= SEL_EXPORT_MAX) {
+    if (msg) msg.textContent = `Tope de ${SEL_EXPORT_MAX}. Exporta y vacía para seguir.`;
+    return;
+  }
   lista.push({ cedula: p.cedula, nombre_completo: p.nombre_completo, corregimiento: p.corregimiento, mesa: p.mesa });
   selGuardar(lista);
-  msg.textContent = "";
+  if (msg) msg.textContent = "";
   selRenderLista();
 }
 function selQuitar(cedula) {
@@ -3338,39 +3376,9 @@ function selVaciar() {
   if (!selLeer().length) return;
   if (!confirm("¿Vaciar la lista de personas seleccionadas?")) return;
   selGuardar([]);
-  document.getElementById("sel-msg").textContent = "";
-  selRenderLista();
-}
-
-async function selBuscar() {
-  const cont = document.getElementById("sel-resultados");
   const msg = document.getElementById("sel-msg");
-  msg.textContent = "";
-  const term = document.getElementById("sel-buscar").value.trim().toLowerCase();
-  if (term.length < 2) { cont.innerHTML = ""; msg.textContent = "Escribe al menos 2 caracteres."; return; }
-  cont.innerHTML = `<p class="hint" style="margin:6px 0;">Buscando…</p>`;
-  const t = term.replace(/[%_,()]/g, "");
-  const { data, error } = await sb.from("electores_con_partido")
-    .select("cedula, nombre_completo, corregimiento, mesa, centro_votacion")
-    .or(`cedula.ilike.%${t}%,nombre_completo.ilike.%${t}%`)
-    .order("nombre_completo", { ascending: true })
-    .limit(25);
-  if (error) { cont.innerHTML = `<p class="val-error">${escapeHtml(error.message)}</p>`; return; }
-  if (!data || !data.length) { cont.innerHTML = `<p class="hint" style="margin:6px 0;">Sin resultados.</p>`; return; }
-  const enLista = new Set(selLeer().map(x => x.cedula));
-  cont.innerHTML = data.map(r => `
-    <div class="sel-fila">
-      <span class="sel-info">
-        <span class="sel-nom">${escapeHtml(r.nombre_completo)}</span><span class="sel-meta"> · ${escapeHtml(r.corregimiento || "")}${r.mesa ? " · Mesa " + escapeHtml(r.mesa) : ""} · ${escapeHtml(r.centro_votacion || "")}</span>
-      </span>
-      <span class="sel-ced">${escapeHtml(r.cedula)}</span>
-      <button type="button" class="btn-add" data-agregar="${escapeHtml(r.cedula)}"${enLista.has(r.cedula) ? " disabled" : ""}>${enLista.has(r.cedula) ? "Agregada" : "Agregar"}</button>
-    </div>`).join("");
-  cont.querySelectorAll("[data-agregar]").forEach(b => b.addEventListener("click", () => {
-    const r = data.find(x => x.cedula === b.dataset.agregar);
-    if (r) selAgregar(r);
-  }));
-  if (data.length === 25) msg.textContent = "Se muestran los primeros 25 — afina la búsqueda si no aparece.";
+  if (msg) msg.textContent = "";
+  selRenderLista();
 }
 
 async function selExportar(tipo) {
@@ -8068,15 +8076,6 @@ function initAdmin() {
   document.getElementById("cruce-nivel").addEventListener("change", construirSelectorAreaCruce);
   document.getElementById("cruce-calcular").addEventListener("click", calcularCruce);
   document.getElementById("cruce-exportar").addEventListener("click", exportarAfiliadosSinPadron);
-
-  document.getElementById("sel-buscar-btn").addEventListener("click", selBuscar);
-  document.getElementById("sel-buscar").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); selBuscar(); }
-  });
-  document.getElementById("sel-export-pdf").addEventListener("click", () => selExportar("pdf"));
-  document.getElementById("sel-export-excel").addEventListener("click", () => selExportar("excel"));
-  document.getElementById("sel-vaciar").addEventListener("click", selVaciar);
-  selRenderLista();
 }
 
 async function construirSelectorAreaCruce() {

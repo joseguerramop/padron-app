@@ -399,6 +399,7 @@
   /* ---- Tabs ---- */
   .tabs {
     display: flex;
+    flex-wrap: nowrap;
     gap: 8px;
     padding: 12px 0;
     margin-bottom: 12px;
@@ -407,8 +408,16 @@
     z-index: 35;
     background: var(--fondo);
     border-bottom: 1px solid var(--borde);
+    /* Cuando los 8 botones no caben (tablet / ventana chica) la barra se
+       desplaza sola en vez de empujar el ancho de toda la página. */
+    overflow-x: auto;
+    scrollbar-width: thin;
   }
+  .tabs::-webkit-scrollbar { height: 5px; }
+  .tabs::-webkit-scrollbar-thumb { background: var(--borde); border-radius: 100px; }
   .tab-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
     padding: 9px 16px;
     border: 1px solid var(--borde);
     background: white;
@@ -984,6 +993,12 @@
   }
   .app-reload-btn:active { transform: scale(0.94); }
   body.activista .app-reload-btn, body.jurado .app-reload-btn { display: flex; }
+  /* Solo es útil en móvil/PWA (donde no hay botón de recargar del navegador);
+     en pantallas anchas el header es de una fila y el botón chocaba con
+     "Cerrar sesión". */
+  @media (min-width: 701px) {
+    body.activista .app-reload-btn, body.jurado .app-reload-btn { display: none; }
+  }
   body.activista .tabs, body.jurado .tabs { display: none; }
   body.activista #tab-admin-btn, body.jurado #tab-admin-btn { display: none !important; }
   body.activista main, body.jurado main {

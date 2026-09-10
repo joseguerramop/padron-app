@@ -651,6 +651,7 @@
     border-radius: 7px; font-size: 0.9rem; background: white; color: var(--texto);
   }
   .admin-field textarea { font-family: inherit; resize: vertical; min-height: 60px; }
+  .admin-field input.solo-entero { font-size: 16px; letter-spacing: 0.03em; }
   .admin-field select[multiple] { min-height: 140px; }
   .admin-actions { margin-top: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .admin-actions .btn-primary { width: auto; padding: 10px 20px; }
@@ -6358,6 +6359,33 @@ function renderResumenConteo(cont, amb, cargo, d, actas) {
   });
 }
 
+// ============================================================
+// Campos de conteo de votos = SOLO enteros: sin decimales, sin
+// signos, sin letras. En móvil abren el teclado numérico. Se
+// sanitiza en vivo (por si se pega texto) y al perder el foco.
+// ============================================================
+const ATTRS_ENTERO = 'type="text" inputmode="numeric" pattern="[0-9]*" class="solo-entero" maxlength="7" autocomplete="off"';
+
+function activarSoloEnteros(contenedor) {
+  contenedor.querySelectorAll("input.solo-entero").forEach(inp => {
+    const limpiar = () => {
+      const limpio = inp.value.replace(/\D+/g, "").replace(/^0+(?=\d)/, "");
+      if (inp.value !== limpio) {
+        inp.value = limpio;
+        try { inp.setSelectionRange(limpio.length, limpio.length); } catch (_) {}
+      }
+    };
+    inp.addEventListener("input", limpiar);
+    inp.addEventListener("blur", limpiar);
+  });
+}
+
+// Entero no negativo. "3.5"→3, ""→0, "abc"→0, "-4"→0, "007"→7.
+function aEntero(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 async function cargarFormMesaConteo() {
   const cargo = document.getElementById("cnt-cargo").value;
   const mesaId = document.getElementById("cnt-mesa").value;
@@ -6408,12 +6436,13 @@ async function cargarFormMesaConteo() {
 
   cont.innerHTML =
     `<div class="admin-field" style="grid-column:1/-1;"><label>Total de personas que votaron (participación, según el acta)</label>
-      <input type="number" min="0" id="cnt-sufragantes" value="${resumen && resumen.total_sufragantes != null ? resumen.total_sufragantes : ""}" /></div>` +
+      <input ${ATTRS_ENTERO} id="cnt-sufragantes" value="${resumen && resumen.total_sufragantes != null ? resumen.total_sufragantes : ""}" /></div>` +
     filtrados.map(c => `
     <div class="admin-field"><label>${escapeHtml(c.nombre)}</label>
-      <input type="number" min="0" data-cand="${c.id}" value="${votosPorCand[c.id] || 0}" /></div>`).join("") +
-    `<div class="admin-field"><label>Votos nulos</label><input type="number" min="0" id="cnt-nulos" value="${resumen ? resumen.votos_nulos : 0}" /></div>
-     <div class="admin-field"><label>Votos en blanco</label><input type="number" min="0" id="cnt-blancos" value="${resumen ? resumen.votos_blancos : 0}" /></div>`;
+      <input ${ATTRS_ENTERO} data-cand="${c.id}" value="${votosPorCand[c.id] || 0}" /></div>`).join("") +
+    `<div class="admin-field"><label>Votos nulos</label><input ${ATTRS_ENTERO} id="cnt-nulos" value="${resumen ? resumen.votos_nulos : 0}" /></div>
+     <div class="admin-field"><label>Votos en blanco</label><input ${ATTRS_ENTERO} id="cnt-blancos" value="${resumen ? resumen.votos_blancos : 0}" /></div>`;
+  activarSoloEnteros(cont);
 }
 
 async function borrarReporteMesa() {
@@ -6459,12 +6488,12 @@ async function guardarResultadosMesa() {
     }
   }
 
-  const sufragantesRaw = document.getElementById("cnt-sufragantes").value;
-  const totalSufragantes = sufragantesRaw === "" ? null : Number(sufragantesRaw);
+  const sufragantesRaw = document.getElementById("cnt-sufragantes").value.trim();
+  const totalSufragantes = sufragantesRaw === "" ? null : aEntero(sufragantesRaw);
   const resumen = {
     mesa_id: Number(mesaId), cargo,
-    votos_nulos: Number(document.getElementById("cnt-nulos").value) || 0,
-    votos_blancos: Number(document.getElementById("cnt-blancos").value) || 0,
+    votos_nulos: aEntero(document.getElementById("cnt-nulos").value),
+    votos_blancos: aEntero(document.getElementById("cnt-blancos").value),
     total_sufragantes: totalSufragantes,
     acta_foto_path: actaPath,
     reportado_por: currentUserEmail,
@@ -6475,7 +6504,7 @@ async function guardarResultadosMesa() {
   if (!error) {
     const filas = inputsCand.map(inp => ({
       mesa_id: Number(mesaId), cargo, candidato_id: Number(inp.dataset.cand),
-      votos: Number(inp.value) || 0, es_demo: ES_DEMO, actualizado_en: new Date().toISOString(),
+      votos: aEntero(inp.value), es_demo: ES_DEMO, actualizado_en: new Date().toISOString(),
     }));
     ({ error } = await sb.from("conteo_candidato_mesa").upsert(filas, { onConflict: "mesa_id,cargo,candidato_id,es_demo" }));
   }
@@ -6583,12 +6612,13 @@ async function cargarFormJurado() {
   (existentesCand || []).forEach(r => { votosPorCand[r.candidato_id] = r.votos; });
   cont.innerHTML =
     `<div class="admin-field" style="grid-column:1/-1;"><label>Total de personas que votaron (participación, según el acta)</label>
-      <input type="number" min="0" id="jur-sufragantes" value="${resumen && resumen.total_sufragantes != null ? resumen.total_sufragantes : ""}" /></div>` +
+      <input ${ATTRS_ENTERO} id="jur-sufragantes" value="${resumen && resumen.total_sufragantes != null ? resumen.total_sufragantes : ""}" /></div>` +
     filtrados.map(c => `
     <div class="admin-field"><label>${escapeHtml(c.nombre)}</label>
-      <input type="number" min="0" data-cand="${c.id}" value="${votosPorCand[c.id] || 0}" /></div>`).join("") +
-    `<div class="admin-field"><label>Votos nulos</label><input type="number" min="0" id="jur-nulos" value="${resumen ? resumen.votos_nulos : 0}" /></div>
-     <div class="admin-field"><label>Votos en blanco</label><input type="number" min="0" id="jur-blancos" value="${resumen ? resumen.votos_blancos : 0}" /></div>`;
+      <input ${ATTRS_ENTERO} data-cand="${c.id}" value="${votosPorCand[c.id] || 0}" /></div>`).join("") +
+    `<div class="admin-field"><label>Votos nulos</label><input ${ATTRS_ENTERO} id="jur-nulos" value="${resumen ? resumen.votos_nulos : 0}" /></div>
+     <div class="admin-field"><label>Votos en blanco</label><input ${ATTRS_ENTERO} id="jur-blancos" value="${resumen ? resumen.votos_blancos : 0}" /></div>`;
+  activarSoloEnteros(cont);
 }
 
 async function guardarResultadosJurado() {
@@ -6611,12 +6641,12 @@ async function guardarResultadosJurado() {
     }
   }
 
-  const sufragantesRaw = document.getElementById("jur-sufragantes").value;
-  const totalSufragantes = sufragantesRaw === "" ? null : Number(sufragantesRaw);
+  const sufragantesRaw = document.getElementById("jur-sufragantes").value.trim();
+  const totalSufragantes = sufragantesRaw === "" ? null : aEntero(sufragantesRaw);
   const resumen = {
     mesa_id: mesaId, cargo,
-    votos_nulos: Number(document.getElementById("jur-nulos").value) || 0,
-    votos_blancos: Number(document.getElementById("jur-blancos").value) || 0,
+    votos_nulos: aEntero(document.getElementById("jur-nulos").value),
+    votos_blancos: aEntero(document.getElementById("jur-blancos").value),
     total_sufragantes: totalSufragantes,
     acta_foto_path: actaPath,
     reportado_por: currentUserEmail,
@@ -6627,7 +6657,7 @@ async function guardarResultadosJurado() {
   if (!error) {
     const filas = inputsCand.map(inp => ({
       mesa_id: mesaId, cargo, candidato_id: Number(inp.dataset.cand),
-      votos: Number(inp.value) || 0, es_demo: ES_DEMO, actualizado_en: new Date().toISOString(),
+      votos: aEntero(inp.value), es_demo: ES_DEMO, actualizado_en: new Date().toISOString(),
     }));
     ({ error } = await sb.from("conteo_candidato_mesa").upsert(filas, { onConflict: "mesa_id,cargo,candidato_id,es_demo" }));
   }
@@ -7423,8 +7453,8 @@ async function upsertConteoMesaCargo(resumen) {
 // Devuelve un mensaje de aviso, o "" si coincide (o si no se capturó el total).
 function chequeoParticipacion(totalReportado, inputsCand, nulos, blancos) {
   if (totalReportado === null || totalReportado === undefined) return "";
-  const validos = inputsCand.reduce((s, inp) => s + (Number(inp.value) || 0), 0);
-  const emitidos = validos + (Number(nulos) || 0) + (Number(blancos) || 0);
+  const validos = inputsCand.reduce((s, inp) => s + aEntero(inp.value), 0);
+  const emitidos = validos + aEntero(nulos) + aEntero(blancos);
   if (Number(totalReportado) !== emitidos) {
     return `⚠ El total de personas que votaron (${totalReportado}) no coincide con la suma de votos + nulos + blancos (${emitidos}). Revisa los números.`;
   }

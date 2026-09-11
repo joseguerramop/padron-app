@@ -277,6 +277,11 @@
     border: none; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; cursor: pointer; font-size: 0.7rem; padding: 0;
   }
   .evid-vacio { font-size: 0.78rem; color: var(--texto-suave); }
+  .modal-foto-elector:not(:empty) { margin-bottom: 10px; }
+  .foto-elector-img {
+    width: 84px; height: 109px; object-fit: cover; border-radius: 8px;
+    border: 1px solid var(--borde); background: #eef1f6;
+  }
   .fila-fallecido .cedula-cell,
   .fila-fallecido td:nth-child(2) {
     text-decoration: line-through;
@@ -2275,6 +2280,7 @@
   <div class="modal-card">
     <h3>Marcar estado</h3>
     <p class="modal-nombre" id="modal-nombre"></p>
+    <div id="modal-foto-elector" class="modal-foto-elector"></div>
     <div class="field">
       <label>Estado</label>
       <select id="modal-estado">
@@ -3029,7 +3035,7 @@ async function buscar() {
   stats.textContent = "Buscando…";
 
   let query = sb.from("electores_con_partido").select(
-    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha, clasificacion, compromiso",
+    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha, clasificacion, compromiso, tiene_foto",
     { count: "exact" }
   );
   query = aplicarFiltrosElectores(query, f);
@@ -3486,6 +3492,7 @@ function abrirModal(registro) {
   document.getElementById("modal-compromiso").value = registro.compromiso ? String(registro.compromiso) : "";
   modalMsg.innerHTML = "";
   cargarEvidenciasModal("elector", registro.cedula);
+  cargarFotoElector(registro.cedula, registro.tiene_foto);
 
   // ----- Partido / afiliación -----
   origenPartidoId = registro.partido_id || null;
@@ -3690,6 +3697,22 @@ document.getElementById("modal-guardar").addEventListener("click", async () => {
     btn.textContent = "Guardar";
   }
 });
+
+// ---------- FOTO del padrón (solo lectura, cargada por administración) ----------
+async function cargarFotoElector(cedula, tieneFoto) {
+  const cont = document.getElementById("modal-foto-elector");
+  if (!tieneFoto) { cont.innerHTML = ""; return; }
+  cont.innerHTML = `<span class="evid-vacio">Cargando foto…</span>`;
+  const { data, error } = await sb.from("electores_fotos")
+    .select("storage_path")
+    .eq("cedula", cedula)
+    .maybeSingle();
+  if (error || !data) { cont.innerHTML = ""; return; }
+  const { data: signed } = await sb.storage.from("fotos_electores").createSignedUrl(data.storage_path, 3600);
+  cont.innerHTML = signed
+    ? `<img src="${signed.signedUrl}" alt="Foto del padrón" class="foto-elector-img" />`
+    : "";
+}
 
 // ---------- EVIDENCIAS (fotos) en el modal ----------
 let evidModalTipo = null, evidModalRef = null;
@@ -3926,7 +3949,7 @@ async function cargarMapa() {
   while (true) {
     const { data: pagina, error } = await sb
       .from("electores_con_partido")
-      .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, partido_id, partido_agregado_por, nota_fecha, nota_actualizado_por, clasificacion, compromiso")
+      .select("cedula, nombre_completo, corregimiento, mesa, telefono, latitud, longitud, estado_nota, nota_texto, partido_siglas, partido_id, partido_agregado_por, nota_fecha, nota_actualizado_por, clasificacion, compromiso, tiene_foto")
       .not("latitud", "is", null)
       .not("longitud", "is", null)
       .order("cedula", { ascending: true })
@@ -7879,7 +7902,7 @@ async function buscarActivista() {
   stats.textContent = "Buscando…";
 
   let q = sb.from("electores_con_partido").select(
-    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha, clasificacion, compromiso",
+    "cedula, nombre_completo, corregimiento, mesa, centro_votacion, partido_siglas, partido_id, partido_agregado_por, estado_nota, nota_texto, telefono, latitud, longitud, nota_actualizado_por, nota_fecha, clasificacion, compromiso, tiene_foto",
     { count: "exact" }
   );
   if (termino) {

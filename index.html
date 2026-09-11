@@ -1341,8 +1341,8 @@
       </div>
 
       <div class="admin-card">
-        <h3>Crear cuenta de colaborador</h3>
-        <p class="hint">Se crea la cuenta con una contraseña temporal que deberás compartir con la persona. El acceso queda limitado al área que elijas según el nivel.</p>
+        <h3 id="nu-titulo">Crear cuenta de colaborador</h3>
+        <p class="hint" id="nu-hint">Se crea la cuenta con una contraseña temporal que deberás compartir con la persona. El acceso queda limitado al área que elijas según el nivel.</p>
         <div class="admin-grid">
           <div class="admin-field">
             <label>Nombre y apellido</label>
@@ -1361,18 +1361,16 @@
               <option value="alcalde">3 · Alcalde (por distrito)</option>
               <option value="representante">4 · Representante (por corregimiento)</option>
               <option value="secretaria_organizacion">5 · Secretaría de organización (por corregimiento)</option>
-              <option value="activista">6 · Activista de campo (app móvil, por corregimiento)</option>
+              <option value="activista">6 · Activista de campo (app móvil, por corregimiento, distrito o circuito)</option>
               <option value="admin">Administrador (acceso total + gestión)</option>
             </select>
           </div>
           <div class="admin-field" id="nu-area-wrap" style="display:none;">
-            <label id="nu-area-label">Área permitida</label>
-            <select id="nu-area" multiple></select>
-            <p class="hint" style="margin:6px 0 0;">Ctrl/Cmd + clic para elegir varias.</p>
           </div>
         </div>
         <div class="admin-actions">
           <button class="btn-primary" id="nu-crear">Crear cuenta</button>
+          <button class="mini-btn hidden" id="nu-cancelar-edicion">Cancelar edición</button>
           <span class="admin-msg" id="nu-msg"></span>
         </div>
         <div id="nu-cred" class="cred-box hidden"></div>
@@ -1380,7 +1378,7 @@
 
       <div class="admin-card">
         <h3>Colaboradores</h3>
-        <p class="hint">Cuentas con acceso al sistema y el área que cada una puede consultar.</p>
+        <p class="hint">Cuentas con acceso al sistema y el área que cada una puede consultar. "Editar acceso" cambia el nivel/rol y el área; "Resetear contraseña" genera una temporal nueva.</p>
         <div style="overflow:auto;">
           <table class="admin-users">
             <thead><tr><th>Nombre</th><th>Correo</th><th>Nivel</th><th>Área</th><th>Estado</th><th>Exportar</th><th></th></tr></thead>
@@ -1388,6 +1386,7 @@
           </table>
         </div>
         <div class="admin-msg" id="admin-users-msg"></div>
+        <div id="admin-users-cred" class="cred-box hidden"></div>
       </div>
 
 
@@ -7852,6 +7851,28 @@ const MOTIVO_LABEL = {
   otro: "Otro",
 };
 
+// Expande las áreas asignadas al activista (que ahora pueden ser de nivel corregimiento,
+// distrito o circuito) a la lista plana de nombres de corregimiento que le corresponden.
+// Para distrito/circuito usa la RPC corregs_de_area (misma que usa reporte_en_mi_ambito
+// en el backend), abierta a cualquier authenticated porque solo lee el catálogo público
+// `ubicaciones` — la RLS de electores/notas ya filtra sola por mis_corregimientos_norm(),
+// esto solo alimenta el selector local "Todos mis corregimientos" y el de "persona extra".
+async function corregimientosDeAreas(areas) {
+  const directos = areas.filter(a => a.nivel === "corregimiento").map(a => a.valor);
+  const otras = areas.filter(a => a.nivel === "distrito" || a.nivel === "circuito");
+  if (!otras.length) return [...new Set(directos)].sort((a, b) => a.localeCompare(b, "es"));
+
+  const ubic = await cargarUbicaciones();
+  const normsAdicionales = new Set();
+  for (const a of otras) {
+    const { data, error } = await sb.rpc("corregs_de_area", { _nivel: a.nivel, _valor: a.valor });
+    if (!error && data) data.forEach(n => normsAdicionales.add(n));
+  }
+  const nombres = new Set(directos);
+  ubic.forEach(u => { if (normsAdicionales.has(u.corregimiento_norm)) nombres.add(u.corregimiento); });
+  return [...nombres].sort((a, b) => a.localeCompare(b, "es"));
+}
+
 async function initActivista() {
   if (activistaInit) { buscarActivista(); return; }
   activistaInit = true;
@@ -7860,7 +7881,7 @@ async function initActivista() {
 
   const { data: areas } = await sb.from("usuario_areas")
     .select("nivel, valor").eq("user_id", currentUserId);
-  actMisCorregimientos = (areas || []).filter(a => a.nivel === "corregimiento").map(a => a.valor);
+  actMisCorregimientos = await corregimientosDeAreas(areas || []);
 
   const selC = document.getElementById("act-corregimiento");
   const selPE = document.getElementById("pe-corregimiento");
@@ -8088,6 +8109,7 @@ async function cargarPersonasExtraAdmin() {
 // ============================================================
 const EDGE_CREAR_USUARIO = SUPABASE_URL + "/functions/v1/admin-crear-usuario";
 const EDGE_ELIMINAR_USUARIO = SUPABASE_URL + "/functions/v1/admin-eliminar-usuario";
+const EDGE_RESETEAR_PASSWORD = SUPABASE_URL + "/functions/v1/admin-resetear-password";
 
 const NIVEL_POR_ROL = {
   presidente: "nacional",
@@ -8099,8 +8121,9 @@ const NIVEL_POR_ROL = {
   admin: "nacional",
 };
 
-let ubicacionesCache = null;   // [{provincia,distrito,corregimiento,circuito_codigo}]
+let ubicacionesCache = null;   // [{provincia,distrito,corregimiento,circuito_codigo,corregimiento_norm}]
 let circuitosCache = null;     // [{codigo,provincia,descripcion}]
+let editandoUserId = null;     // user_id que se está editando en el formulario de "Crear cuenta" (null = modo crear)
 
 async function cargarUbicaciones() {
   if (ubicacionesCache) return ubicacionesCache;
@@ -8109,7 +8132,7 @@ async function cargarUbicaciones() {
   while (true) {
     const { data, error } = await sb
       .from("ubicaciones")
-      .select("provincia,distrito,corregimiento,circuito_codigo")
+      .select("provincia,distrito,corregimiento,circuito_codigo,corregimiento_norm")
       .order("provincia").order("distrito").order("corregimiento")
       .range(desde, desde + 999);
     if (error) { console.error(error); break; }
@@ -8138,7 +8161,10 @@ function initAdmin() {
   rolSel.dataset.init = "1";
 
   rolSel.addEventListener("change", () => construirSelectorArea(rolSel.value));
-  document.getElementById("nu-crear").addEventListener("click", crearUsuario);
+  document.getElementById("nu-crear").addEventListener("click", () => {
+    if (editandoUserId) guardarCambiosAcceso(); else crearUsuario();
+  });
+  document.getElementById("nu-cancelar-edicion").addEventListener("click", cancelarEdicionUsuario);
   document.getElementById("pw-guardar").addEventListener("click", cambiarMiPassword);
 
   document.getElementById("imp-tipo").addEventListener("change", (e) => {
@@ -8244,20 +8270,49 @@ async function exportarAfiliadosSinPadron() {
   msg.textContent = `Listo: ${filas.length.toLocaleString("es-PA")} fila(s).`;
 }
 
+// El activista es el único rol cuyo nivel de alcance lo elige el admin (los demás
+// roles tienen un nivel fijo en NIVEL_POR_ROL). Por eso construye su propio selector
+// de nivel arriba del selector de área, y repinta el área cada vez que cambia.
 async function construirSelectorArea(rol) {
   const wrap = document.getElementById("nu-area-wrap");
-  const nivel = NIVEL_POR_ROL[rol];
-  if (!rol || nivel === "nacional") {
-    wrap.style.display = "none";
-    wrap.innerHTML = "";
+  wrap.innerHTML = "";
+  if (!rol) { wrap.style.display = "none"; return; }
+
+  if (rol === "activista") {
+    wrap.style.display = "block";
+    const nivelLabel = document.createElement("label");
+    nivelLabel.textContent = "Alcance del activista";
+    const nivelSel = document.createElement("select");
+    nivelSel.id = "nu-nivel-activista";
+    nivelSel.innerHTML = `
+      <option value="corregimiento">Por corregimiento</option>
+      <option value="distrito">Por distrito</option>
+      <option value="circuito">Por circuito</option>`;
+    const holder = document.createElement("div");
+    holder.id = "nu-area-activista-holder";
+    holder.style.marginTop = "10px";
+    wrap.appendChild(nivelLabel);
+    wrap.appendChild(nivelSel);
+    wrap.appendChild(holder);
+    nivelSel.addEventListener("change", () => pintarAreaGenerica(nivelSel.value, holder));
+    await pintarAreaGenerica(nivelSel.value, holder);
     return;
   }
+
+  const nivel = NIVEL_POR_ROL[rol];
+  if (nivel === "nacional") { wrap.style.display = "none"; return; }
   wrap.style.display = "block";
-  wrap.innerHTML = `<label id="nu-area-label"></label>`;
+  await pintarAreaGenerica(nivel, wrap);
+}
+
+// Pinta el selector de circuito/distrito/corregimiento (id "nu-area", multiple) dentro
+// de `container`. Compartido entre el selector fijo por rol y el selector de nivel del activista.
+async function pintarAreaGenerica(nivel, container) {
+  container.innerHTML = `<label id="nu-area-label"></label>`;
 
   if (nivel === "circuito") {
     const circuitos = await cargarCircuitos();
-    document.getElementById("nu-area-label").textContent = "Circuito(s) electoral(es) permitido(s)";
+    container.querySelector("#nu-area-label").textContent = "Circuito(s) electoral(es) permitido(s)";
     const sel = document.createElement("select");
     sel.id = "nu-area"; sel.multiple = true;
     circuitos.forEach(c => {
@@ -8266,11 +8321,11 @@ async function construirSelectorArea(rol) {
       o.textContent = `${c.codigo} · ${c.provincia} — ${c.descripcion}`;
       sel.appendChild(o);
     });
-    wrap.appendChild(sel);
+    container.appendChild(sel);
   } else if (nivel === "distrito") {
     const ubic = await cargarUbicaciones();
     const distritos = [...new Map(ubic.map(u => [u.provincia + "|" + u.distrito, u])).values()];
-    document.getElementById("nu-area-label").textContent = "Distrito(s) permitido(s)";
+    container.querySelector("#nu-area-label").textContent = "Distrito(s) permitido(s)";
     const sel = document.createElement("select");
     sel.id = "nu-area"; sel.multiple = true;
     distritos.forEach(u => {
@@ -8279,10 +8334,10 @@ async function construirSelectorArea(rol) {
       o.textContent = `${u.provincia} — ${u.distrito}`;
       sel.appendChild(o);
     });
-    wrap.appendChild(sel);
+    container.appendChild(sel);
   } else { // corregimiento — filtrado por distrito
     const ubic = await cargarUbicaciones();
-    document.getElementById("nu-area-label").textContent = "Corregimiento(s) permitido(s)";
+    container.querySelector("#nu-area-label").textContent = "Corregimiento(s) permitido(s)";
     const distSel = document.createElement("select");
     distSel.id = "nu-area-distrito";
     distSel.innerHTML = `<option value="">Primero elige un distrito…</option>`;
@@ -8306,14 +8361,14 @@ async function construirSelectorArea(rol) {
         sel.appendChild(o);
       });
     });
-    wrap.appendChild(distSel);
-    wrap.appendChild(sel);
+    container.appendChild(distSel);
+    container.appendChild(sel);
   }
   const hint = document.createElement("p");
   hint.className = "hint";
   hint.style.margin = "6px 0 0";
   hint.textContent = "Ctrl/Cmd + clic para elegir varias.";
-  wrap.appendChild(hint);
+  container.appendChild(hint);
 }
 
 // Cambia la contraseña de la cuenta que tiene la sesión abierta ahora mismo. Confirma la
@@ -8347,6 +8402,21 @@ async function cambiarMiPassword() {
   msg.innerHTML = `<span style="color:var(--exito)">Contraseña actualizada.</span>`;
 }
 
+// Lee el nivel y las áreas elegidas en el formulario: para activista viene del
+// selector de nivel propio (#nu-nivel-activista); para los demás roles, del nivel
+// fijo en NIVEL_POR_ROL. Devuelve null (y ya deja el mensaje de error puesto) si
+// falta elegir el área.
+function leerNivelYAreas(rol, msgEl) {
+  const nivel = rol === "activista"
+    ? (document.getElementById("nu-nivel-activista")?.value || "corregimiento")
+    : NIVEL_POR_ROL[rol];
+  if (nivel === "nacional") return { nivel, areas: [{ nivel: "nacional", valor: null }] };
+  const sel = document.getElementById("nu-area");
+  const vals = sel ? [...sel.selectedOptions].map(o => o.value) : [];
+  if (vals.length === 0) { msgEl.innerHTML = `<span class="val-error">Elige al menos un área.</span>`; return null; }
+  return { nivel, areas: vals.map(v => ({ nivel, valor: v })) };
+}
+
 async function crearUsuario() {
   const nombre = document.getElementById("nu-nombre").value.trim();
   const email = document.getElementById("nu-email").value.trim().toLowerCase();
@@ -8363,16 +8433,9 @@ async function crearUsuario() {
 
   if (!email || !rol) { msg.innerHTML = `<span class="val-error">Completa correo y nivel.</span>`; return; }
 
-  const nivel = NIVEL_POR_ROL[rol];
-  let areas = [];
-  if (nivel === "nacional") {
-    areas = [{ nivel: "nacional", valor: null }];
-  } else {
-    const sel = document.getElementById("nu-area");
-    const vals = sel ? [...sel.selectedOptions].map(o => o.value) : [];
-    if (vals.length === 0) { msg.innerHTML = `<span class="val-error">Elige al menos un área.</span>`; return; }
-    areas = vals.map(v => ({ nivel, valor: v }));
-  }
+  const resultado = leerNivelYAreas(rol, msg);
+  if (!resultado) return;
+  const { areas } = resultado;
 
   btn.disabled = true; btn.textContent = "Creando…";
   try {
@@ -8401,6 +8464,11 @@ async function crearUsuario() {
   }
 }
 
+// Roles que se crean/editan desde este panel (jurado_mesa NO: esa cuenta se crea
+// desde Organización → Apoderados de mesa y queda ligada a una mesa exacta, no a
+// un área geográfica, así que "Editar acceso" no aplica para ese rol).
+const ROLES_EDITABLES_ADMIN = ["admin", "presidente", "diputado", "alcalde", "representante", "secretaria_organizacion", "activista"];
+
 async function cargarListaUsuarios() {
   const body = document.getElementById("admin-users-body");
   const msg = document.getElementById("admin-users-msg");
@@ -8411,11 +8479,13 @@ async function cargarListaUsuarios() {
   ]);
   if (e1) { msg.textContent = "Error: " + e1.message; return; }
   msg.textContent = "";
-  const areasPorU = {};
+  const areasPorU = {};       // user_id -> ["Nacional" | valor, ...] (para mostrar en la tabla)
+  const areasRawPorU = {};    // user_id -> [{nivel, valor}, ...] (para precargar "Editar acceso")
   (areas || []).forEach(a => {
     (areasPorU[a.user_id] = areasPorU[a.user_id] || []).push(
       a.nivel === "nacional" ? "Nacional" : `${a.valor}`
     );
+    (areasRawPorU[a.user_id] = areasRawPorU[a.user_id] || []).push({ nivel: a.nivel, valor: a.valor });
   });
   perfiles.forEach(p => {
     const tr = document.createElement("tr");
@@ -8448,6 +8518,24 @@ async function cargarListaUsuarios() {
     });
     acc.appendChild(btnT);
 
+    // Editar acceso: sube/baja de nivel o cambia el área (no en demo ni para jurado_mesa).
+    if (!ES_DEMO && ROLES_EDITABLES_ADMIN.includes(p.rol)) {
+      const btnEdit = document.createElement("button");
+      btnEdit.className = "mini-btn";
+      btnEdit.textContent = "Editar acceso";
+      btnEdit.addEventListener("click", () => iniciarEdicionUsuario(p, areasRawPorU[p.user_id] || []));
+      acc.appendChild(btnEdit);
+    }
+
+    // Resetear contraseña: genera una temporal nueva (no en demo).
+    if (!ES_DEMO) {
+      const btnReset = document.createElement("button");
+      btnReset.className = "mini-btn";
+      btnReset.textContent = "Resetear contraseña";
+      btnReset.addEventListener("click", () => resetearPasswordUsuario(p, btnReset));
+      acc.appendChild(btnReset);
+    }
+
     // Eliminar (no aparece para tu propia cuenta ni en modo demo)
     if (!ES_DEMO && p.user_id !== currentUserId) {
       const btnDel = document.createElement("button");
@@ -8460,6 +8548,136 @@ async function cargarListaUsuarios() {
     body.appendChild(tr);
   });
   if (perfiles.length === 0) msg.textContent = "Aún no hay colaboradores.";
+}
+
+// ---------- Editar acceso (subir/bajar de nivel, cambiar área) ----------
+// Reutiliza el formulario de "Crear cuenta" en modo edición: precarga nombre/rol/área
+// actuales, cambia el botón a "Guardar cambios" y, al guardar, actualiza perfiles_usuario
+// (rol/nombre) y reemplaza por completo las filas de usuario_areas del usuario.
+async function iniciarEdicionUsuario(p, areasActuales) {
+  editandoUserId = p.user_id;
+  document.getElementById("nu-titulo").textContent = `Editar acceso de ${p.nombre || "colaborador"}`;
+  document.getElementById("nu-hint").textContent = "Cambia el nivel/rol y el área permitida. El correo y la contraseña no se tocan aquí (usa \"Resetear contraseña\" para la clave).";
+  document.getElementById("nu-nombre").value = p.nombre || "";
+  const emailInput = document.getElementById("nu-email");
+  emailInput.value = "(no se cambia aquí)";
+  emailInput.disabled = true;
+  document.getElementById("nu-rol").value = p.rol;
+  await construirSelectorArea(p.rol);
+  if (p.rol === "activista" && areasActuales.length) {
+    const nivelSel = document.getElementById("nu-nivel-activista");
+    const holder = document.getElementById("nu-area-activista-holder");
+    nivelSel.value = areasActuales[0].nivel;
+    await pintarAreaGenerica(nivelSel.value, holder);
+  }
+  preseleccionarAreas(areasActuales);
+  document.getElementById("nu-crear").textContent = "Guardar cambios";
+  document.getElementById("nu-cancelar-edicion").classList.remove("hidden");
+  document.getElementById("nu-msg").innerHTML = "";
+  document.getElementById("nu-cred").classList.add("hidden");
+  document.getElementById("nu-nombre").closest(".admin-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Marca en el/los <select id="nu-area"> ya pintado(s) las opciones que corresponden
+// a las áreas actuales del usuario que se está editando.
+function preseleccionarAreas(areas) {
+  if (!areas || !areas.length || areas[0].nivel === "nacional") return;
+  const sel = document.getElementById("nu-area");
+  if (!sel) return;
+  const valores = new Set(areas.map(a => a.valor));
+  if (areas[0].nivel === "corregimiento") {
+    const distSel = document.getElementById("nu-area-distrito");
+    const u = (ubicacionesCache || []).find(x => x.corregimiento === areas[0].valor);
+    if (distSel && u) {
+      distSel.value = u.provincia + "|" + u.distrito;
+      distSel.dispatchEvent(new Event("change")); // repinta corregimientos del distrito (todos preseleccionados)
+    }
+  }
+  [...sel.options].forEach(o => { o.selected = valores.has(o.value); });
+}
+
+function cancelarEdicionUsuario() {
+  editandoUserId = null;
+  document.getElementById("nu-titulo").textContent = "Crear cuenta de colaborador";
+  document.getElementById("nu-hint").textContent = "Se crea la cuenta con una contraseña temporal que deberás compartir con la persona. El acceso queda limitado al área que elijas según el nivel.";
+  document.getElementById("nu-nombre").value = "";
+  const emailInput = document.getElementById("nu-email");
+  emailInput.value = ""; emailInput.disabled = false;
+  document.getElementById("nu-rol").value = "";
+  construirSelectorArea("");
+  document.getElementById("nu-crear").textContent = "Crear cuenta";
+  document.getElementById("nu-cancelar-edicion").classList.add("hidden");
+  document.getElementById("nu-msg").innerHTML = "";
+}
+
+async function guardarCambiosAcceso() {
+  const nombre = document.getElementById("nu-nombre").value.trim();
+  const rol = document.getElementById("nu-rol").value;
+  const msg = document.getElementById("nu-msg");
+  const btn = document.getElementById("nu-crear");
+  msg.innerHTML = "";
+  if (!editandoUserId) return;
+  if (!rol) { msg.innerHTML = `<span class="val-error">Elige un nivel.</span>`; return; }
+
+  const resultado = leerNivelYAreas(rol, msg);
+  if (!resultado) return;
+  const { areas } = resultado;
+  const targetId = editandoUserId;
+
+  btn.disabled = true; btn.textContent = "Guardando…";
+  const updates = { rol };
+  if (nombre) updates.nombre = nombre;
+  const { error: errPerfil } = await sb.from("perfiles_usuario").update(updates).eq("user_id", targetId);
+  if (errPerfil) {
+    btn.disabled = false; btn.textContent = "Guardar cambios";
+    msg.innerHTML = `<span class="val-error">${escapeHtml(errPerfil.message)}</span>`;
+    return;
+  }
+  const { error: errDel } = await sb.from("usuario_areas").delete().eq("user_id", targetId);
+  let errIns = null;
+  if (!errDel) {
+    const filas = areas.map(a => ({ user_id: targetId, nivel: a.nivel, valor: a.valor }));
+    ({ error: errIns } = await sb.from("usuario_areas").insert(filas));
+  }
+  btn.disabled = false; btn.textContent = "Guardar cambios";
+  if (errDel || errIns) {
+    msg.innerHTML = `<span class="val-error">El rol se guardó, pero fallaron las áreas: ${escapeHtml((errDel || errIns).message)}</span>`;
+    return;
+  }
+  msg.innerHTML = `<span style="color:var(--exito)">Acceso actualizado.</span>`;
+  cancelarEdicionUsuario();
+  cargarListaUsuarios();
+}
+
+// ---------- Resetear contraseña ----------
+async function resetearPasswordUsuario(p, btn) {
+  if (!confirm(`¿Resetear la contraseña de ${p.nombre || "esta cuenta"}?\n\nSe generará una contraseña temporal nueva y la persona deberá cambiarla al volver a entrar.`)) return;
+  btn.disabled = true;
+  const textoOriginal = btn.textContent;
+  btn.textContent = "Reseteando…";
+  const msg = document.getElementById("admin-users-msg");
+  const cred = document.getElementById("admin-users-cred");
+  msg.textContent = ""; cred.classList.add("hidden");
+  try {
+    const { data: sess } = await sb.auth.getSession();
+    const token = sess?.session?.access_token;
+    const resp = await fetch(EDGE_RESETEAR_PASSWORD, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token, "apikey": SUPABASE_KEY },
+      body: JSON.stringify({ user_id: p.user_id }),
+    });
+    const out = await resp.json();
+    if (!resp.ok || !out.ok) throw new Error(out.error || "No se pudo resetear la contraseña");
+    cred.classList.remove("hidden");
+    cred.innerHTML = `Nueva contraseña temporal para <b>${escapeHtml(out.email || p.nombre || "la cuenta")}</b>:<br>
+      <code>${escapeHtml(out.password_temporal)}</code><br>
+      <small>Compártela con la persona. Deberá cambiarla al entrar. Esta contraseña no se vuelve a mostrar.</small>`;
+  } catch (err) {
+    msg.innerHTML = `<span class="val-error">${escapeHtml(err.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
 }
 
 async function eliminarUsuario(p, btn) {
